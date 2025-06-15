@@ -10,6 +10,15 @@ pub enum TokenType {
     // Operators
     ASSIGN,
     PLUS,
+    MINUS,
+    BANG,
+    SLASH,
+    ASTERISK,
+
+    LT,
+    GT,
+    EQ,
+    NOT_EQ,
 
     // Delimeters
     COMMA,
@@ -23,6 +32,11 @@ pub enum TokenType {
     // Keywords
     FUNCTION,
     LET,
+    IF,
+    ELSE,
+    RETURN,
+    TRUE,
+    FALSE,
 }
 
 pub struct Token {
@@ -35,6 +49,11 @@ impl Token {
         match ident {
             "function" => TokenType::FUNCTION,
             "let" => TokenType::LET,
+            "if" => TokenType::IF,
+            "else" => TokenType::ELSE,
+            "return" => TokenType::RETURN,
+            "true" => TokenType::TRUE,
+            "false" => TokenType::FALSE,
             _ => TokenType::IDENT,
         }
     }

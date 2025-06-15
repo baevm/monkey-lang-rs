@@ -24,6 +24,7 @@ impl Lexer {
         lexer
     }
 
+    /// Reads next token in input
     fn next_token(&mut self) -> Token {
         let mut token: Token = Token {
             token_type: TokenType::EOF,
@@ -75,10 +76,64 @@ impl Lexer {
                     token_type: TokenType::PLUS,
                 }
             }
-            '=' => {
+            '-' => {
                 token = Token {
                     literal: self.ch.to_string(),
-                    token_type: TokenType::ASSIGN,
+                    token_type: TokenType::MINUS,
+                }
+            }
+            '*' => {
+                token = Token {
+                    literal: self.ch.to_string(),
+                    token_type: TokenType::ASTERISK,
+                }
+            }
+            '/' => {
+                token = Token {
+                    literal: self.ch.to_string(),
+                    token_type: TokenType::SLASH,
+                }
+            }
+            '<' => {
+                token = Token {
+                    literal: self.ch.to_string(),
+                    token_type: TokenType::LT,
+                }
+            }
+            '>' => {
+                token = Token {
+                    literal: self.ch.to_string(),
+                    token_type: TokenType::GT,
+                }
+            }
+            '=' => {
+                if self.peek_char() == '=' {
+                    token = Token {
+                        literal: "==".to_string(),
+                        token_type: TokenType::EQ,
+                    };
+
+                    self.read_char();
+                } else {
+                    token = Token {
+                        literal: self.ch.to_string(),
+                        token_type: TokenType::ASSIGN,
+                    }
+                }
+            }
+            '!' => {
+                if self.peek_char() == '=' {
+                    token = Token {
+                        literal: "!=".to_string(),
+                        token_type: TokenType::NOT_EQ,
+                    };
+
+                    self.read_char();
+                } else {
+                    token = Token {
+                        literal: self.ch.to_string(),
+                        token_type: TokenType::BANG,
+                    }
                 }
             }
             Self::ASCII_NUL => {
@@ -118,10 +173,12 @@ impl Lexer {
         token
     }
 
+    /// Reads next character in input
     fn read_char(&mut self) {
         if self.read_position >= self.input.len() as u64 {
             self.ch = Self::ASCII_NUL
         } else {
+            // TODO: avoid O(N) lookup of char in input
             self.ch = self.input.chars().nth(self.read_position as usize).unwrap();
         }
 
@@ -162,6 +219,14 @@ impl Lexer {
             self.read_char();
         }
     }
+
+    fn peek_char(&self) -> char {
+        if self.read_position >= self.input.len() as u64 {
+            Self::ASCII_NUL
+        } else {
+            self.input.chars().nth(self.read_position as usize).unwrap()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -181,6 +246,18 @@ mod tests {
             };
 
             let result = add(five, ten);
+
+            !-/*5;
+            5 < 10 > 5;
+
+            if (5 < 10) {
+                return true;
+            } else {
+                return false;
+            }
+
+            10 == 10;
+            10 != 9;
         "
         .to_string();
 
@@ -220,6 +297,43 @@ mod tests {
             (TokenType::COMMA, ","),
             (TokenType::IDENT, "ten"),
             (TokenType::RPAREN, ")"),
+            (TokenType::SEMICOLON, ";"),
+            (TokenType::BANG, "!"),
+            (TokenType::MINUS, "-"),
+            (TokenType::SLASH, "/"),
+            (TokenType::ASTERISK, "*"),
+            (TokenType::INT, "5"),
+            (TokenType::SEMICOLON, ";"),
+            (TokenType::INT, "5"),
+            (TokenType::LT, "<"),
+            (TokenType::INT, "10"),
+            (TokenType::GT, ">"),
+            (TokenType::INT, "5"),
+            (TokenType::SEMICOLON, ";"),
+            (TokenType::IF, "if"),
+            (TokenType::LPAREN, "("),
+            (TokenType::INT, "5"),
+            (TokenType::LT, "<"),
+            (TokenType::INT, "10"),
+            (TokenType::RPAREN, ")"),
+            (TokenType::LBRACE, "{"),
+            (TokenType::RETURN, "return"),
+            (TokenType::TRUE, "true"),
+            (TokenType::SEMICOLON, ";"),
+            (TokenType::RBRACE, "}"),
+            (TokenType::ELSE, "else"),
+            (TokenType::LBRACE, "{"),
+            (TokenType::RETURN, "return"),
+            (TokenType::FALSE, "false"),
+            (TokenType::SEMICOLON, ";"),
+            (TokenType::RBRACE, "}"),
+            (TokenType::INT, "10"),
+            (TokenType::EQ, "=="),
+            (TokenType::INT, "10"),
+            (TokenType::SEMICOLON, ";"),
+            (TokenType::INT, "10"),
+            (TokenType::NOT_EQ, "!="),
+            (TokenType::INT, "9"),
             (TokenType::SEMICOLON, ";"),
             (TokenType::EOF, ""),
         ];
