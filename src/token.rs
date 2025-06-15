@@ -1,4 +1,4 @@
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum TokenType {
     Illegal, // unknown token
     Eof,     // end of file
@@ -39,6 +39,7 @@ pub enum TokenType {
     False,
 }
 
+#[derive(Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub literal: String,
@@ -51,6 +52,13 @@ impl std::fmt::Display for Token {
 }
 
 impl Token {
+    pub fn new() -> Self {
+        Token {
+            token_type: TokenType::Eof,
+            literal: String::new(),
+        }
+    }
+
     pub fn check_ident(ident: &str) -> TokenType {
         match ident {
             "function" => TokenType::Function,
