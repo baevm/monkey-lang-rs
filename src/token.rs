@@ -1,42 +1,42 @@
 #[derive(PartialEq, Debug)]
 pub enum TokenType {
-    ILLEGAL, // unknown token
-    EOF,     // end of file
+    Illegal, // unknown token
+    Eof,     // end of file
 
     // Identifiers + literals
-    IDENT,
-    INT,
+    Ident,
+    Int,
 
     // Operators
-    ASSIGN,
-    PLUS,
-    MINUS,
-    BANG,
-    SLASH,
-    ASTERISK,
+    Assign,
+    Plus,
+    Minus,
+    Bang,
+    Slash,
+    Asterisk,
 
-    LT,
-    GT,
-    EQ,
-    NOT_EQ,
+    Lt,
+    Gt,
+    Eq,
+    NotEq,
 
     // Delimeters
-    COMMA,
-    SEMICOLON,
+    Comma,
+    Semicolon,
 
-    LPAREN,
-    RPAREN,
-    LBRACE,
-    RBRACE,
+    Lparen,
+    Rparen,
+    Lbrace,
+    Rbrace,
 
     // Keywords
-    FUNCTION,
-    LET,
-    IF,
-    ELSE,
-    RETURN,
-    TRUE,
-    FALSE,
+    Function,
+    Let,
+    If,
+    Else,
+    Return,
+    True,
+    False,
 }
 
 pub struct Token {
@@ -44,17 +44,23 @@ pub struct Token {
     pub literal: String,
 }
 
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Token: {:?}. Literal: {}", self.token_type, self.literal)
+    }
+}
+
 impl Token {
     pub fn check_ident(ident: &str) -> TokenType {
         match ident {
-            "function" => TokenType::FUNCTION,
-            "let" => TokenType::LET,
-            "if" => TokenType::IF,
-            "else" => TokenType::ELSE,
-            "return" => TokenType::RETURN,
-            "true" => TokenType::TRUE,
-            "false" => TokenType::FALSE,
-            _ => TokenType::IDENT,
+            "function" => TokenType::Function,
+            "let" => TokenType::Let,
+            "if" => TokenType::If,
+            "else" => TokenType::Else,
+            "return" => TokenType::Return,
+            "true" => TokenType::True,
+            "false" => TokenType::False,
+            _ => TokenType::Ident,
         }
     }
 }
