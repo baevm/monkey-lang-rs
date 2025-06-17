@@ -1,5 +1,5 @@
 use crate::{
-    ast::{self, Identifier, LetStatement, Statement},
+    ast::{self, Identifier, LetStatement, ReturnStatement, Statement},
     lexer::Lexer,
     token::{Token, TokenType},
 };
@@ -57,6 +57,7 @@ impl Parser {
     fn parse_statement(&mut self) -> Option<Box<dyn Statement>> {
         match self.curr_token.token_type {
             TokenType::Let => self.parse_let_statement(),
+            TokenType::Return => self.parse_return_statement(),
             _ => None,
         }
     }
@@ -90,6 +91,21 @@ impl Parser {
         Some(Box::new(let_stmt))
     }
 
+    fn parse_return_statement(&mut self) -> Option<Box<dyn Statement>> {
+        let return_stmt = ReturnStatement {
+            token: self.curr_token.clone(),
+            return_value: None,
+        };
+
+        self.next_token();
+
+        while !self.is_curr_token(TokenType::Semicolon) {
+            self.next_token();
+        }
+
+        Some(Box::new(return_stmt))
+    }
+
     fn expect_peek(&mut self, expected: TokenType) -> bool {
         if self.is_peek_token(&expected) {
             self.next_token();
@@ -120,8 +136,10 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+    use core::panic;
+
     use crate::{
-        ast::{Expression, LetStatement, Statement},
+        ast::{Expression, LetStatement, ReturnStatement, Statement},
         lexer::{self, Lexer},
         parser::Parser,
     };
@@ -159,6 +177,47 @@ mod tests {
             let statement = &*program.statements[i];
 
             test_let_statement(statement, test);
+        }
+    }
+
+    #[test]
+    fn test_return_statement() {
+        let input = r"
+            return 5;
+            return fooBar;
+            return 100500;
+        "
+        .to_string();
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+
+        assert_eq!(
+            parser.errors.len(),
+            0,
+            "found errors while parsing: {:#?}",
+            parser.errors
+        );
+
+        assert_eq!(
+            program.statements.len(),
+            3,
+            "not enough statements in program"
+        );
+
+        for stmt in program.statements {
+            if let Some(return_stmt) = stmt.as_any().downcast_ref::<ReturnStatement>() {
+                assert_eq!(
+                    return_stmt.token_literal(),
+                    "return",
+                    "return statement token literal is not 'return'. Got: {} ",
+                    return_stmt.token_literal()
+                );
+            } else {
+                panic!("stmt is not ReturnStatement")
+            }
         }
     }
 
