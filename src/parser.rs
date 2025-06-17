@@ -1,8 +1,20 @@
 use crate::{
-    ast::{self, Identifier, LetStatement, ReturnStatement, Statement},
+    ast::{
+        self, Expression, ExpressionStatement, Identifier, LetStatement, ReturnStatement, Statement,
+    },
     lexer::Lexer,
     token::{Token, TokenType},
 };
+
+enum Precedence {
+    Lowest,
+    Equals,
+    LessGreater,
+    Sum,
+    Product,
+    Prefix,
+    Call,
+}
 
 pub struct Parser {
     lexer: Lexer,
@@ -58,7 +70,7 @@ impl Parser {
         match self.curr_token.token_type {
             TokenType::Let => self.parse_let_statement(),
             TokenType::Return => self.parse_return_statement(),
-            _ => None,
+            _ => self.parse_expression_statement(),
         }
     }
 
@@ -106,6 +118,43 @@ impl Parser {
         Some(Box::new(return_stmt))
     }
 
+    fn parse_expression_statement(&mut self) -> Option<Box<dyn Statement>> {
+        let expr_stmt = ExpressionStatement {
+            token: self.curr_token.clone(),
+            expression: self.parse_expression(Precedence::Lowest),
+        };
+
+        if self.is_peek_token(&TokenType::Semicolon) {
+            self.next_token();
+        }
+
+        Some(Box::new(expr_stmt))
+    }
+
+    fn parse_expression(&self, lowest: Precedence) -> Option<Box<dyn Expression>> {
+        let prefix = self.parse_prefix(&self.curr_token.token_type);
+
+        if prefix.is_none() {
+            return None;
+        }
+
+        return prefix;
+    }
+
+    fn parse_prefix(&self, token: &TokenType) -> Option<Box<dyn Expression>> {
+        match token {
+            TokenType::Ident => self.parse_identifier(),
+            _ => None,
+        }
+    }
+
+    fn parse_identifier(&self) -> Option<Box<dyn Expression>> {
+        Some(Box::new(Identifier {
+            token: self.curr_token.clone(),
+            value: self.curr_token.literal.clone(),
+        }))
+    }
+
     fn expect_peek(&mut self, expected: TokenType) -> bool {
         if self.is_peek_token(&expected) {
             self.next_token();
@@ -139,7 +188,9 @@ mod tests {
     use core::panic;
 
     use crate::{
-        ast::{Expression, LetStatement, ReturnStatement, Statement},
+        ast::{
+            Expression, ExpressionStatement, Identifier, LetStatement, ReturnStatement, Statement,
+        },
         lexer::{self, Lexer},
         parser::Parser,
     };
@@ -218,6 +269,52 @@ mod tests {
             } else {
                 panic!("stmt is not ReturnStatement")
             }
+        }
+    }
+
+    #[test]
+    fn test_identifier_expression() {
+        let input = "variableName".to_string();
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+
+        assert_eq!(
+            parser.errors.len(),
+            0,
+            "found errors while parsing: {:#?}",
+            parser.errors
+        );
+
+        assert_eq!(
+            program.statements.len(),
+            1,
+            "not enough statements in program"
+        );
+
+        if let Some(expr_stmt) = program
+            .statements
+            .first()
+            .unwrap()
+            .as_any()
+            .downcast_ref::<ExpressionStatement>()
+        {
+            if let Some(identifier) = expr_stmt
+                .expression
+                .as_ref()
+                .unwrap()
+                .as_any()
+                .downcast_ref::<Identifier>()
+            {
+                assert_eq!(identifier.value, "variableName");
+                assert_eq!(identifier.token_literal(), "variableName");
+            } else {
+                panic!("expression statement is not Identifier");
+            }
+        } else {
+            panic!("stmt is not ExpressionStatement");
         }
     }
 
