@@ -1,29 +1,48 @@
-use std::any::Any;
+use crate::token::Token;
 
-use crate::token::{Token, TokenType};
-
-pub trait Statement: Any {
-    fn token_literal(&self) -> String;
-
-    fn as_any(&self) -> &dyn Any;
-    fn to_string(&self) -> String;
-}
-
-pub trait Expression {
-    fn token_literal(&self) -> String;
-
-    fn as_any(&self) -> &dyn Any;
+pub trait Stringer {
     fn to_string(&self) -> String;
 }
 
 pub struct Program {
-    pub statements: Vec<Box<dyn Statement>>,
+    pub body: Vec<Statement>,
+}
+
+/* Statements */
+pub enum Statement {
+    LetStatement(Box<LetStatement>),
+    ReturnStatement(Box<ReturnStatement>),
+    ExpressionStatement(Box<ExpressionStatement>),
+}
+
+impl Statement {
+    pub fn token_literal(&self) -> String {
+        match self {
+            Statement::LetStatement(let_statement) => let_statement.token.literal.clone(),
+            Statement::ReturnStatement(return_statement) => return_statement.token.literal.clone(),
+            Statement::ExpressionStatement(expression_statement) => {
+                expression_statement.token.literal.clone()
+            }
+        }
+    }
+}
+
+impl Stringer for Statement {
+    fn to_string(&self) -> String {
+        match self {
+            Statement::LetStatement(let_statement) => let_statement.to_string(),
+            Statement::ReturnStatement(return_statement) => return_statement.to_string(),
+            Statement::ExpressionStatement(expression_statement) => {
+                expression_statement.to_string()
+            }
+        }
+    }
 }
 
 impl Program {
     fn token_literal(&self) -> String {
-        if self.statements.len() > 0 {
-            self.statements.first().unwrap().token_literal()
+        if self.body.len() > 0 {
+            self.body.first().unwrap().token_literal()
         } else {
             "".to_string()
         }
@@ -32,7 +51,7 @@ impl Program {
     fn to_string(&self) -> String {
         let mut sb = String::new();
 
-        for stmt in &self.statements {
+        for stmt in &self.body {
             sb.push_str(&stmt.to_string());
         }
 
@@ -40,29 +59,19 @@ impl Program {
     }
 }
 
-/* Statements */
-
 pub struct LetStatement {
     pub token: Token,
     pub name: Identifier,
-    pub value: Option<Box<dyn Expression>>,
+    pub value: Option<Expression>,
 }
 
-impl Statement for LetStatement {
-    fn token_literal(&self) -> String {
-        self.token.literal.clone()
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
+impl Stringer for LetStatement {
     fn to_string(&self) -> String {
         let mut sb = String::new();
 
         sb.push_str(&format!(
             "{} {} = ",
-            self.token_literal(),
+            self.token.literal,
             self.name.to_string(),
         ));
 
@@ -78,22 +87,14 @@ impl Statement for LetStatement {
 
 pub struct ReturnStatement {
     pub token: Token,
-    pub return_value: Option<Box<dyn Expression>>,
+    pub return_value: Option<Expression>,
 }
 
-impl Statement for ReturnStatement {
-    fn token_literal(&self) -> String {
-        self.token.literal.clone()
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
+impl Stringer for ReturnStatement {
     fn to_string(&self) -> String {
         let mut sb = String::new();
 
-        sb.push_str(&format!("{} ", self.token_literal()));
+        sb.push_str(&format!("{} ", self.token.literal));
 
         if let Some(return_val) = &self.return_value {
             sb.push_str(&return_val.to_string());
@@ -107,54 +108,61 @@ impl Statement for ReturnStatement {
 
 pub struct ExpressionStatement {
     pub token: Token,
-    pub expression: Option<Box<dyn Expression>>,
+    pub expression: Option<Expression>,
 }
 
-impl Statement for ExpressionStatement {
-    fn token_literal(&self) -> String {
-        self.token.literal.clone()
-    }
-
+impl Stringer for ExpressionStatement {
     fn to_string(&self) -> String {
         let mut sb = String::new();
 
         if let Some(expr_stmt) = &self.expression {
-            sb.push_str(&expr_stmt.to_string());
+            match &*expr_stmt {
+                Expression::Identifier(identifier) => {
+                    sb.push_str(&identifier.to_string());
+                }
+            }
         }
 
         sb
     }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
 }
 
 /* Expressions */
+pub enum Expression {
+    Identifier(Box<Identifier>),
+}
+
+impl Expression {
+    pub fn token_literal(&self) -> String {
+        match self {
+            Expression::Identifier(identifier) => identifier.token.literal.clone(),
+        }
+    }
+}
+
+impl Stringer for Expression {
+    fn to_string(&self) -> String {
+        match self {
+            Expression::Identifier(identifier) => identifier.to_string(),
+        }
+    }
+}
 
 pub struct Identifier {
     pub token: Token,
     pub value: String,
 }
 
-impl Expression for Identifier {
-    fn token_literal(&self) -> String {
-        self.token.literal.clone()
-    }
-
+impl Stringer for Identifier {
     fn to_string(&self) -> String {
         self.value.clone()
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{Identifier, LetStatement, Program},
+        ast::{Expression, Identifier, LetStatement, Program, Statement},
         token::{Token, TokenType},
     };
 
@@ -162,26 +170,26 @@ mod tests {
     fn test_string_method() {
         // let myVar = anotherVar;
         let program = Program {
-            statements: vec![Box::new(LetStatement {
+            body: vec![Statement::LetStatement(Box::new(LetStatement {
                 token: Token {
-                    literal: "let".to_string(),
                     token_type: TokenType::Let,
+                    literal: "let".to_string(),
                 },
                 name: Identifier {
                     token: Token {
-                        literal: "myVar".to_string(),
                         token_type: TokenType::Ident,
+                        literal: "myVar".to_string(),
                     },
                     value: "myVar".to_string(),
                 },
-                value: Some(Box::new(Identifier {
+                value: Some(Expression::Identifier(Box::new(Identifier {
                     token: Token {
-                        literal: "anotherVar".to_string(),
                         token_type: TokenType::Ident,
+                        literal: "anotherVar".to_string(),
                     },
                     value: "anotherVar".to_string(),
-                })),
-            })],
+                }))),
+            }))],
         };
 
         assert_eq!(

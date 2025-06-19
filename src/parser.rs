@@ -8,12 +8,12 @@ use crate::{
 
 enum Precedence {
     Lowest,
-    Equals,
-    LessGreater,
-    Sum,
-    Product,
-    Prefix,
-    Call,
+    Equals,      // ==
+    LessGreater, // < >
+    Sum,         // +
+    Product,     // *
+    Prefix,      // --variable
+    Call,        // function()
 }
 
 pub struct Parser {
@@ -47,7 +47,7 @@ impl Parser {
     }
 
     pub fn parse_program(&mut self) -> ast::Program {
-        let mut program = ast::Program { statements: vec![] };
+        let mut program = ast::Program { body: vec![] };
 
         loop {
             if self.curr_token.token_type == TokenType::Eof {
@@ -57,7 +57,7 @@ impl Parser {
             let stmt = self.parse_statement();
 
             if let Some(stmt) = stmt {
-                program.statements.push(stmt);
+                program.body.push(*stmt);
             }
 
             self.next_token();
@@ -66,7 +66,7 @@ impl Parser {
         program
     }
 
-    fn parse_statement(&mut self) -> Option<Box<dyn Statement>> {
+    fn parse_statement(&mut self) -> Option<Box<Statement>> {
         match self.curr_token.token_type {
             TokenType::Let => self.parse_let_statement(),
             TokenType::Return => self.parse_return_statement(),
@@ -74,7 +74,7 @@ impl Parser {
         }
     }
 
-    fn parse_let_statement(&mut self) -> Option<Box<dyn Statement>> {
+    fn parse_let_statement(&mut self) -> Option<Box<Statement>> {
         let token = self.curr_token.clone();
 
         if !self.expect_peek(TokenType::Ident) {
@@ -94,20 +94,20 @@ impl Parser {
             self.next_token();
         }
 
-        let let_stmt = LetStatement {
+        let let_stmt = Statement::LetStatement(Box::new(LetStatement {
             token,
             name,
             value: None,
-        };
+        }));
 
         Some(Box::new(let_stmt))
     }
 
-    fn parse_return_statement(&mut self) -> Option<Box<dyn Statement>> {
-        let return_stmt = ReturnStatement {
+    fn parse_return_statement(&mut self) -> Option<Box<Statement>> {
+        let return_stmt = Statement::ReturnStatement(Box::new(ReturnStatement {
             token: self.curr_token.clone(),
             return_value: None,
-        };
+        }));
 
         self.next_token();
 
@@ -118,11 +118,11 @@ impl Parser {
         Some(Box::new(return_stmt))
     }
 
-    fn parse_expression_statement(&mut self) -> Option<Box<dyn Statement>> {
-        let expr_stmt = ExpressionStatement {
+    fn parse_expression_statement(&mut self) -> Option<Box<Statement>> {
+        let expr_stmt = Statement::ExpressionStatement(Box::new(ExpressionStatement {
             token: self.curr_token.clone(),
             expression: self.parse_expression(Precedence::Lowest),
-        };
+        }));
 
         if self.is_peek_token(&TokenType::Semicolon) {
             self.next_token();
@@ -131,7 +131,7 @@ impl Parser {
         Some(Box::new(expr_stmt))
     }
 
-    fn parse_expression(&self, lowest: Precedence) -> Option<Box<dyn Expression>> {
+    fn parse_expression(&self, lowest: Precedence) -> Option<Expression> {
         let prefix = self.parse_prefix(&self.curr_token.token_type);
 
         if prefix.is_none() {
@@ -141,18 +141,18 @@ impl Parser {
         return prefix;
     }
 
-    fn parse_prefix(&self, token: &TokenType) -> Option<Box<dyn Expression>> {
+    fn parse_prefix(&self, token: &TokenType) -> Option<Expression> {
         match token {
             TokenType::Ident => self.parse_identifier(),
             _ => None,
         }
     }
 
-    fn parse_identifier(&self) -> Option<Box<dyn Expression>> {
-        Some(Box::new(Identifier {
+    fn parse_identifier(&self) -> Option<Expression> {
+        Some(Expression::Identifier(Box::new(Identifier {
             token: self.curr_token.clone(),
             value: self.curr_token.literal.clone(),
-        }))
+        })))
     }
 
     fn expect_peek(&mut self, expected: TokenType) -> bool {
@@ -188,10 +188,8 @@ mod tests {
     use core::panic;
 
     use crate::{
-        ast::{
-            Expression, ExpressionStatement, Identifier, LetStatement, ReturnStatement, Statement,
-        },
-        lexer::{self, Lexer},
+        ast::{Expression, Statement},
+        lexer::Lexer,
         parser::Parser,
     };
 
@@ -216,16 +214,12 @@ mod tests {
             parser.errors
         );
 
-        assert_eq!(
-            program.statements.len(),
-            3,
-            "not enough statements in program"
-        );
+        assert_eq!(program.body.len(), 3, "not enough statements in program");
 
         let tests = vec!["x", "y", "longNameVariable"];
 
         for (i, test) in tests.iter().enumerate() {
-            let statement = &*program.statements[i];
+            let statement = &program.body[i];
 
             test_let_statement(statement, test);
         }
@@ -252,19 +246,15 @@ mod tests {
             parser.errors
         );
 
-        assert_eq!(
-            program.statements.len(),
-            3,
-            "not enough statements in program"
-        );
+        assert_eq!(program.body.len(), 3, "not enough statements in program");
 
-        for stmt in program.statements {
-            if let Some(return_stmt) = stmt.as_any().downcast_ref::<ReturnStatement>() {
+        for stmt in program.body {
+            if let Statement::ReturnStatement(_return_stmt) = &stmt {
                 assert_eq!(
-                    return_stmt.token_literal(),
+                    stmt.token_literal(),
                     "return",
                     "return statement token literal is not 'return'. Got: {} ",
-                    return_stmt.token_literal()
+                    stmt.token_literal()
                 );
             } else {
                 panic!("stmt is not ReturnStatement")
@@ -288,28 +278,12 @@ mod tests {
             parser.errors
         );
 
-        assert_eq!(
-            program.statements.len(),
-            1,
-            "not enough statements in program"
-        );
+        assert_eq!(program.body.len(), 1, "not enough statements in program");
 
-        if let Some(expr_stmt) = program
-            .statements
-            .first()
-            .unwrap()
-            .as_any()
-            .downcast_ref::<ExpressionStatement>()
-        {
-            if let Some(identifier) = expr_stmt
-                .expression
-                .as_ref()
-                .unwrap()
-                .as_any()
-                .downcast_ref::<Identifier>()
-            {
+        if let Statement::ExpressionStatement(expr_stmt) = program.body.first().unwrap() {
+            if let Expression::Identifier(identifier) = expr_stmt.expression.as_ref().unwrap() {
                 assert_eq!(identifier.value, "variableName");
-                assert_eq!(identifier.token_literal(), "variableName");
+                assert_eq!(identifier.token.literal, "variableName");
             } else {
                 panic!("expression statement is not Identifier");
             }
@@ -318,12 +292,12 @@ mod tests {
         }
     }
 
-    fn test_let_statement(stmt: &dyn Statement, expected: &str) {
+    fn test_let_statement(stmt: &Statement, expected: &str) {
         assert_eq!(stmt.token_literal(), "let");
 
-        if let Some(let_stmt) = stmt.as_any().downcast_ref::<LetStatement>() {
+        if let Statement::LetStatement(let_stmt) = stmt {
             assert_eq!(let_stmt.name.value, expected);
-            assert_eq!(let_stmt.name.token_literal(), expected);
+            assert_eq!(let_stmt.name.token.literal, expected);
         } else {
             panic!("stmt is not LetStatement");
         };
