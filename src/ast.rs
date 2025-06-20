@@ -120,6 +120,9 @@ impl Stringer for ExpressionStatement {
                 Expression::Identifier(identifier) => {
                     sb.push_str(&identifier.to_string());
                 }
+                Expression::IntegerLiteral(integer_literal) => {
+                    sb.push_str(&integer_literal.to_string());
+                }
             }
         }
 
@@ -130,12 +133,14 @@ impl Stringer for ExpressionStatement {
 /* Expressions */
 pub enum Expression {
     Identifier(Box<Identifier>),
+    IntegerLiteral(Box<IntegerLiteral>),
 }
 
 impl Expression {
     pub fn token_literal(&self) -> String {
         match self {
             Expression::Identifier(identifier) => identifier.token.literal.clone(),
+            Expression::IntegerLiteral(int_litereal) => int_litereal.token.literal.clone(),
         }
     }
 }
@@ -144,6 +149,7 @@ impl Stringer for Expression {
     fn to_string(&self) -> String {
         match self {
             Expression::Identifier(identifier) => identifier.to_string(),
+            Expression::IntegerLiteral(int_literal) => int_literal.to_string(),
         }
     }
 }
@@ -156,6 +162,17 @@ pub struct Identifier {
 impl Stringer for Identifier {
     fn to_string(&self) -> String {
         self.value.clone()
+    }
+}
+
+pub struct IntegerLiteral {
+    pub token: Token,
+    pub value: i64,
+}
+
+impl Stringer for IntegerLiteral {
+    fn to_string(&self) -> String {
+        self.token.literal.clone()
     }
 }
 
