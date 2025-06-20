@@ -1,7 +1,9 @@
+use std::path::Prefix;
+
 use crate::{
     ast::{
         self, Expression, ExpressionStatement, Identifier, IntegerLiteral, LetStatement,
-        ReturnStatement, Statement,
+        PrefixExpression, ReturnStatement, Statement,
     },
     lexer::Lexer,
     token::{Token, TokenType},
@@ -132,10 +134,11 @@ impl Parser {
         Some(Box::new(expr_stmt))
     }
 
-    fn parse_expression(&mut self, lowest: Precedence) -> Option<Expression> {
+    fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
         let prefix = self.parse_prefix(self.curr_token.token_type.clone());
 
         if prefix.is_none() {
+            self.no_prefix_parse_fn_err(self.curr_token.token_type.clone());
             return None;
         }
 
@@ -165,6 +168,8 @@ impl Parser {
         match token {
             TokenType::Ident => self.parse_identifier(),
             TokenType::Int => self.parse_integer_literal(),
+            TokenType::Bang => self.parse_prefix_expression(),
+            TokenType::Minus => self.parse_prefix_expression(),
             _ => None,
         }
     }
@@ -174,6 +179,21 @@ impl Parser {
             token: self.curr_token.clone(),
             value: self.curr_token.literal.clone(),
         })))
+    }
+
+    fn parse_prefix_expression(&mut self) -> Option<Expression> {
+        let token = self.curr_token.clone();
+        let operator = self.curr_token.literal.clone();
+
+        self.next_token();
+
+        let prefix_expr = Expression::PrefixExpression(Box::new(PrefixExpression {
+            token,
+            operator,
+            right: self.parse_expression(Precedence::Prefix)?,
+        }));
+
+        Some(prefix_expr)
     }
 
     fn expect_peek(&mut self, expected: TokenType) -> bool {
@@ -201,6 +221,13 @@ impl Parser {
         );
 
         self.errors.push(msg);
+    }
+
+    fn no_prefix_parse_fn_err(&mut self, token_type: TokenType) {
+        self.errors.push(format!(
+            "no prefix parse function found for: {:?}",
+            token_type
+        ));
     }
 }
 
@@ -341,6 +368,63 @@ mod tests {
             }
         } else {
             panic!("stmt is not ExpressionStatement");
+        }
+    }
+
+    #[test]
+    fn test_parsing_prefix_expressions() {
+        struct TestCase {
+            input: String,
+            operator: String,
+            intValue: i64,
+        }
+
+        let tests: Vec<TestCase> = vec![
+            TestCase {
+                input: "!5".to_string(),
+                operator: "!".to_string(),
+                intValue: 5,
+            },
+            TestCase {
+                input: "-15".to_string(),
+                operator: "-".to_string(),
+                intValue: 15,
+            },
+        ];
+
+        for test in tests {
+            let lexer = Lexer::new(test.input);
+            let mut parser = Parser::new(lexer);
+
+            let program = parser.parse_program();
+
+            assert_eq!(
+                parser.errors.len(),
+                0,
+                "found errors while parsing: {:#?}",
+                parser.errors
+            );
+
+            assert_eq!(program.body.len(), 1, "not enough statements in program");
+
+            if let Statement::ExpressionStatement(expr_stmt) = program.body.first().unwrap() {
+                if let Expression::PrefixExpression(prefix_expr) =
+                    expr_stmt.expression.as_ref().unwrap()
+                {
+                    assert_eq!(prefix_expr.operator, test.operator);
+
+                    if let Expression::IntegerLiteral(int_literal) = &prefix_expr.right {
+                        assert_eq!(int_literal.value, test.intValue);
+                        assert_eq!(int_literal.token.literal, test.intValue.to_string());
+                    } else {
+                        panic!("prefix expression right is not IntegerLiteral")
+                    }
+                } else {
+                    panic!("expression statement is not PrefixExpression");
+                }
+            } else {
+                panic!("stmt is not ExpressionStatement");
+            }
         }
     }
 

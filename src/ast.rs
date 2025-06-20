@@ -123,6 +123,9 @@ impl Stringer for ExpressionStatement {
                 Expression::IntegerLiteral(integer_literal) => {
                     sb.push_str(&integer_literal.to_string());
                 }
+                Expression::PrefixExpression(prefix_expression) => {
+                    sb.push_str(&prefix_expression.to_string())
+                }
             }
         }
 
@@ -134,6 +137,7 @@ impl Stringer for ExpressionStatement {
 pub enum Expression {
     Identifier(Box<Identifier>),
     IntegerLiteral(Box<IntegerLiteral>),
+    PrefixExpression(Box<PrefixExpression>),
 }
 
 impl Expression {
@@ -141,6 +145,9 @@ impl Expression {
         match self {
             Expression::Identifier(identifier) => identifier.token.literal.clone(),
             Expression::IntegerLiteral(int_litereal) => int_litereal.token.literal.clone(),
+            Expression::PrefixExpression(prefix_expression) => {
+                prefix_expression.token.literal.clone()
+            }
         }
     }
 }
@@ -150,6 +157,7 @@ impl Stringer for Expression {
         match self {
             Expression::Identifier(identifier) => identifier.to_string(),
             Expression::IntegerLiteral(int_literal) => int_literal.to_string(),
+            Expression::PrefixExpression(prefix_expression) => prefix_expression.to_string(),
         }
     }
 }
@@ -173,6 +181,18 @@ pub struct IntegerLiteral {
 impl Stringer for IntegerLiteral {
     fn to_string(&self) -> String {
         self.token.literal.clone()
+    }
+}
+
+pub struct PrefixExpression {
+    pub token: Token,
+    pub operator: String,
+    pub right: Expression,
+}
+
+impl Stringer for PrefixExpression {
+    fn to_string(&self) -> String {
+        format!("( {} {} )", self.operator, self.right.to_string())
     }
 }
 
