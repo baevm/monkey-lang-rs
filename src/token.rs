@@ -39,7 +39,7 @@ pub enum TokenType {
     False,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub literal: String,

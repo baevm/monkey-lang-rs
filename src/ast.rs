@@ -48,7 +48,7 @@ impl Program {
         }
     }
 
-    fn to_string(&self) -> String {
+    pub fn to_string(&self) -> String {
         let mut sb = String::new();
 
         for stmt in &self.body {
@@ -126,6 +126,9 @@ impl Stringer for ExpressionStatement {
                 Expression::PrefixExpression(prefix_expression) => {
                     sb.push_str(&prefix_expression.to_string())
                 }
+                Expression::InfixExpression(infix_expression) => {
+                    sb.push_str(&infix_expression.to_string())
+                }
             }
         }
 
@@ -134,10 +137,12 @@ impl Stringer for ExpressionStatement {
 }
 
 /* Expressions */
+#[derive(Clone)]
 pub enum Expression {
     Identifier(Box<Identifier>),
     IntegerLiteral(Box<IntegerLiteral>),
     PrefixExpression(Box<PrefixExpression>),
+    InfixExpression(Box<InfixExpression>),
 }
 
 impl Expression {
@@ -148,6 +153,7 @@ impl Expression {
             Expression::PrefixExpression(prefix_expression) => {
                 prefix_expression.token.literal.clone()
             }
+            Expression::InfixExpression(infix_expression) => infix_expression.token.literal.clone(),
         }
     }
 }
@@ -158,10 +164,12 @@ impl Stringer for Expression {
             Expression::Identifier(identifier) => identifier.to_string(),
             Expression::IntegerLiteral(int_literal) => int_literal.to_string(),
             Expression::PrefixExpression(prefix_expression) => prefix_expression.to_string(),
+            Expression::InfixExpression(infix_expression) => infix_expression.to_string(),
         }
     }
 }
 
+#[derive(Clone)]
 pub struct Identifier {
     pub token: Token,
     pub value: String,
@@ -173,6 +181,7 @@ impl Stringer for Identifier {
     }
 }
 
+#[derive(Clone)]
 pub struct IntegerLiteral {
     pub token: Token,
     pub value: i64,
@@ -184,6 +193,7 @@ impl Stringer for IntegerLiteral {
     }
 }
 
+#[derive(Clone)]
 pub struct PrefixExpression {
     pub token: Token,
     pub operator: String,
@@ -192,7 +202,26 @@ pub struct PrefixExpression {
 
 impl Stringer for PrefixExpression {
     fn to_string(&self) -> String {
-        format!("( {} {} )", self.operator, self.right.to_string())
+        format!("({}{})", self.operator, self.right.to_string())
+    }
+}
+
+#[derive(Clone)]
+pub struct InfixExpression {
+    pub token: Token,
+    pub left: Expression,
+    pub operator: String,
+    pub right: Expression,
+}
+
+impl Stringer for InfixExpression {
+    fn to_string(&self) -> String {
+        format!(
+            "({} {} {})",
+            self.left.to_string(),
+            self.operator,
+            self.right.to_string()
+        )
     }
 }
 
