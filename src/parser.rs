@@ -1,7 +1,7 @@
 use crate::{
     ast::{
-        self, Expression, ExpressionStatement, Identifier, InfixExpression, IntegerLiteral,
-        LetStatement, PrefixExpression, ReturnStatement, Statement,
+        self, Boolean, Expression, ExpressionStatement, Identifier, InfixExpression,
+        IntegerLiteral, LetStatement, PrefixExpression, ReturnStatement, Statement,
     },
     lexer::Lexer,
     token::{Token, TokenType},
@@ -197,6 +197,8 @@ impl Parser {
             TokenType::Int => self.parse_integer_literal(),
             TokenType::Bang => self.parse_prefix_expression(),
             TokenType::Minus => self.parse_prefix_expression(),
+            TokenType::True => self.parse_boolean(),
+            TokenType::False => self.parse_boolean(),
             _ => None,
         }
     }
@@ -252,6 +254,13 @@ impl Parser {
         }));
 
         Some(infix_expr)
+    }
+
+    fn parse_boolean(&self) -> Option<Expression> {
+        Some(Expression::Boolean(Box::new(Boolean {
+            token: self.curr_token.clone(),
+            value: self.is_curr_token(TokenType::True),
+        })))
     }
 
     fn expect_peek(&mut self, expected: TokenType) -> bool {
@@ -312,7 +321,7 @@ mod tests {
     use core::panic;
 
     use crate::{
-        ast::{Expression, Program, Statement},
+        ast::{Expression, Identifier, Program, Statement},
         lexer::Lexer,
         parser::Parser,
     };
@@ -452,19 +461,19 @@ mod tests {
         struct TestCase {
             input: String,
             operator: String,
-            intValue: i64,
+            int_value: i64,
         }
 
         let tests: Vec<TestCase> = vec![
             TestCase {
                 input: "!5".to_string(),
                 operator: "!".to_string(),
-                intValue: 5,
+                int_value: 5,
             },
             TestCase {
                 input: "-15".to_string(),
                 operator: "-".to_string(),
-                intValue: 15,
+                int_value: 15,
             },
         ];
 
@@ -490,8 +499,8 @@ mod tests {
                     assert_eq!(prefix_expr.operator, test.operator);
 
                     if let Expression::IntegerLiteral(int_literal) = &prefix_expr.right {
-                        assert_eq!(int_literal.value, test.intValue);
-                        assert_eq!(int_literal.token.literal, test.intValue.to_string());
+                        assert_eq!(int_literal.value, test.int_value);
+                        assert_eq!(int_literal.token.literal, test.int_value.to_string());
                     } else {
                         panic!("prefix expression right is not IntegerLiteral")
                     }
@@ -637,7 +646,37 @@ mod tests {
                 "3 + 4 * 5 == 3 * 1 + 4 * 5",
                 "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
             ),
+            ("true", "true"),
+            ("false", "false"),
+            ("3 > 5 == false", "((3 > 5) == false)"),
         ];
+
+        for test in tests {
+            let lexer = Lexer::new(test.0.to_string());
+
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+
+            assert_eq!(
+                parser.errors.len(),
+                0,
+                "found errors while parsing: {:#?}",
+                parser.errors
+            );
+
+            assert_eq!(
+                program.to_string(),
+                test.1,
+                "expected: {}. got: {}",
+                test.1,
+                program.to_string()
+            );
+        }
+    }
+
+    #[test]
+    fn test_boolean_expression() {
+        let tests = vec![("true", "true"), ("false", "false")];
 
         for test in tests {
             let lexer = Lexer::new(test.0.to_string());
@@ -671,5 +710,24 @@ mod tests {
         } else {
             panic!("stmt is not LetStatement");
         };
+    }
+
+    fn test_identifier(expr: Expression, value: String) {
+        let identifier = match expr {
+            Expression::Identifier(identifier) => identifier,
+            other => panic!("expression not identifier. got: {:?}", other),
+        };
+
+        assert_eq!(
+            identifier.value, value,
+            "identifier value is not {}. got: {}",
+            value, identifier.value
+        );
+
+        assert_eq!(
+            identifier.token.literal, value,
+            "identifier token literal is not {}. got: {}",
+            value, identifier.token.literal
+        );
     }
 }

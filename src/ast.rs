@@ -129,6 +129,7 @@ impl Stringer for ExpressionStatement {
                 Expression::InfixExpression(infix_expression) => {
                     sb.push_str(&infix_expression.to_string())
                 }
+                Expression::Boolean(boolean) => sb.push_str(&boolean.to_string()),
             }
         }
 
@@ -137,12 +138,13 @@ impl Stringer for ExpressionStatement {
 }
 
 /* Expressions */
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Expression {
     Identifier(Box<Identifier>),
     IntegerLiteral(Box<IntegerLiteral>),
     PrefixExpression(Box<PrefixExpression>),
     InfixExpression(Box<InfixExpression>),
+    Boolean(Box<Boolean>),
 }
 
 impl Expression {
@@ -154,6 +156,7 @@ impl Expression {
                 prefix_expression.token.literal.clone()
             }
             Expression::InfixExpression(infix_expression) => infix_expression.token.literal.clone(),
+            Expression::Boolean(boolean) => boolean.token.literal.clone(),
         }
     }
 }
@@ -165,11 +168,12 @@ impl Stringer for Expression {
             Expression::IntegerLiteral(int_literal) => int_literal.to_string(),
             Expression::PrefixExpression(prefix_expression) => prefix_expression.to_string(),
             Expression::InfixExpression(infix_expression) => infix_expression.to_string(),
+            Expression::Boolean(boolean) => boolean.to_string(),
         }
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Identifier {
     pub token: Token,
     pub value: String,
@@ -181,7 +185,7 @@ impl Stringer for Identifier {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct IntegerLiteral {
     pub token: Token,
     pub value: i64,
@@ -193,7 +197,7 @@ impl Stringer for IntegerLiteral {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct PrefixExpression {
     pub token: Token,
     pub operator: String,
@@ -206,7 +210,7 @@ impl Stringer for PrefixExpression {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct InfixExpression {
     pub token: Token,
     pub left: Expression,
@@ -222,6 +226,18 @@ impl Stringer for InfixExpression {
             self.operator,
             self.right.to_string()
         )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Boolean {
+    pub token: Token,
+    pub value: bool,
+}
+
+impl Stringer for Boolean {
+    fn to_string(&self) -> String {
+        self.token.literal.clone()
     }
 }
 
