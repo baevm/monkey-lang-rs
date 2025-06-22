@@ -9,6 +9,7 @@ pub struct Program {
 }
 
 /* Statements */
+#[derive(Debug, Clone)]
 pub enum Statement {
     LetStatement(Box<LetStatement>),
     ReturnStatement(Box<ReturnStatement>),
@@ -59,6 +60,7 @@ impl Program {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct LetStatement {
     pub token: Token,
     pub name: Identifier,
@@ -85,6 +87,7 @@ impl Stringer for LetStatement {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ReturnStatement {
     pub token: Token,
     pub return_value: Option<Expression>,
@@ -106,6 +109,7 @@ impl Stringer for ReturnStatement {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ExpressionStatement {
     pub token: Token,
     pub expression: Option<Expression>,
@@ -130,6 +134,7 @@ impl Stringer for ExpressionStatement {
                     sb.push_str(&infix_expression.to_string())
                 }
                 Expression::Boolean(boolean) => sb.push_str(&boolean.to_string()),
+                Expression::IfExpression(if_expression) => sb.push_str(&if_expression.to_string()),
             }
         }
 
@@ -145,6 +150,7 @@ pub enum Expression {
     PrefixExpression(Box<PrefixExpression>),
     InfixExpression(Box<InfixExpression>),
     Boolean(Box<Boolean>),
+    IfExpression(Box<IfExpression>),
 }
 
 impl Expression {
@@ -157,6 +163,7 @@ impl Expression {
             }
             Expression::InfixExpression(infix_expression) => infix_expression.token.literal.clone(),
             Expression::Boolean(boolean) => boolean.token.literal.clone(),
+            Expression::IfExpression(if_expression) => if_expression.token.literal.clone(),
         }
     }
 }
@@ -169,6 +176,7 @@ impl Stringer for Expression {
             Expression::PrefixExpression(prefix_expression) => prefix_expression.to_string(),
             Expression::InfixExpression(infix_expression) => infix_expression.to_string(),
             Expression::Boolean(boolean) => boolean.to_string(),
+            Expression::IfExpression(if_expression) => if_expression.to_string(),
         }
     }
 }
@@ -238,6 +246,44 @@ pub struct Boolean {
 impl Stringer for Boolean {
     fn to_string(&self) -> String {
         self.token.literal.clone()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct IfExpression {
+    pub token: Token,
+    pub condition: Expression,
+    pub consequence: BlockStatement,         // if body
+    pub alternative: Option<BlockStatement>, // optional else body
+}
+
+impl Stringer for IfExpression {
+    fn to_string(&self) -> String {
+        let mut sb = String::new();
+
+        sb.push_str(&format!(
+            "if {} {}",
+            self.condition.to_string(),
+            self.consequence.to_string(),
+        ));
+
+        if let Some(alternative) = &self.alternative {
+            sb.push_str(&format!("else {}", alternative.to_string()));
+        }
+
+        sb
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct BlockStatement {
+    pub token: Token,
+    pub statements: Vec<Statement>,
+}
+
+impl Stringer for BlockStatement {
+    fn to_string(&self) -> String {
+        self.statements.iter().map(|st| st.to_string()).collect()
     }
 }
 
