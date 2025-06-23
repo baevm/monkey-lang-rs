@@ -135,6 +135,9 @@ impl Stringer for ExpressionStatement {
                 }
                 Expression::Boolean(boolean) => sb.push_str(&boolean.to_string()),
                 Expression::IfExpression(if_expression) => sb.push_str(&if_expression.to_string()),
+                Expression::FunctionLiteral(function_literal) => {
+                    sb.push_str(&function_literal.to_string())
+                }
             }
         }
 
@@ -151,6 +154,7 @@ pub enum Expression {
     InfixExpression(Box<InfixExpression>),
     Boolean(Box<Boolean>),
     IfExpression(Box<IfExpression>),
+    FunctionLiteral(Box<FunctionLiteral>),
 }
 
 impl Expression {
@@ -164,6 +168,7 @@ impl Expression {
             Expression::InfixExpression(infix_expression) => infix_expression.token.literal.clone(),
             Expression::Boolean(boolean) => boolean.token.literal.clone(),
             Expression::IfExpression(if_expression) => if_expression.token.literal.clone(),
+            Expression::FunctionLiteral(function_literal) => function_literal.token.literal.clone(),
         }
     }
 }
@@ -177,6 +182,7 @@ impl Stringer for Expression {
             Expression::InfixExpression(infix_expression) => infix_expression.to_string(),
             Expression::Boolean(boolean) => boolean.to_string(),
             Expression::IfExpression(if_expression) => if_expression.to_string(),
+            Expression::FunctionLiteral(function_literal) => function_literal.to_string(),
         }
     }
 }
@@ -284,6 +290,31 @@ pub struct BlockStatement {
 impl Stringer for BlockStatement {
     fn to_string(&self) -> String {
         self.statements.iter().map(|st| st.to_string()).collect()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FunctionLiteral {
+    pub token: Token,
+    pub parameters: Vec<Identifier>,
+    pub body: BlockStatement,
+}
+
+impl Stringer for FunctionLiteral {
+    fn to_string(&self) -> String {
+        let params = self
+            .parameters
+            .iter()
+            .map(|p| p.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        format!(
+            "{}({}){}",
+            self.token.literal,
+            params,
+            self.body.to_string()
+        )
     }
 }
 

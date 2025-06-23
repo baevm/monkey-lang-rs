@@ -1,8 +1,8 @@
 use crate::{
     ast::{
-        self, BlockStatement, Boolean, Expression, ExpressionStatement, Identifier, IfExpression,
-        InfixExpression, IntegerLiteral, LetStatement, PrefixExpression, ReturnStatement,
-        Statement,
+        self, BlockStatement, Boolean, Expression, ExpressionStatement, FunctionLiteral,
+        Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement, PrefixExpression,
+        ReturnStatement, Statement,
     },
     lexer::Lexer,
     token::{Token, TokenType},
@@ -201,8 +201,8 @@ impl Parser {
             TokenType::True => self.parse_boolean(),
             TokenType::False => self.parse_boolean(),
             TokenType::Lparen => self.parse_grouped_expression(),
-            // if expression
             TokenType::If => self.parse_if_expression(),
+            TokenType::Function => self.parse_function_literal(),
             _ => None,
         }
     }
@@ -321,6 +321,63 @@ impl Parser {
         }));
 
         Some(if_expr)
+    }
+
+    fn parse_function_literal(&mut self) -> Option<Expression> {
+        let token = self.curr_token.clone();
+
+        if !self.expect_peek(TokenType::Lparen) {
+            return None;
+        }
+
+        let parameters = self.parse_function_parameters();
+
+        if !self.expect_peek(TokenType::Lbrace) {
+            return None;
+        }
+
+        let body = self.parse_block_statement();
+
+        let func_literal = Expression::FunctionLiteral(Box::new(FunctionLiteral {
+            token,
+            parameters,
+            body,
+        }));
+
+        Some(func_literal)
+    }
+
+    fn parse_function_parameters(&mut self) -> Vec<Identifier> {
+        let mut identifiers: Vec<Identifier> = vec![];
+
+        if self.is_peek_token(&TokenType::Rparen) {
+            self.next_token();
+            return identifiers;
+        }
+
+        self.next_token();
+
+        let ident = Identifier {
+            token: self.curr_token.clone(),
+            value: self.curr_token.literal.clone(),
+        };
+        identifiers.push(ident);
+
+        while self.is_peek_token(&TokenType::Comma) {
+            self.next_token();
+            self.next_token();
+
+            let ident = Identifier {
+                token: self.curr_token.clone(),
+                value: self.curr_token.literal.clone(),
+            };
+
+            identifiers.push(ident);
+        }
+
+        self.next_token();
+
+        identifiers
     }
 
     fn expect_peek(&mut self, expected: TokenType) -> bool {
@@ -673,6 +730,7 @@ mod tests {
 
             let expr_stmt = match stmt {
                 Statement::ExpressionStatement(expression_statement) => expression_statement,
+
                 other => panic!("statement is not ExpressionStatement. got: {:?}", other),
             };
 
@@ -822,6 +880,7 @@ mod tests {
 
             let expr_stmt = match stmt {
                 Statement::ExpressionStatement(expression_statement) => expression_statement,
+
                 other => panic!("statement is not ExpressionStatement. got: {:?}", other),
             };
 
@@ -875,6 +934,7 @@ mod tests {
 
             let consequence = match if_expr.consequence.statements.first().unwrap() {
                 Statement::ExpressionStatement(expression_statement) => expression_statement,
+
                 other => panic!(
                     "if expression consequence is not ExpressionStatement. got: {:?}",
                     other
@@ -898,6 +958,7 @@ mod tests {
 
                 let alternative_stmt = match alternative.statements.first().unwrap() {
                     Statement::ExpressionStatement(expression_statement) => expression_statement,
+
                     other => panic!(
                         "if expression alternative is not ExpressionStatement. got: {:?}",
                         other
@@ -907,6 +968,172 @@ mod tests {
                 test_identifier(
                     alternative_stmt.expression.as_ref().unwrap().clone(),
                     "y".to_string(),
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_parsing_function_literal() {
+        let input = "function(x, y) { x + y; }".to_string();
+
+        let lexer = Lexer::new(input);
+
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(
+            parser.errors.len(),
+            0,
+            "found errors while parsing: {:#?}",
+            parser.errors
+        );
+
+        assert_eq!(program.body.len(), 1, "not enough statements in program");
+
+        let stmt = program.body.first().unwrap();
+
+        let expr_stmt = match stmt {
+            Statement::ExpressionStatement(expression_statement) => expression_statement,
+
+            other => panic!("statement is not ExpressionStatement. got: {:?}", other),
+        };
+
+        let function_literal = match &expr_stmt.expression {
+            Some(Expression::FunctionLiteral(function_literal)) => function_literal,
+            other => panic!(
+                "expression statement is not FunctionLiteral. got: {:?}",
+                other
+            ),
+        };
+
+        assert_eq!(
+            function_literal.parameters.len(),
+            2,
+            "function parameter slength should be 2. got: {}",
+            function_literal.parameters.len()
+        );
+
+        assert_eq!(
+            function_literal.parameters[0].value, "x",
+            "first parameter should be x. got: {}",
+            function_literal.parameters[0].value
+        );
+
+        assert_eq!(
+            function_literal.parameters[1].value, "y",
+            "second parameter should be y. got: {}",
+            function_literal.parameters[1].value
+        );
+
+        assert_eq!(
+            function_literal.body.statements.len(),
+            1,
+            "function body statements should be 1. got: {}",
+            function_literal.body.statements.len()
+        );
+
+        let body_stmt = match &function_literal.body.statements[0] {
+            Statement::ExpressionStatement(expression_statement) => expression_statement,
+            other => panic!(
+                "function body statement is not ExpressionStatement. got: {:?}",
+                other
+            ),
+        };
+
+        let infix_expr = match &body_stmt.expression {
+            Some(Expression::InfixExpression(infix_expr)) => infix_expr,
+            other => panic!("expression is not InfixExpression. got: {:?}", other),
+        };
+
+        assert_eq!(
+            infix_expr.operator, "+",
+            "Expected InfixExpression operator: +. Got: {}",
+            infix_expr.operator
+        );
+
+        let left_literal = match &infix_expr.left {
+            Expression::Identifier(ident) => ident,
+            other => panic!(
+                "infix expression left is not IntegerLiteral. got: {:?}",
+                other
+            ),
+        };
+
+        assert_eq!(
+            left_literal.value, "x",
+            "Expected InfixExpression left value: 'x'. Got: {}",
+            left_literal.value
+        );
+
+        let right_literal = match &infix_expr.right {
+            Expression::Identifier(ident) => ident,
+            other => panic!(
+                "infix expression right is not IntegerLiteral. got: {:?}",
+                other
+            ),
+        };
+
+        assert_eq!(
+            right_literal.value, "y",
+            "Expected InfixExpression right value: 'y'. Got: {}",
+            right_literal.value
+        );
+    }
+
+    #[test]
+    fn test_parsing_function_parameters() {
+        let tests = vec![
+            ("function() {};".to_string(), vec![]),
+            ("function(x) {};".to_string(), vec!["x".to_string()]),
+            (
+                "function(x, y) {};".to_string(),
+                vec!["x".to_string(), "y".to_string()],
+            ),
+        ];
+
+        for test in tests {
+            let lexer = Lexer::new(test.0);
+
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+
+            assert_eq!(
+                parser.errors.len(),
+                0,
+                "found errors while parsing: {:#?}",
+                parser.errors
+            );
+
+            let stmt = program.body.first().unwrap();
+
+            let expr_stmt = match stmt {
+                Statement::ExpressionStatement(expression_statement) => expression_statement,
+
+                other => panic!("statement is not ExpressionStatement. got: {:?}", other),
+            };
+
+            let function_literal = match &expr_stmt.expression {
+                Some(Expression::FunctionLiteral(function_literal)) => function_literal,
+                other => panic!(
+                    "expression statement is not FunctionLiteral. got: {:?}",
+                    other
+                ),
+            };
+
+            assert_eq!(
+                function_literal.parameters.len(),
+                test.1.len(),
+                "length parameters wrong. got: {}, need: {}",
+                function_literal.parameters.len(),
+                test.1.len()
+            );
+
+            for (i, ident) in test.1.into_iter().enumerate() {
+                assert_eq!(
+                    function_literal.parameters[i].value, ident,
+                    "first parameter should be {}. got: {}",
+                    ident, function_literal.parameters[i].value
                 );
             }
         }
