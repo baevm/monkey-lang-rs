@@ -77,7 +77,7 @@ impl Parser {
             let stmt = self.parse_statement();
 
             if let Some(stmt) = stmt {
-                program.body.push(*stmt);
+                program.body.push(stmt);
             }
 
             self.next_token();
@@ -86,7 +86,7 @@ impl Parser {
         program
     }
 
-    fn parse_statement(&mut self) -> Option<Box<Statement>> {
+    fn parse_statement(&mut self) -> Option<Statement> {
         match self.curr_token.token_type {
             TokenType::Let => self.parse_let_statement(),
             TokenType::Return => self.parse_return_statement(),
@@ -94,7 +94,7 @@ impl Parser {
         }
     }
 
-    fn parse_let_statement(&mut self) -> Option<Box<Statement>> {
+    fn parse_let_statement(&mut self) -> Option<Statement> {
         let let_token = self.curr_token.clone();
 
         if !self.expect_peek(TokenType::Ident) {
@@ -110,35 +110,42 @@ impl Parser {
             return None;
         }
 
-        while !self.is_curr_token(TokenType::Semicolon) {
-            self.next_token();
-        }
+        self.next_token();
+
+        let value = self.parse_expression(Precedence::Lowest);
 
         let let_stmt = Statement::LetStatement(Box::new(LetStatement {
             token: let_token,
             name,
-            value: None,
+            value,
         }));
 
-        Some(Box::new(let_stmt))
-    }
-
-    fn parse_return_statement(&mut self) -> Option<Box<Statement>> {
-        let return_stmt = Statement::ReturnStatement(Box::new(ReturnStatement {
-            token: self.curr_token.clone(),
-            return_value: None,
-        }));
-
-        self.next_token();
-
-        while !self.is_curr_token(TokenType::Semicolon) {
+        if self.is_peek_token(&TokenType::Semicolon) {
             self.next_token();
         }
 
-        Some(Box::new(return_stmt))
+        Some(let_stmt)
     }
 
-    fn parse_expression_statement(&mut self) -> Option<Box<Statement>> {
+    fn parse_return_statement(&mut self) -> Option<Statement> {
+        let token = self.curr_token.clone();
+        self.next_token();
+
+        let return_value = self.parse_expression(Precedence::Lowest);
+
+        let return_stmt = Statement::ReturnStatement(Box::new(ReturnStatement {
+            token,
+            return_value,
+        }));
+
+        if self.is_peek_token(&TokenType::Semicolon) {
+            self.next_token();
+        }
+
+        Some(return_stmt)
+    }
+
+    fn parse_expression_statement(&mut self) -> Option<Statement> {
         let expr_stmt = Statement::ExpressionStatement(Box::new(ExpressionStatement {
             token: self.curr_token.clone(),
             expression: self.parse_expression(Precedence::Lowest),
@@ -148,7 +155,7 @@ impl Parser {
             self.next_token();
         }
 
-        Some(Box::new(expr_stmt))
+        Some(expr_stmt)
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
@@ -496,7 +503,7 @@ impl Parser {
             let statement = self.parse_statement();
 
             if let Some(stmt) = statement {
-                block_statement.statements.push(*stmt);
+                block_statement.statements.push(stmt);
             }
 
             self.next_token();
@@ -518,69 +525,184 @@ mod tests {
 
     #[test]
     fn test_let_statements() {
-        let input = r"
-            let x = 5;
-            let y = 10;
-            let longNameVariable = 9999999;
-        "
-        .to_string();
+        #[derive(Debug)]
+        enum ExpectedValue {
+            Integer(i64),
+            Boolean(bool),
+            String(String),
+        }
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
+        #[derive(Debug)]
+        struct TestCase {
+            input: String,
+            expected_identifier: String,
+            expected_value: ExpectedValue,
+        }
 
-        let program = parser.parse_program();
+        let tests = vec![
+            TestCase {
+                input: "let x = 5;".to_string(),
+                expected_identifier: "x".to_string(),
+                expected_value: ExpectedValue::Integer(5),
+            },
+            TestCase {
+                input: "let y = true;".to_string(),
+                expected_identifier: "y".to_string(),
+                expected_value: ExpectedValue::Boolean(true),
+            },
+            TestCase {
+                input: "let foobar = y;".to_string(),
+                expected_identifier: "foobar".to_string(),
+                expected_value: ExpectedValue::String("y".to_string()),
+            },
+        ];
 
-        assert_eq!(
-            parser.errors.len(),
-            0,
-            "found errors while parsing: {:#?}",
-            parser.errors
-        );
+        for test in tests {
+            let lexer = Lexer::new(test.input);
+            let mut parser = Parser::new(lexer);
 
-        assert_eq!(program.body.len(), 3, "not enough statements in program");
+            let program = parser.parse_program();
 
-        let tests = vec!["x", "y", "longNameVariable"];
+            assert_eq!(
+                parser.errors.len(),
+                0,
+                "found errors while parsing: {:#?}",
+                parser.errors
+            );
 
-        for (i, test) in tests.iter().enumerate() {
-            let statement = &program.body[i];
+            assert_eq!(program.body.len(), 1, "not enough statements in program");
 
-            test_let_statement(statement, test);
+            let statement = &program.body[0];
+
+            let let_stmt = match statement {
+                Statement::LetStatement(let_statement) => let_statement,
+                other => panic!("statement is not LetStatement. got: {:?}", other),
+            };
+
+            assert_eq!(
+                let_stmt.name.value, test.expected_identifier,
+                "let statement name is not {}. got: {}",
+                test.expected_identifier, let_stmt.name.value
+            );
+
+            let value_expr = let_stmt.value.as_ref().expect("let statement has no value");
+
+            match (&test.expected_value, value_expr) {
+                (ExpectedValue::Integer(expected), Expression::IntegerLiteral(actual)) => {
+                    assert_eq!(
+                        actual.value, *expected,
+                        "let statement value is not {}. got: {}",
+                        expected, actual.value
+                    );
+                }
+                (ExpectedValue::Boolean(expected), Expression::Boolean(actual)) => {
+                    assert_eq!(
+                        actual.value, *expected,
+                        "let statement value is not {}. got: {}",
+                        expected, actual.value
+                    );
+                }
+                (ExpectedValue::String(expected), Expression::Identifier(actual)) => {
+                    assert_eq!(
+                        actual.value, *expected,
+                        "let statement value is not {}. got: {}",
+                        expected, actual.value
+                    );
+                }
+                (expected_type, actual_expr) => {
+                    panic!(
+                        "Type mismatch: expected {:?}, got {:?}",
+                        expected_type, actual_expr
+                    );
+                }
+            }
         }
     }
 
     #[test]
     fn test_return_statement() {
-        let input = r"
-            return 5;
-            return fooBar;
-            return 100500;
-        "
-        .to_string();
+        #[derive(Debug)]
+        enum ExpectedValue {
+            Integer(i64),
+            String(String),
+        }
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
+        #[derive(Debug)]
+        struct TestCase {
+            input: String,
+            expected_value: ExpectedValue,
+        }
 
-        let program = parser.parse_program();
+        let tests = vec![
+            TestCase {
+                input: "return 5;".to_string(),
+                expected_value: ExpectedValue::Integer(5),
+            },
+            TestCase {
+                input: "return fooBar;".to_string(),
+                expected_value: ExpectedValue::String("fooBar".to_string()),
+            },
+            TestCase {
+                input: "return 100500;".to_string(),
+                expected_value: ExpectedValue::Integer(100500),
+            },
+        ];
 
-        assert_eq!(
-            parser.errors.len(),
-            0,
-            "found errors while parsing: {:#?}",
-            parser.errors
-        );
+        for test in tests {
+            let lexer = Lexer::new(test.input);
+            let mut parser = Parser::new(lexer);
 
-        assert_eq!(program.body.len(), 3, "not enough statements in program");
+            let program = parser.parse_program();
 
-        for stmt in program.body {
-            if let Statement::ReturnStatement(_return_stmt) = &stmt {
-                assert_eq!(
-                    stmt.token_literal(),
-                    "return",
-                    "return statement token literal is not 'return'. Got: {} ",
-                    stmt.token_literal()
-                );
-            } else {
-                panic!("stmt is not ReturnStatement")
+            assert_eq!(
+                parser.errors.len(),
+                0,
+                "found errors while parsing: {:#?}",
+                parser.errors
+            );
+
+            assert_eq!(program.body.len(), 1, "not enough statements in program");
+
+            let statement = &program.body[0];
+
+            let return_stmt = match statement {
+                Statement::ReturnStatement(return_statement) => return_statement,
+                other => panic!("statement is not ReturnStatement. got: {:?}", other),
+            };
+
+            assert_eq!(
+                statement.token_literal(),
+                "return",
+                "return statement token literal is not 'return'. Got: {}",
+                statement.token_literal()
+            );
+
+            let value_expr = return_stmt
+                .return_value
+                .as_ref()
+                .expect("return statement has no value");
+
+            match (&test.expected_value, value_expr) {
+                (ExpectedValue::Integer(expected), Expression::IntegerLiteral(actual)) => {
+                    assert_eq!(
+                        actual.value, *expected,
+                        "return statement value is not {}. got: {}",
+                        expected, actual.value
+                    );
+                }
+                (ExpectedValue::String(expected), Expression::Identifier(actual)) => {
+                    assert_eq!(
+                        actual.value, *expected,
+                        "return statement value is not {}. got: {}",
+                        expected, actual.value
+                    );
+                }
+                (expected_type, actual_expr) => {
+                    panic!(
+                        "Type mismatch: expected {:?}, got {:?}",
+                        expected_type, actual_expr
+                    );
+                }
             }
         }
     }
