@@ -1,8 +1,8 @@
 use crate::{
     ast::{
-        self, BlockStatement, Boolean, Expression, ExpressionStatement, FunctionLiteral,
-        Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement, PrefixExpression,
-        ReturnStatement, Statement,
+        self, BlockStatement, Boolean, CallExpression, Expression, ExpressionStatement,
+        FunctionLiteral, Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement,
+        PrefixExpression, ReturnStatement, Statement,
     },
     lexer::Lexer,
     token::{Token, TokenType},
@@ -30,6 +30,7 @@ impl Precedence {
             TokenType::Minus => Some(Precedence::Sum),
             TokenType::Slash => Some(Precedence::Product),
             TokenType::Asterisk => Some(Precedence::Product),
+            TokenType::Lparen => Some(Precedence::Call),
             _ => None,
         }
     }
@@ -161,10 +162,12 @@ impl Parser {
         let mut left_expr = prefix.unwrap();
 
         while !self.is_peek_token(&TokenType::Semicolon) && precedence < self.peek_precedence() {
+            let last_token = self.peek_token.token_type.clone();
+
             match Precedence::token_to_precedence(&self.peek_token.token_type) {
                 Some(_prec) => {
                     self.next_token();
-                    left_expr = self.parse_infix_expression(left_expr)?;
+                    left_expr = self.parse_infix(last_token, &left_expr)?;
                 }
                 None => return Some(left_expr),
             }
@@ -217,6 +220,7 @@ impl Parser {
             | TokenType::NotEq
             | TokenType::Lt
             | TokenType::Gt => self.parse_infix_expression(left.clone()),
+            TokenType::Lparen => self.parse_call_expression(left.clone()),
             _ => None,
         }
     }
@@ -380,6 +384,54 @@ impl Parser {
         identifiers
     }
 
+    fn parse_call_expression(&mut self, function: Expression) -> Option<Expression> {
+        let token = self.curr_token.clone();
+        let arguments = self.parse_call_arguments();
+
+        let call_expr = Expression::CallExpression(Box::new(CallExpression {
+            token,
+            function,
+            arguments,
+        }));
+
+        Some(call_expr)
+    }
+
+    fn parse_call_arguments(&mut self) -> Vec<Expression> {
+        let mut args: Vec<Expression> = vec![];
+
+        // empty args
+        if self.is_peek_token(&TokenType::Rparen) {
+            self.next_token();
+            return args;
+        }
+
+        self.next_token();
+
+        let first_arg = self.parse_expression(Precedence::Lowest);
+
+        if let Some(arg_val) = first_arg {
+            args.push(arg_val);
+        }
+
+        while self.is_peek_token(&TokenType::Comma) {
+            self.next_token();
+            self.next_token();
+
+            let arg = self.parse_expression(Precedence::Lowest);
+
+            if let Some(arg_val) = arg {
+                args.push(arg_val);
+            }
+        }
+
+        if !self.expect_peek(TokenType::Rparen) {
+            return vec![];
+        }
+
+        args
+    }
+
     fn expect_peek(&mut self, expected: TokenType) -> bool {
         if self.is_peek_token(&expected) {
             self.next_token();
@@ -459,7 +511,7 @@ mod tests {
     use core::panic;
 
     use crate::{
-        ast::{Expression, Identifier, Program, Statement},
+        ast::{CallExpression, Expression, Identifier, Program, Statement},
         lexer::Lexer,
         parser::Parser,
     };
@@ -802,6 +854,13 @@ mod tests {
             ("2 / (5 + 5)", "(2 / (5 + 5))"),
             ("-(5 + 5)", "(-(5 + 5))"),
             ("!(true == true)", "(!(true == true))"),
+            /* Functions */
+            ("add(1, 2)", "add(1, 2)"),
+            ("add(1, 2 * 3, 4 + 5)", "add(1, (2 * 3), (4 + 5))"),
+            (
+                "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+                "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
+            ),
         ];
 
         for test in tests {
@@ -941,10 +1000,7 @@ mod tests {
                 ),
             };
 
-            test_identifier(
-                consequence.expression.as_ref().unwrap().clone(),
-                "x".to_string(),
-            );
+            test_identifier(consequence.expression.as_ref().unwrap().clone(), "x");
 
             if if_expr.alternative.is_some() {
                 let alternative = if_expr.alternative.as_ref().unwrap();
@@ -965,10 +1021,7 @@ mod tests {
                     ),
                 };
 
-                test_identifier(
-                    alternative_stmt.expression.as_ref().unwrap().clone(),
-                    "y".to_string(),
-                );
+                test_identifier(alternative_stmt.expression.as_ref().unwrap().clone(), "y");
             }
         }
     }
@@ -1109,7 +1162,6 @@ mod tests {
 
             let expr_stmt = match stmt {
                 Statement::ExpressionStatement(expression_statement) => expression_statement,
-
                 other => panic!("statement is not ExpressionStatement. got: {:?}", other),
             };
 
@@ -1139,6 +1191,92 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_parsing_call_expression() {
+        let input = "method(1, 2 * 3, 4 + 5);".to_string();
+
+        let lexer = Lexer::new(input);
+
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(
+            parser.errors.len(),
+            0,
+            "found errors while parsing: {:#?}",
+            parser.errors
+        );
+
+        assert_eq!(program.body.len(), 1, "not enough statements in program");
+
+        let stmt = program.body.first().unwrap();
+
+        let expr_stmt = match stmt {
+            Statement::ExpressionStatement(expression_statement) => expression_statement,
+            other => panic!("statement is not ExpressionStatement. got: {:?}", other),
+        };
+
+        let call_expr = match &expr_stmt.expression {
+            Some(Expression::CallExpression(call_expr)) => call_expr.clone(),
+            other => panic!("expression is not CallExpression. got: {:?}", other),
+        };
+
+        test_identifier(call_expr.function, "method");
+
+        assert_eq!(
+            call_expr.arguments.len(),
+            3,
+            "wrong length of arguments. got: {}. want: {}",
+            call_expr.arguments.len(),
+            3
+        );
+
+        let first_arg = match &call_expr.arguments[0] {
+            Expression::IntegerLiteral(integer_literal) => integer_literal,
+            other => panic!("expression is not IntegerLiteral. got: {:?}", other),
+        };
+
+        assert_eq!(first_arg.value, 1);
+
+        let second_arg = match &call_expr.arguments[1] {
+            Expression::InfixExpression(infix_expr) => infix_expr,
+            other => panic!("expression is not InfixExpression. got: {:?}", other),
+        };
+
+        assert_eq!(second_arg.operator, "*");
+
+        let second_left = match &second_arg.left {
+            Expression::IntegerLiteral(integer_literal) => integer_literal,
+            other => panic!("expression is not IntegerLiteral. got: {:?}", other),
+        };
+        assert_eq!(second_left.value, 2);
+
+        let second_right = match &second_arg.right {
+            Expression::IntegerLiteral(integer_literal) => integer_literal,
+            other => panic!("expression is not IntegerLiteral. got: {:?}", other),
+        };
+        assert_eq!(second_right.value, 3);
+
+        let third_arg = match &call_expr.arguments[2] {
+            Expression::InfixExpression(infix_expr) => infix_expr,
+            other => panic!("expression is not InfixExpression. got: {:?}", other),
+        };
+
+        assert_eq!(third_arg.operator, "+");
+
+        let third_left = match &third_arg.left {
+            Expression::IntegerLiteral(integer_literal) => integer_literal,
+            other => panic!("expression is not IntegerLiteral. got: {:?}", other),
+        };
+        assert_eq!(third_left.value, 4);
+
+        let third_right = match &third_arg.right {
+            Expression::IntegerLiteral(integer_literal) => integer_literal,
+            other => panic!("expression is not IntegerLiteral. got: {:?}", other),
+        };
+        assert_eq!(third_right.value, 5);
+    }
+
     fn test_let_statement(stmt: &Statement, expected: &str) {
         assert_eq!(stmt.token_literal(), "let");
 
@@ -1150,7 +1288,7 @@ mod tests {
         };
     }
 
-    fn test_identifier(expr: Expression, value: String) {
+    fn test_identifier(expr: Expression, value: &str) {
         let identifier = match expr {
             Expression::Identifier(identifier) => identifier,
             other => panic!("expression not identifier. got: {:?}", other),

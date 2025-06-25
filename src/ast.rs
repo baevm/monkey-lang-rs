@@ -138,6 +138,9 @@ impl Stringer for ExpressionStatement {
                 Expression::FunctionLiteral(function_literal) => {
                     sb.push_str(&function_literal.to_string())
                 }
+                Expression::CallExpression(call_expression) => {
+                    sb.push_str(&call_expression.to_string())
+                }
             }
         }
 
@@ -155,6 +158,7 @@ pub enum Expression {
     Boolean(Box<Boolean>),
     IfExpression(Box<IfExpression>),
     FunctionLiteral(Box<FunctionLiteral>),
+    CallExpression(Box<CallExpression>),
 }
 
 impl Expression {
@@ -169,6 +173,7 @@ impl Expression {
             Expression::Boolean(boolean) => boolean.token.literal.clone(),
             Expression::IfExpression(if_expression) => if_expression.token.literal.clone(),
             Expression::FunctionLiteral(function_literal) => function_literal.token.literal.clone(),
+            Expression::CallExpression(call_expression) => call_expression.token.literal.clone(),
         }
     }
 }
@@ -183,6 +188,7 @@ impl Stringer for Expression {
             Expression::Boolean(boolean) => boolean.to_string(),
             Expression::IfExpression(if_expression) => if_expression.to_string(),
             Expression::FunctionLiteral(function_literal) => function_literal.to_string(),
+            Expression::CallExpression(call_expression) => call_expression.to_string(),
         }
     }
 }
@@ -315,6 +321,26 @@ impl Stringer for FunctionLiteral {
             params,
             self.body.to_string()
         )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CallExpression {
+    pub token: Token,
+    pub function: Expression,
+    pub arguments: Vec<Expression>,
+}
+
+impl Stringer for CallExpression {
+    fn to_string(&self) -> String {
+        let args = self
+            .arguments
+            .iter()
+            .map(|p| p.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        format!("{}({})", self.function.to_string(), args)
     }
 }
 
