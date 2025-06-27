@@ -1,5 +1,5 @@
-trait ObjectTrait {
-    fn inspect(self) -> String;
+pub trait ObjectTrait {
+    fn inspect(&self) -> String;
 }
 
 #[derive(Debug)]
@@ -10,7 +10,7 @@ pub enum Object {
 }
 
 impl ObjectTrait for Object {
-    fn inspect(self) -> String {
+    fn inspect(&self) -> String {
         match self {
             Object::Integer(integer_object) => integer_object.inspect(),
             Object::Boolean(boolean_object) => boolean_object.inspect(),
@@ -25,18 +25,18 @@ pub struct Integer {
 }
 
 impl ObjectTrait for Integer {
-    fn inspect(self) -> String {
+    fn inspect(&self) -> String {
         self.value.to_string()
     }
 }
 
 #[derive(Debug)]
 pub struct Boolean {
-    value: bool,
+    pub value: bool,
 }
 
 impl ObjectTrait for Boolean {
-    fn inspect(self) -> String {
+    fn inspect(&self) -> String {
         self.value.to_string()
     }
 }
@@ -45,7 +45,7 @@ impl ObjectTrait for Boolean {
 pub struct Null {}
 
 impl ObjectTrait for Null {
-    fn inspect(self) -> String {
+    fn inspect(&self) -> String {
         "null".to_string()
     }
 }

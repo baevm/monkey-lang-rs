@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use crate::{lexer::Lexer, parser::Parser};
+use crate::{evaluator::Evaluator, lexer::Lexer, object::ObjectTrait, parser::Parser};
 
 pub struct Repl {}
 
@@ -34,14 +34,10 @@ impl Repl {
             let mut parser = Parser::new(lexer);
 
             let program = parser.parse_program();
+            let evaluator = Evaluator::new();
+            let evaluated = evaluator.eval(&program);
 
-            if parser.errors.len() != 0 {
-                println!("parser errors:");
-                parser.errors.iter().for_each(|err| println!("\t{}", err));
-                continue;
-            }
-
-            println!("{}", program.to_string())
+            println!("{:?}", evaluated.inspect());
         }
     }
 }
