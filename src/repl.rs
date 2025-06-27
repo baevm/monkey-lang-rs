@@ -1,6 +1,6 @@
-use std::io::{self, BufRead, Write};
+use std::io::{self, Write};
 
-use crate::{lexer::Lexer, token::TokenType};
+use crate::{lexer::Lexer, parser::Parser};
 
 pub struct Repl {}
 
@@ -10,8 +10,16 @@ impl Repl {
 
         loop {
             let mut stdout = std::io::stdout().lock();
-            write!(stdout, ">> ");
-            stdout.flush();
+
+            if let Err(err) = write!(stdout, ">> ") {
+                println!("{}", err);
+                break;
+            }
+
+            if let Err(err) = stdout.flush() {
+                println!("{}", err);
+                break;
+            }
 
             let stdin = io::stdin();
             let mut buf = String::new();
@@ -22,17 +30,18 @@ impl Repl {
                 panic!("{:?}", line.err());
             }
 
-            let mut lexer = Lexer::new(buf);
+            let lexer = Lexer::new(buf);
+            let mut parser = Parser::new(lexer);
 
-            loop {
-                let token = lexer.next_token();
+            let program = parser.parse_program();
 
-                if token.token_type == TokenType::Eof {
-                    break;
-                }
-
-                println!("{token}");
+            if parser.errors.len() != 0 {
+                println!("parser errors:");
+                parser.errors.iter().for_each(|err| println!("\t{}", err));
+                continue;
             }
+
+            println!("{}", program.to_string())
         }
     }
 }

@@ -46,7 +46,7 @@ pub struct Parser {
 }
 
 impl Parser {
-    fn new(lexer: Lexer) -> Self {
+    pub fn new(lexer: Lexer) -> Self {
         let mut parser = Parser {
             lexer,
             curr_token: Token::new(),
