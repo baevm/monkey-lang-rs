@@ -42,8 +42,44 @@ impl Evaluator {
             Expression::Boolean(boolean_literal) => Object::Boolean(Box::new(Boolean {
                 value: boolean_literal.value,
             })),
+            Expression::PrefixExpression(prefix_expr) => {
+                let right = self.eval_expression(&prefix_expr.right);
+                self.eval_prefix_expression(&prefix_expr.operator, right)
+            }
             _ => Object::Null(Box::new(Null {})),
         }
+    }
+
+    fn eval_prefix_expression(&self, operator: &str, right: Object) -> Object {
+        match operator {
+            "!" => self.eval_bang_operator_expression(right),
+            "-" => self.eval_minus_prefix_operator_expression(right),
+            _ => Object::Null(Box::new(Null {})),
+        }
+    }
+
+    fn eval_bang_operator_expression(&self, right: Object) -> Object {
+        match right {
+            Object::Boolean(boolean) => {
+                if boolean.value {
+                    Object::Boolean(Box::new(Boolean { value: false }))
+                } else {
+                    Object::Boolean(Box::new(Boolean { value: true }))
+                }
+            }
+            Object::Null(_) => Object::Boolean(Box::new(Boolean { value: true })),
+            _ => Object::Boolean(Box::new(Boolean { value: false })),
+        }
+    }
+
+    fn eval_minus_prefix_operator_expression(&self, right: Object) -> Object {
+        let Object::Integer(int_expr) = right else {
+            return Object::Null(Box::new(Null {}));
+        };
+
+        Object::Integer(Box::new(Integer {
+            value: -int_expr.value,
+        }))
     }
 }
 
@@ -66,6 +102,14 @@ mod tests {
             TestCase {
                 input: "100500".to_string(),
                 expected: 100500,
+            },
+            TestCase {
+                input: "-5".to_string(),
+                expected: -5,
+            },
+            TestCase {
+                input: "-100500".to_string(),
+                expected: -100500,
             },
         ];
 
@@ -91,6 +135,41 @@ mod tests {
         for test in tests {
             let evaled = test_eval(test.input);
             test_boolean_object(evaled, test.expected);
+        }
+    }
+
+    #[test]
+    fn test_bang_operator() {
+        let tests: Vec<TestCase<bool>> = vec![
+            TestCase {
+                input: "!true".to_string(),
+                expected: false,
+            },
+            TestCase {
+                input: "!false".to_string(),
+                expected: true,
+            },
+            TestCase {
+                input: "!5".to_string(),
+                expected: false,
+            },
+            TestCase {
+                input: "!!true".to_string(),
+                expected: true,
+            },
+            TestCase {
+                input: "!!false".to_string(),
+                expected: false,
+            },
+            TestCase {
+                input: "!!5".to_string(),
+                expected: true,
+            },
+        ];
+
+        for test in tests {
+            let evaluated = test_eval(test.input);
+            test_boolean_object(evaluated, test.expected);
         }
     }
 
