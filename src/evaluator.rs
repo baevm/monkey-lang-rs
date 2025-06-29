@@ -46,6 +46,11 @@ impl Evaluator {
                 let right = self.eval_expression(&prefix_expr.right);
                 self.eval_prefix_expression(&prefix_expr.operator, right)
             }
+            Expression::InfixExpression(infix_expr) => {
+                let left = self.eval_expression(&infix_expr.left);
+                let right = self.eval_expression(&infix_expr.right);
+                self.eval_infix_expression(&infix_expr.operator, left, right)
+            }
             _ => Object::Null(Box::new(Null {})),
         }
     }
@@ -81,6 +86,72 @@ impl Evaluator {
             value: -int_expr.value,
         }))
     }
+
+    fn eval_infix_expression(&self, operator: &str, left: Object, right: Object) -> Object {
+        match (left, right) {
+            (Object::Integer(left_expr), Object::Integer(right_expr)) => {
+                return self.eval_integer_infix_expression(&operator, left_expr, right_expr);
+            }
+            (Object::Boolean(left_expr), Object::Boolean(right_expr)) => {
+                return self.eval_boolean_infix_expression(&operator, left_expr, right_expr);
+            }
+            (_, _) => {}
+        }
+
+        Object::Null(Box::new(Null {}))
+    }
+
+    fn eval_integer_infix_expression(
+        &self,
+        operator: &str,
+        left: Box<Integer>,
+        right: Box<Integer>,
+    ) -> Object {
+        match operator {
+            "+" => Object::Integer(Box::new(Integer {
+                value: left.value + right.value,
+            })),
+            "-" => Object::Integer(Box::new(Integer {
+                value: left.value - right.value,
+            })),
+            "*" => Object::Integer(Box::new(Integer {
+                value: left.value * right.value,
+            })),
+            "/" => Object::Integer(Box::new(Integer {
+                value: left.value / right.value,
+            })),
+            ">" => Object::Boolean(Box::new(Boolean {
+                value: left.value > right.value,
+            })),
+            "<" => Object::Boolean(Box::new(Boolean {
+                value: left.value < right.value,
+            })),
+            "==" => Object::Boolean(Box::new(Boolean {
+                value: left.value == right.value,
+            })),
+            "!=" => Object::Boolean(Box::new(Boolean {
+                value: left.value != right.value,
+            })),
+            _ => Object::Null(Box::new(Null {})),
+        }
+    }
+
+    fn eval_boolean_infix_expression(
+        &self,
+        operator: &str,
+        left: Box<Boolean>,
+        right: Box<Boolean>,
+    ) -> Object {
+        match operator {
+            "==" => Object::Boolean(Box::new(Boolean {
+                value: left.value == right.value,
+            })),
+            "!=" => Object::Boolean(Box::new(Boolean {
+                value: left.value != right.value,
+            })),
+            _ => Object::Null(Box::new(Null {})),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -111,6 +182,22 @@ mod tests {
                 input: "-100500".to_string(),
                 expected: -100500,
             },
+            TestCase {
+                input: "5 + 5 + 5".to_string(),
+                expected: 15,
+            },
+            TestCase {
+                input: "20 + 5 / 5".to_string(),
+                expected: 21,
+            },
+            TestCase {
+                input: "1 + (5 * 10)".to_string(),
+                expected: 51,
+            },
+            TestCase {
+                input: "5 * 5 * 5".to_string(),
+                expected: 125,
+            },
         ];
 
         for test in tests {
@@ -128,6 +215,58 @@ mod tests {
             },
             TestCase {
                 input: "false".to_string(),
+                expected: false,
+            },
+            TestCase {
+                input: "1 < 2".to_string(),
+                expected: true,
+            },
+            TestCase {
+                input: "1 > 2".to_string(),
+                expected: false,
+            },
+            TestCase {
+                input: "1 == 2".to_string(),
+                expected: false,
+            },
+            TestCase {
+                input: "1 != 2".to_string(),
+                expected: true,
+            },
+            TestCase {
+                input: "1 == 1".to_string(),
+                expected: true,
+            },
+            TestCase {
+                input: "true == true".to_string(),
+                expected: true,
+            },
+            TestCase {
+                input: "true != false".to_string(),
+                expected: true,
+            },
+            TestCase {
+                input: "true == false".to_string(),
+                expected: false,
+            },
+            TestCase {
+                input: "false == false".to_string(),
+                expected: true,
+            },
+            TestCase {
+                input: "(1 > 2) == true".to_string(),
+                expected: false,
+            },
+            TestCase {
+                input: "(1 < 2) == true".to_string(),
+                expected: true,
+            },
+            TestCase {
+                input: "(1 > 2) == false".to_string(),
+                expected: true,
+            },
+            TestCase {
+                input: "(1 < 2) == false".to_string(),
                 expected: false,
             },
         ];
