@@ -1,3 +1,4 @@
+use crate::ast::IfExpression;
 use crate::{
     ast::{Expression, Program, Statement},
     object::{Boolean, Integer, Null, Object},
@@ -31,6 +32,15 @@ impl Evaluator {
                     Object::Null(Box::new(Null {}))
                 }
             }
+            Statement::BlockStatement(block_stmt) => {
+                let mut result = Object::Null(Box::new(Null {}));
+
+                for stmt in &block_stmt.statements {
+                    result = self.eval_statement(&stmt);
+                }
+
+                result
+            }
         }
     }
 
@@ -51,6 +61,8 @@ impl Evaluator {
                 let right = self.eval_expression(&infix_expr.right);
                 self.eval_infix_expression(&infix_expr.operator, left, right)
             }
+            Expression::IfExpression(if_expr) => self.eval_if_expression(&if_expr),
+
             _ => Object::Null(Box::new(Null {})),
         }
     }
@@ -150,6 +162,32 @@ impl Evaluator {
                 value: left.value != right.value,
             })),
             _ => Object::Null(Box::new(Null {})),
+        }
+    }
+
+    fn eval_if_expression(&self, if_expr: &Box<IfExpression>) -> Object {
+        let condition = self.eval_expression(&if_expr.condition);
+
+        if self.is_truthy(&condition) {
+            let consequence_as_stmt =
+                Statement::BlockStatement(Box::new(if_expr.consequence.clone()));
+
+            return self.eval_statement(&consequence_as_stmt);
+        } else if if_expr.alternative.is_some() {
+            let alternative_as_stmt =
+                Statement::BlockStatement(Box::new(if_expr.alternative.as_ref().unwrap().clone()));
+
+            return self.eval_statement(&alternative_as_stmt);
+        }
+
+        Object::Null(Box::new(Null {}))
+    }
+
+    fn is_truthy(&self, obj: &Object) -> bool {
+        match obj {
+            Object::Null(_) => false,
+            Object::Boolean(bool_obj) => bool_obj.value,
+            _ => true,
         }
     }
 }
@@ -312,6 +350,47 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_if_else_expression() {
+        let tests = vec![
+            TestCase {
+                input: "if (true) { 10 }".to_string(),
+                expected: Some(10),
+            },
+            TestCase {
+                input: "if (false) { 10 }".to_string(),
+                expected: None,
+            },
+            TestCase {
+                input: "if (1) { 10 }".to_string(),
+                expected: Some(10),
+            },
+            TestCase {
+                input: "if (1 > 2) { 10 }".to_string(),
+                expected: None,
+            },
+            TestCase {
+                input: "if (1 > 2) { 10 } else { 5 }".to_string(),
+                expected: Some(5),
+            },
+        ];
+
+        for test in tests {
+            let evaluated = test_eval(test.input);
+            println!("{:?}", evaluated);
+
+            if test.expected.is_some() {
+                if let Object::Integer(int_obj) = &evaluated {
+                    test_integer_object(evaluated, test.expected.unwrap());
+                } else {
+                    panic!("got null: {:?} expected: {:?}", evaluated, test.expected);
+                }
+            } else {
+                test_null_object(evaluated)
+            }
+        }
+    }
+
     fn test_eval(input: String) -> Object {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
@@ -344,5 +423,11 @@ mod tests {
             "Boolean Object has wrong value. got:{}, want: {}",
             bool_obj.value, expected
         );
+    }
+
+    fn test_null_object(obj: Object) {
+        let Object::Null(null_obj) = obj else {
+            panic!("object is not NULL. got: {:?}", obj);
+        };
     }
 }

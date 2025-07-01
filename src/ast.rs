@@ -14,6 +14,7 @@ pub enum Statement {
     LetStatement(Box<LetStatement>),
     ReturnStatement(Box<ReturnStatement>),
     ExpressionStatement(Box<ExpressionStatement>),
+    BlockStatement(Box<BlockStatement>),
 }
 
 impl Statement {
@@ -24,6 +25,7 @@ impl Statement {
             Statement::ExpressionStatement(expression_statement) => {
                 expression_statement.token.literal.clone()
             }
+            Statement::BlockStatement(block_stmt) => block_stmt.token.literal.clone(),
         }
     }
 }
@@ -36,6 +38,7 @@ impl Stringer for Statement {
             Statement::ExpressionStatement(expression_statement) => {
                 expression_statement.to_string()
             }
+            Statement::BlockStatement(block_stmt) => block_stmt.to_string(),
         }
     }
 }
