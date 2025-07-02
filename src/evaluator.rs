@@ -1,9 +1,11 @@
 use crate::ast::IfExpression;
-use crate::object::Return;
+use crate::object::{InternalError, Return};
 use crate::{
     ast::{Expression, Program, Statement},
     object::{Boolean, Integer, Null, Object},
 };
+use std::cmp::PartialEq;
+use std::mem::discriminant;
 
 pub struct Evaluator {}
 
@@ -21,6 +23,10 @@ impl Evaluator {
             if let Object::Return(return_obj) = result {
                 return return_obj.value;
             }
+
+            if let Object::InternalError(_) = &result {
+                return result;
+            }
         }
 
         result
@@ -28,13 +34,18 @@ impl Evaluator {
 
     fn eval_statement(&self, stmt: &Statement) -> Object {
         match stmt {
-            Statement::LetStatement(let_statement) => Object::Null(Box::new(Null {})),
+            Statement::LetStatement(_) => Object::Null(Box::new(Null {})),
             Statement::ReturnStatement(return_statement) => {
                 if return_statement.return_value.is_none() {
                     return Object::Null(Box::new(Null {}));
                 }
 
                 let value = self.eval_expression(&return_statement.return_value.as_ref().unwrap());
+
+                if self.is_err_obj(&value) {
+                    return value;
+                }
+
                 Object::Return(Box::new(Return { value }))
             }
             Statement::ExpressionStatement(expression_statement) => {
@@ -51,6 +62,10 @@ impl Evaluator {
                     result = self.eval_statement(&stmt);
 
                     if let Object::Return(_) = &result {
+                        return result;
+                    }
+
+                    if let Object::InternalError(_) = &result {
                         return result;
                     }
                 }
@@ -70,11 +85,26 @@ impl Evaluator {
             })),
             Expression::PrefixExpression(prefix_expr) => {
                 let right = self.eval_expression(&prefix_expr.right);
+
+                if self.is_err_obj(&right) {
+                    return right;
+                }
+
                 self.eval_prefix_expression(&prefix_expr.operator, right)
             }
             Expression::InfixExpression(infix_expr) => {
                 let left = self.eval_expression(&infix_expr.left);
+
+                if self.is_err_obj(&left) {
+                    return left;
+                }
+
                 let right = self.eval_expression(&infix_expr.right);
+
+                if self.is_err_obj(&right) {
+                    return right;
+                }
+
                 self.eval_infix_expression(&infix_expr.operator, left, right)
             }
             Expression::IfExpression(if_expr) => self.eval_if_expression(&if_expr),
@@ -87,7 +117,9 @@ impl Evaluator {
         match operator {
             "!" => self.eval_bang_operator_expression(right),
             "-" => self.eval_minus_prefix_operator_expression(right),
-            _ => Object::Null(Box::new(Null {})),
+            _ => Object::InternalError(Box::new(InternalError {
+                message: format!("unknown operator: {operator}{}", right),
+            })),
         }
     }
 
@@ -107,7 +139,9 @@ impl Evaluator {
 
     fn eval_minus_prefix_operator_expression(&self, right: Object) -> Object {
         let Object::Integer(int_expr) = right else {
-            return Object::Null(Box::new(Null {}));
+            return Object::InternalError(Box::new(InternalError {
+                message: format!("unknown operator: -{}", right),
+            }));
         };
 
         Object::Integer(Box::new(Integer {
@@ -116,6 +150,12 @@ impl Evaluator {
     }
 
     fn eval_infix_expression(&self, operator: &str, left: Object, right: Object) -> Object {
+        if discriminant(&left) != discriminant(&right) {
+            return Object::InternalError(Box::new(InternalError {
+                message: format!("type mismatch: {} {} {}", left, operator, right),
+            }));
+        }
+
         match (left, right) {
             (Object::Integer(left_expr), Object::Integer(right_expr)) => {
                 return self.eval_integer_infix_expression(&operator, left_expr, right_expr);
@@ -123,8 +163,13 @@ impl Evaluator {
             (Object::Boolean(left_expr), Object::Boolean(right_expr)) => {
                 return self.eval_boolean_infix_expression(&operator, left_expr, right_expr);
             }
-            (_, _) => {}
-        }
+            (left_expr, right_expr) => Object::InternalError(Box::new(InternalError {
+                message: format!(
+                    "unknown operator: {} {} {}",
+                    left_expr, operator, right_expr
+                ),
+            })),
+        };
 
         Object::Null(Box::new(Null {}))
     }
@@ -160,7 +205,9 @@ impl Evaluator {
             "!=" => Object::Boolean(Box::new(Boolean {
                 value: left.value != right.value,
             })),
-            _ => Object::Null(Box::new(Null {})),
+            _ => Object::InternalError(Box::new(InternalError {
+                message: format!("unknown operator: {} {} {}", left, operator, right),
+            })),
         }
     }
 
@@ -177,12 +224,18 @@ impl Evaluator {
             "!=" => Object::Boolean(Box::new(Boolean {
                 value: left.value != right.value,
             })),
-            _ => Object::Null(Box::new(Null {})),
+            _ => Object::InternalError(Box::new(InternalError {
+                message: format!("unknown operator: {} {} {}", left, operator, right),
+            })),
         }
     }
 
     fn eval_if_expression(&self, if_expr: &Box<IfExpression>) -> Object {
         let condition = self.eval_expression(&if_expr.condition);
+
+        if self.is_err_obj(&condition) {
+            return condition;
+        }
 
         if self.is_truthy(&condition) {
             let consequence_as_stmt =
@@ -205,6 +258,14 @@ impl Evaluator {
             Object::Boolean(bool_obj) => bool_obj.value,
             _ => true,
         }
+    }
+
+    fn is_err_obj(&self, obj: &Object) -> bool {
+        if let Object::InternalError(err) = obj {
+            return true;
+        }
+
+        false
     }
 }
 
@@ -393,7 +454,6 @@ mod tests {
 
         for test in tests {
             let evaluated = test_eval(test.input);
-            println!("{:?}", evaluated);
 
             if test.expected.is_some() {
                 if let Object::Integer(int_obj) = &evaluated {
@@ -444,6 +504,66 @@ mod tests {
         for test in tests {
             let evaluated = test_eval(test.input);
             test_integer_object(evaluated, test.expected);
+        }
+    }
+
+    #[test]
+    fn test_internal_error_handling() {
+        let tests = vec![
+            TestCase {
+                input: "5 + true;".to_string(),
+                expected: "type mismatch: Integer + Boolean",
+            },
+            TestCase {
+                input: "5 + true; 5;".to_string(),
+                expected: "type mismatch: Integer + Boolean",
+            },
+            TestCase {
+                input: "-true".to_string(),
+                expected: "unknown operator: -Boolean",
+            },
+            TestCase {
+                input: "true + false".to_string(),
+                expected: "unknown operator: Boolean + Boolean",
+            },
+            TestCase {
+                input: "5; true + false; 10;".to_string(),
+                expected: "unknown operator: Boolean + Boolean",
+            },
+            TestCase {
+                input: "if (10 > 1) { true + false; }".to_string(),
+                expected: "unknown operator: Boolean + Boolean",
+            },
+            TestCase {
+                input: r"
+                    if(10 > 1) {
+                        if(10 > 1) {
+                            return false + false;
+                        }
+
+                        return 1;
+                    }
+                "
+                .to_string(),
+                expected: "unknown operator: Boolean + Boolean",
+            },
+        ];
+
+        for test in tests {
+            let evaluated = test_eval(test.input.clone());
+
+            let Object::InternalError(internal_err) = evaluated else {
+                panic!(
+                    "no error object returned. got: {:?}. test case: {:?}",
+                    evaluated, test.input
+                );
+            };
+
+            assert_eq!(
+                test.expected, internal_err.message,
+                "wrong error message. got: {:?}, need: {:?}",
+                internal_err.message, test.expected
+            );
         }
     }
 
