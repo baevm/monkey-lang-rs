@@ -1,4 +1,5 @@
 use crate::ast::IfExpression;
+use crate::object::Return;
 use crate::{
     ast::{Expression, Program, Statement},
     object::{Boolean, Integer, Null, Object},
@@ -15,7 +16,11 @@ impl Evaluator {
         let mut result = Object::Null(Box::new(Null {}));
 
         for stmt in &program.body {
-            result = self.eval_statement(stmt);
+            result = self.eval_statement(&stmt);
+
+            if let Object::Return(return_obj) = result {
+                return return_obj.value;
+            }
         }
 
         result
@@ -24,7 +29,14 @@ impl Evaluator {
     fn eval_statement(&self, stmt: &Statement) -> Object {
         match stmt {
             Statement::LetStatement(let_statement) => Object::Null(Box::new(Null {})),
-            Statement::ReturnStatement(return_statement) => Object::Null(Box::new(Null {})),
+            Statement::ReturnStatement(return_statement) => {
+                if return_statement.return_value.is_none() {
+                    return Object::Null(Box::new(Null {}));
+                }
+
+                let value = self.eval_expression(&return_statement.return_value.as_ref().unwrap());
+                Object::Return(Box::new(Return { value }))
+            }
             Statement::ExpressionStatement(expression_statement) => {
                 if let Some(expr) = &expression_statement.expression {
                     self.eval_expression(expr)
@@ -37,6 +49,10 @@ impl Evaluator {
 
                 for stmt in &block_stmt.statements {
                     result = self.eval_statement(&stmt);
+
+                    if let Object::Return(_) = &result {
+                        return result;
+                    }
                 }
 
                 result
@@ -388,6 +404,46 @@ mod tests {
             } else {
                 test_null_object(evaluated)
             }
+        }
+    }
+
+    #[test]
+    fn test_return_statements() {
+        let tests = vec![
+            TestCase {
+                input: "return 10;".to_string(),
+                expected: 10,
+            },
+            TestCase {
+                input: "return 10; 100500".to_string(),
+                expected: 10,
+            },
+            TestCase {
+                input: "return 10 * 5;".to_string(),
+                expected: 50,
+            },
+            TestCase {
+                input: "9; return 10 * 5; 100500;".to_string(),
+                expected: 50,
+            },
+            TestCase {
+                input: r"
+                    if(10 > 1) {
+                        if(10 > 1) {
+                            return 10;
+                        }
+
+                        return 1;
+                    }
+                "
+                .to_string(),
+                expected: 10,
+            },
+        ];
+
+        for test in tests {
+            let evaluated = test_eval(test.input);
+            test_integer_object(evaluated, test.expected);
         }
     }
 
