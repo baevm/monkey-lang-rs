@@ -1,6 +1,11 @@
 use std::io::{self, Write};
 
-use crate::{evaluator::Evaluator, lexer::Lexer, object::ObjectTrait, parser::Parser};
+use crate::{
+    evaluator::Evaluator,
+    lexer::Lexer,
+    object::{Environment, ObjectTrait},
+    parser::Parser,
+};
 
 pub struct Repl {}
 
@@ -35,7 +40,9 @@ impl Repl {
 
             let program = parser.parse_program();
             let evaluator = Evaluator::new();
-            let evaluated = evaluator.eval(&program);
+            let mut environment = Environment::new();
+
+            let evaluated = evaluator.eval(&program, &mut environment);
 
             println!("{:?}", evaluated.inspect());
         }

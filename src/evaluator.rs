@@ -1,10 +1,9 @@
-use crate::ast::IfExpression;
-use crate::object::{InternalError, Return};
+use crate::ast::{Identifier, IfExpression};
+use crate::object::{Environment, InternalError, Return};
 use crate::{
     ast::{Expression, Program, Statement},
     object::{Boolean, Integer, Null, Object},
 };
-use std::cmp::PartialEq;
 use std::mem::discriminant;
 
 pub struct Evaluator {}
@@ -14,11 +13,11 @@ impl Evaluator {
         Evaluator {}
     }
 
-    pub fn eval(&self, program: &Program) -> Object {
+    pub fn eval(&self, program: &Program, env: &mut Environment) -> Object {
         let mut result = Object::Null(Box::new(Null {}));
 
         for stmt in &program.body {
-            result = self.eval_statement(&stmt);
+            result = self.eval_statement(&stmt, env);
 
             if let Object::Return(return_obj) = result {
                 return return_obj.value;
@@ -32,15 +31,30 @@ impl Evaluator {
         result
     }
 
-    fn eval_statement(&self, stmt: &Statement) -> Object {
+    fn eval_statement(&self, stmt: &Statement, env: &mut Environment) -> Object {
         match stmt {
-            Statement::LetStatement(_) => Object::Null(Box::new(Null {})),
+            Statement::LetStatement(let_stmt) => {
+                if let_stmt.value.is_none() {
+                    return Object::Null(Box::new(Null {}));
+                }
+
+                let evaluated = self.eval_expression(&let_stmt.value.as_ref().unwrap(), env);
+
+                if self.is_err_obj(&evaluated) {
+                    return evaluated;
+                }
+
+                env.set(&let_stmt.name.value, evaluated);
+
+                Object::Null(Box::new(Null {}))
+            }
             Statement::ReturnStatement(return_statement) => {
                 if return_statement.return_value.is_none() {
                     return Object::Null(Box::new(Null {}));
                 }
 
-                let value = self.eval_expression(&return_statement.return_value.as_ref().unwrap());
+                let value =
+                    self.eval_expression(&return_statement.return_value.as_ref().unwrap(), env);
 
                 if self.is_err_obj(&value) {
                     return value;
@@ -50,7 +64,7 @@ impl Evaluator {
             }
             Statement::ExpressionStatement(expression_statement) => {
                 if let Some(expr) = &expression_statement.expression {
-                    self.eval_expression(expr)
+                    self.eval_expression(expr, env)
                 } else {
                     Object::Null(Box::new(Null {}))
                 }
@@ -59,7 +73,7 @@ impl Evaluator {
                 let mut result = Object::Null(Box::new(Null {}));
 
                 for stmt in &block_stmt.statements {
-                    result = self.eval_statement(&stmt);
+                    result = self.eval_statement(&stmt, env);
 
                     if let Object::Return(_) = &result {
                         return result;
@@ -75,7 +89,7 @@ impl Evaluator {
         }
     }
 
-    fn eval_expression(&self, expr: &Expression) -> Object {
+    fn eval_expression(&self, expr: &Expression, env: &mut Environment) -> Object {
         match expr {
             Expression::IntegerLiteral(integer_literal) => Object::Integer(Box::new(Integer {
                 value: integer_literal.value,
@@ -84,7 +98,7 @@ impl Evaluator {
                 value: boolean_literal.value,
             })),
             Expression::PrefixExpression(prefix_expr) => {
-                let right = self.eval_expression(&prefix_expr.right);
+                let right = self.eval_expression(&prefix_expr.right, env);
 
                 if self.is_err_obj(&right) {
                     return right;
@@ -93,13 +107,13 @@ impl Evaluator {
                 self.eval_prefix_expression(&prefix_expr.operator, right)
             }
             Expression::InfixExpression(infix_expr) => {
-                let left = self.eval_expression(&infix_expr.left);
+                let left = self.eval_expression(&infix_expr.left, env);
 
                 if self.is_err_obj(&left) {
                     return left;
                 }
 
-                let right = self.eval_expression(&infix_expr.right);
+                let right = self.eval_expression(&infix_expr.right, env);
 
                 if self.is_err_obj(&right) {
                     return right;
@@ -107,7 +121,8 @@ impl Evaluator {
 
                 self.eval_infix_expression(&infix_expr.operator, left, right)
             }
-            Expression::IfExpression(if_expr) => self.eval_if_expression(&if_expr),
+            Expression::IfExpression(if_expr) => self.eval_if_expression(&if_expr, env),
+            Expression::Identifier(ident) => self.eval_identifier(ident, env),
 
             _ => Object::Null(Box::new(Null {})),
         }
@@ -230,8 +245,8 @@ impl Evaluator {
         }
     }
 
-    fn eval_if_expression(&self, if_expr: &Box<IfExpression>) -> Object {
-        let condition = self.eval_expression(&if_expr.condition);
+    fn eval_if_expression(&self, if_expr: &Box<IfExpression>, env: &mut Environment) -> Object {
+        let condition = self.eval_expression(&if_expr.condition, env);
 
         if self.is_err_obj(&condition) {
             return condition;
@@ -241,15 +256,25 @@ impl Evaluator {
             let consequence_as_stmt =
                 Statement::BlockStatement(Box::new(if_expr.consequence.clone()));
 
-            return self.eval_statement(&consequence_as_stmt);
+            return self.eval_statement(&consequence_as_stmt, env);
         } else if if_expr.alternative.is_some() {
             let alternative_as_stmt =
                 Statement::BlockStatement(Box::new(if_expr.alternative.as_ref().unwrap().clone()));
 
-            return self.eval_statement(&alternative_as_stmt);
+            return self.eval_statement(&alternative_as_stmt, env);
         }
 
         Object::Null(Box::new(Null {}))
+    }
+
+    fn eval_identifier(&self, ident: &Identifier, env: &mut Environment) -> Object {
+        if let Some(ident_val) = env.get(&ident.value) {
+            return ident_val.clone();
+        }
+
+        return Object::InternalError(Box::new(InternalError {
+            message: format!("identifier not found: {}", ident.value),
+        }));
     }
 
     fn is_truthy(&self, obj: &Object) -> bool {
@@ -271,7 +296,12 @@ impl Evaluator {
 
 #[cfg(test)]
 mod tests {
-    use crate::{evaluator::Evaluator, lexer::Lexer, object::Object, parser::Parser};
+    use crate::{
+        evaluator::Evaluator,
+        lexer::Lexer,
+        object::{Environment, Object},
+        parser::Parser,
+    };
 
     struct TestCase<T> {
         input: String,
@@ -547,6 +577,10 @@ mod tests {
                 .to_string(),
                 expected: "unknown operator: Boolean + Boolean",
             },
+            TestCase {
+                input: "randomVariable".to_string(),
+                expected: "identifier not found: randomVariable",
+            },
         ];
 
         for test in tests {
@@ -567,14 +601,42 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_let_statements() {
+        let tests = vec![
+            TestCase {
+                input: "let a = 5; a".to_string(),
+                expected: 5,
+            },
+            TestCase {
+                input: "let a = 5 * 5; a".to_string(),
+                expected: 25,
+            },
+            TestCase {
+                input: "let a = 5; let b = a; b;".to_string(),
+                expected: 5,
+            },
+            TestCase {
+                input: "let a = 5; let b = a; let c = a + b + 5; c".to_string(),
+                expected: 15,
+            },
+        ];
+
+        for test in tests {
+            let evaluated = test_eval(test.input);
+            test_integer_object(evaluated, test.expected);
+        }
+    }
+
     fn test_eval(input: String) -> Object {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
 
         let program = parser.parse_program();
         let evaluator = Evaluator::new();
+        let mut environment = Environment::new();
 
-        evaluator.eval(&program)
+        evaluator.eval(&program, &mut environment)
     }
 
     fn test_integer_object(obj: Object, expected: i64) {
