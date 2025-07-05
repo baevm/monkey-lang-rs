@@ -13,6 +13,9 @@ impl Repl {
     pub fn start() {
         println!("Welcome to Monkey programming language!");
 
+        // reuse defined user variables between inputs
+        let mut environment = Environment::new();
+
         loop {
             let mut stdout = std::io::stdout().lock();
 
@@ -40,7 +43,6 @@ impl Repl {
 
             let program = parser.parse_program();
             let evaluator = Evaluator::new();
-            let mut environment = Environment::new();
 
             let evaluated = evaluator.eval(&program, &mut environment);
 

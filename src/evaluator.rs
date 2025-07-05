@@ -1,10 +1,12 @@
 use crate::ast::{Identifier, IfExpression};
-use crate::object::{Environment, InternalError, Return};
+use crate::object::{Environment, Function, InternalError, Return};
 use crate::{
     ast::{Expression, Program, Statement},
     object::{Boolean, Integer, Null, Object},
 };
+use std::cell::RefCell;
 use std::mem::discriminant;
+use std::rc::Rc;
 
 pub struct Evaluator {}
 
@@ -123,9 +125,49 @@ impl Evaluator {
             }
             Expression::IfExpression(if_expr) => self.eval_if_expression(&if_expr, env),
             Expression::Identifier(ident) => self.eval_identifier(ident, env),
+            Expression::FunctionLiteral(func) => Object::Function(Box::new(Function {
+                parameters: func.parameters.clone(),
+                body: func.body.clone(),
+                env: env.clone(),
+            })),
+            Expression::CallExpression(call_expr) => {
+                let func = self.eval_expression(&call_expr.function, env);
+
+                if self.is_err_obj(&func) {
+                    return func;
+                }
+
+                let args = self.eval_expressions(&call_expr.arguments, env);
+
+                if args.len() == 1 && self.is_err_obj(&args[0]) {
+                    return args[0].clone();
+                }
+
+                self.apply_function(func, args)
+            }
 
             _ => Object::Null(Box::new(Null {})),
         }
+    }
+
+    fn eval_expressions(
+        &self,
+        expressions: &Vec<Expression>,
+        env: &mut Environment,
+    ) -> Vec<Object> {
+        let mut result = vec![];
+
+        for expr in expressions {
+            let evaluated = self.eval_expression(expr, env);
+
+            if self.is_err_obj(&evaluated) {
+                return vec![evaluated];
+            }
+
+            result.push(evaluated);
+        }
+
+        result
     }
 
     fn eval_prefix_expression(&self, operator: &str, right: Object) -> Object {
@@ -292,11 +334,44 @@ impl Evaluator {
 
         false
     }
+
+    fn apply_function(&self, func: Object, args: Vec<Object>) -> Object {
+        let Object::Function(func_obj) = &func else {
+            return Object::InternalError(Box::new(InternalError {
+                message: format!("not a function: {}", func),
+            }));
+        };
+
+        let mut extended_env = self.extend_function_env(func_obj, args);
+        let evaluated = self.eval_statement(
+            &Statement::BlockStatement(Box::new(func_obj.body.clone())),
+            &mut extended_env,
+        );
+
+        if let Object::Return(return_val) = evaluated {
+            return return_val.value;
+        }
+
+        evaluated
+    }
+
+    fn extend_function_env(&self, func_obj: &Box<Function>, args: Vec<Object>) -> Environment {
+        let mut new_env = Environment::new_enclosed(Rc::new(RefCell::new(func_obj.env.clone())));
+
+        for (idx, param) in func_obj.parameters.iter().enumerate() {
+            new_env.set(&param.value, args[idx].clone());
+        }
+
+        new_env
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use core::panic;
+
     use crate::{
+        ast::Stringer,
         evaluator::Evaluator,
         lexer::Lexer,
         object::{Environment, Object},
@@ -619,6 +694,78 @@ mod tests {
             TestCase {
                 input: "let a = 5; let b = a; let c = a + b + 5; c".to_string(),
                 expected: 15,
+            },
+        ];
+
+        for test in tests {
+            let evaluated = test_eval(test.input);
+            test_integer_object(evaluated, test.expected);
+        }
+    }
+
+    #[test]
+    fn test_function_object() {
+        let input = "function(x) { x + 2; };".to_string();
+
+        let evaluated = test_eval(input);
+
+        let Object::Function(func) = evaluated else {
+            panic!("object is not a function. got: {}", evaluated);
+        };
+
+        assert_eq!(func.parameters.len(), 1, "function has wrong parameters");
+        assert_eq!(
+            func.parameters[0].to_string(),
+            "x",
+            "function got wrong parameter"
+        );
+        assert_eq!(
+            func.body.to_string(),
+            "(x + 2)",
+            "body is not (x + 2), got: {}",
+            func.body.to_string()
+        );
+    }
+
+    #[test]
+    fn test_function_closure() {
+        let input = r"
+        let newAdder = function(x) {
+            function(y) { x + y };
+        };
+
+        let addTwo = newAdder(2);
+        addTwo(2);
+        "
+        .to_string();
+
+        let evaluated = test_eval(input);
+
+        test_integer_object(evaluated, 4);
+    }
+
+    #[test]
+    fn test_function_application() {
+        let tests = vec![
+            TestCase {
+                input: "let ident = function(x) {x;}; ident(5);".to_string(),
+                expected: 5,
+            },
+            TestCase {
+                input: "let ident = function(x) {return x;}; ident(5);".to_string(),
+                expected: 5,
+            },
+            TestCase {
+                input: "let ident = function(x) {x * 2;}; ident(5);".to_string(),
+                expected: 10,
+            },
+            TestCase {
+                input: "let ident = function(x, y) {x + y;}; ident(5, 5);".to_string(),
+                expected: 10,
+            },
+            TestCase {
+                input: "function(x) {x;}(5)".to_string(),
+                expected: 5,
             },
         ];
 
