@@ -17,6 +17,7 @@ pub enum Object {
     InternalError(Box<InternalError>),
     Function(Box<Function>),
     String(Box<StringObj>),
+    Builtin(Box<Builtin>),
 }
 
 impl ObjectTrait for Object {
@@ -29,6 +30,7 @@ impl ObjectTrait for Object {
             Object::InternalError(internal_err) => internal_err.inspect(),
             Object::Function(function) => function.inspect(),
             Object::String(string_obj) => string_obj.inspect(),
+            Object::Builtin(builtin) => builtin.inspect(),
         }
     }
 }
@@ -160,6 +162,54 @@ impl ObjectTrait for StringObj {
     }
 }
 
+pub type BuiltinFunc = Rc<dyn Fn(&[Object]) -> Object>;
+
+#[derive(Clone)]
+pub struct Builtin {
+    pub func: BuiltinFunc,
+}
+
+impl ObjectTrait for Builtin {
+    fn inspect(&self) -> String {
+        "builtin function".to_string()
+    }
+}
+
+impl Builtin {
+    pub fn get_by_identifier(ident: &str) -> Option<Object> {
+        match ident {
+            "len" => Some(Object::Builtin(Box::new(Builtin {
+                func: Rc::new(Self::length),
+            }))),
+            _ => None,
+        }
+    }
+
+    fn length(args: &[Object]) -> Object {
+        if args.len() != 1 {
+            return Object::InternalError(Box::new(InternalError {
+                message: format!("wrong number of arguments. Got: {}, want: 1", args.len()),
+            }));
+        }
+
+        if let Object::String(str) = &args[0] {
+            return Object::Integer(Box::new(Integer {
+                value: str.value.len() as i64,
+            }));
+        }
+
+        return Object::InternalError(Box::new(InternalError {
+            message: format!("argument to \"len\" is not supported, got: {}", args[0]),
+        }));
+    }
+}
+
+impl std::fmt::Debug for Builtin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Builtin Function")
+    }
+}
+
 macro_rules! impl_display_name {
     ($($type:ty => $name:expr),* $(,)?) => {
         $(
@@ -179,5 +229,6 @@ impl_display_name! {
     Return => "Return",
     InternalError => "InternalError",
     Function => "Function",
-    StringObj => "String"
+    StringObj => "String",
+    Builtin => "Builtin Function"
 }

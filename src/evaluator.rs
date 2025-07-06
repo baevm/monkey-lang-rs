@@ -1,10 +1,13 @@
 use crate::ast::{Identifier, IfExpression};
-use crate::object::{Environment, Function, InternalError, Return, StringObj};
+use crate::object::{
+    Builtin, BuiltinFunc, Environment, Function, InternalError, Return, StringObj,
+};
 use crate::{
     ast::{Expression, Program, Statement},
     object::{Boolean, Integer, Null, Object},
 };
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::mem::discriminant;
 use std::rc::Rc;
 
@@ -320,6 +323,10 @@ impl Evaluator {
             return ident_val.clone();
         }
 
+        if let Some(builtin_func) = Builtin::get_by_identifier(&ident.value) {
+            return builtin_func;
+        }
+
         return Object::InternalError(Box::new(InternalError {
             message: format!("identifier not found: {}", ident.value),
         }));
@@ -342,23 +349,27 @@ impl Evaluator {
     }
 
     fn apply_function(&self, func: Object, args: Vec<Object>) -> Object {
-        let Object::Function(func_obj) = &func else {
-            return Object::InternalError(Box::new(InternalError {
-                message: format!("not a function: {}", func),
-            }));
-        };
+        match func {
+            Object::Function(func_obj) => {
+                let mut extended_env = self.extend_function_env(&func_obj, args);
+                let evaluated = self.eval_statement(
+                    &Statement::BlockStatement(Box::new(func_obj.body.clone())),
+                    &mut extended_env,
+                );
 
-        let mut extended_env = self.extend_function_env(func_obj, args);
-        let evaluated = self.eval_statement(
-            &Statement::BlockStatement(Box::new(func_obj.body.clone())),
-            &mut extended_env,
-        );
+                if let Object::Return(return_val) = evaluated {
+                    return return_val.value;
+                }
 
-        if let Object::Return(return_val) = evaluated {
-            return return_val.value;
+                evaluated
+            }
+            Object::Builtin(builtin) => return (builtin.func)(&args),
+            _ => {
+                return Object::InternalError(Box::new(InternalError {
+                    message: format!("not a function: {}", func),
+                }));
+            }
         }
-
-        evaluated
     }
 
     fn extend_function_env(&self, func_obj: &Box<Function>, args: Vec<Object>) -> Environment {
@@ -817,6 +828,36 @@ mod tests {
         let evaluated = test_eval(input);
 
         test_string_object(evaluated, "helloworld");
+    }
+
+    #[test]
+    fn test_builtin_functions() {
+        let tests = vec![
+            TestCase {
+                input: "len(\"\")".to_string(),
+                expected: Some(0),
+            },
+            TestCase {
+                input: "len(\"world\")".to_string(),
+                expected: Some(5),
+            },
+            TestCase {
+                input: "len(1)".to_string(),
+                expected: None,
+            },
+            TestCase {
+                input: "len(\"one\", \"two\")".to_string(),
+                expected: None,
+            },
+        ];
+
+        for test in tests {
+            let evaluated = test_eval(test.input);
+
+            if test.expected.is_some() {
+                test_integer_object(evaluated, test.expected.unwrap());
+            }
+        }
     }
 
     fn test_eval(input: String) -> Object {
