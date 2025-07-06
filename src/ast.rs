@@ -144,6 +144,9 @@ impl Stringer for ExpressionStatement {
                 Expression::CallExpression(call_expression) => {
                     sb.push_str(&call_expression.to_string())
                 }
+                Expression::StringLiteral(string_literal) => {
+                    sb.push_str(&string_literal.to_string())
+                }
             }
         }
 
@@ -162,6 +165,7 @@ pub enum Expression {
     IfExpression(Box<IfExpression>),
     FunctionLiteral(Box<FunctionLiteral>),
     CallExpression(Box<CallExpression>),
+    StringLiteral(Box<StringLiteral>),
 }
 
 impl Expression {
@@ -177,6 +181,7 @@ impl Expression {
             Expression::IfExpression(if_expression) => if_expression.token.literal.clone(),
             Expression::FunctionLiteral(function_literal) => function_literal.token.literal.clone(),
             Expression::CallExpression(call_expression) => call_expression.token.literal.clone(),
+            Expression::StringLiteral(string_literal) => string_literal.to_string(),
         }
     }
 }
@@ -192,6 +197,7 @@ impl Stringer for Expression {
             Expression::IfExpression(if_expression) => if_expression.to_string(),
             Expression::FunctionLiteral(function_literal) => function_literal.to_string(),
             Expression::CallExpression(call_expression) => call_expression.to_string(),
+            Expression::StringLiteral(string_literal) => string_literal.to_string(),
         }
     }
 }
@@ -344,6 +350,18 @@ impl Stringer for CallExpression {
             .join(", ");
 
         format!("{}({})", self.function.to_string(), args)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct StringLiteral {
+    pub token: Token,
+    pub value: String,
+}
+
+impl Stringer for StringLiteral {
+    fn to_string(&self) -> String {
+        self.token.literal.clone()
     }
 }
 

@@ -2,7 +2,7 @@ use crate::{
     ast::{
         self, BlockStatement, Boolean, CallExpression, Expression, ExpressionStatement,
         FunctionLiteral, Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement,
-        PrefixExpression, ReturnStatement, Statement,
+        PrefixExpression, ReturnStatement, Statement, StringLiteral,
     },
     lexer::Lexer,
     token::{Token, TokenType},
@@ -213,6 +213,7 @@ impl Parser {
             TokenType::Lparen => self.parse_grouped_expression(),
             TokenType::If => self.parse_if_expression(),
             TokenType::Function => self.parse_function_literal(),
+            TokenType::String => self.parse_string_literal(),
             _ => None,
         }
     }
@@ -439,6 +440,34 @@ impl Parser {
         args
     }
 
+    fn parse_block_statement(&mut self) -> BlockStatement {
+        let mut block_statement = BlockStatement {
+            token: self.curr_token.clone(),
+            statements: vec![],
+        };
+
+        self.next_token();
+
+        while !self.is_curr_token(TokenType::Rbrace) && !self.is_curr_token(TokenType::Eof) {
+            let statement = self.parse_statement();
+
+            if let Some(stmt) = statement {
+                block_statement.statements.push(stmt);
+            }
+
+            self.next_token();
+        }
+
+        block_statement
+    }
+
+    fn parse_string_literal(&self) -> Option<Expression> {
+        Some(Expression::StringLiteral(Box::new(StringLiteral {
+            token: self.curr_token.clone(),
+            value: self.curr_token.literal.clone(),
+        })))
+    }
+
     fn expect_peek(&mut self, expected: TokenType) -> bool {
         if self.is_peek_token(&expected) {
             self.next_token();
@@ -489,27 +518,6 @@ impl Parser {
             "no prefix parse function found for: {:?}",
             token_type
         ));
-    }
-
-    fn parse_block_statement(&mut self) -> BlockStatement {
-        let mut block_statement = BlockStatement {
-            token: self.curr_token.clone(),
-            statements: vec![],
-        };
-
-        self.next_token();
-
-        while !self.is_curr_token(TokenType::Rbrace) && !self.is_curr_token(TokenType::Eof) {
-            let statement = self.parse_statement();
-
-            if let Some(stmt) = statement {
-                block_statement.statements.push(stmt);
-            }
-
-            self.next_token();
-        }
-
-        block_statement
     }
 }
 
@@ -1397,6 +1405,40 @@ mod tests {
             other => panic!("expression is not IntegerLiteral. got: {:?}", other),
         };
         assert_eq!(third_right.value, 5);
+    }
+
+    #[test]
+    fn test_string_literal_expression() {
+        let input = "\"hello world\"".to_string();
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(
+            parser.errors.len(),
+            0,
+            "found errors while parsing: {:#?}",
+            parser.errors
+        );
+
+        assert_eq!(program.body.len(), 1, "not enough statements in program");
+
+        let stmt = program.body.first().unwrap();
+
+        let Statement::ExpressionStatement(expr_stmt) = stmt else {
+            panic!("statement is not ExpressionStatement, got: {:?}", stmt);
+        };
+
+        let Expression::StringLiteral(str_literal) = expr_stmt
+            .expression
+            .as_ref()
+            .expect("ExpressionStatement expression is empty")
+        else {
+            panic!("expression is not StringLiteral, got: {:?}", stmt);
+        };
+
+        assert_eq!(str_literal.value, "hello world");
     }
 
     fn test_let_statement(stmt: &Statement, expected: &str) {

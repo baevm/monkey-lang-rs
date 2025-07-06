@@ -16,6 +16,7 @@ pub enum Object {
     Return(Box<Return>),
     InternalError(Box<InternalError>),
     Function(Box<Function>),
+    String(Box<StringObj>),
 }
 
 impl ObjectTrait for Object {
@@ -27,6 +28,7 @@ impl ObjectTrait for Object {
             Object::Return(return_obj) => return_obj.inspect(),
             Object::InternalError(internal_err) => internal_err.inspect(),
             Object::Function(function) => function.inspect(),
+            Object::String(string_obj) => string_obj.inspect(),
         }
     }
 }
@@ -147,6 +149,17 @@ impl ObjectTrait for Function {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct StringObj {
+    pub value: String,
+}
+
+impl ObjectTrait for StringObj {
+    fn inspect(&self) -> String {
+        self.value.clone()
+    }
+}
+
 macro_rules! impl_display_name {
     ($($type:ty => $name:expr),* $(,)?) => {
         $(
@@ -166,4 +179,5 @@ impl_display_name! {
     Return => "Return",
     InternalError => "InternalError",
     Function => "Function",
+    StringObj => "String"
 }

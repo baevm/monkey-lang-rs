@@ -1,5 +1,5 @@
 use crate::ast::{Identifier, IfExpression};
-use crate::object::{Environment, Function, InternalError, Return};
+use crate::object::{Environment, Function, InternalError, Return, StringObj};
 use crate::{
     ast::{Expression, Program, Statement},
     object::{Boolean, Integer, Null, Object},
@@ -95,6 +95,9 @@ impl Evaluator {
         match expr {
             Expression::IntegerLiteral(integer_literal) => Object::Integer(Box::new(Integer {
                 value: integer_literal.value,
+            })),
+            Expression::StringLiteral(str_literal) => Object::String(Box::new(StringObj {
+                value: str_literal.value.clone(),
             })),
             Expression::Boolean(boolean_literal) => Object::Boolean(Box::new(Boolean {
                 value: boolean_literal.value,
@@ -219,6 +222,9 @@ impl Evaluator {
             }
             (Object::Boolean(left_expr), Object::Boolean(right_expr)) => {
                 return self.eval_boolean_infix_expression(&operator, left_expr, right_expr);
+            }
+            (Object::String(left_expr), Object::String(right_expr)) => {
+                return self.eval_string_concatenation(&operator, left_expr, right_expr);
             }
             (left_expr, right_expr) => Object::InternalError(Box::new(InternalError {
                 message: format!(
@@ -363,6 +369,22 @@ impl Evaluator {
         }
 
         new_env
+    }
+
+    fn eval_string_concatenation(
+        &self,
+        operator: &str,
+        left: Box<StringObj>,
+        right: Box<StringObj>,
+    ) -> Object {
+        match operator {
+            "+" => Object::String(Box::new(StringObj {
+                value: format!("{}{}", left.value, right.value),
+            })),
+            _ => Object::InternalError(Box::new(InternalError {
+                message: format!("unknown operator: {} {} {}", left, operator, right),
+            })),
+        }
     }
 }
 
@@ -656,6 +678,10 @@ mod tests {
                 input: "randomVariable".to_string(),
                 expected: "identifier not found: randomVariable",
             },
+            TestCase {
+                input: "\"Hi\" - \"Batman\"".to_string(),
+                expected: "unknown operator: String - String",
+            },
         ];
 
         for test in tests {
@@ -775,6 +801,24 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_string_literal() {
+        let input = "\"hello world\"".to_string();
+
+        let evaluated = test_eval(input);
+
+        test_string_object(evaluated, "hello world");
+    }
+
+    #[test]
+    fn test_string_concatenation() {
+        let input = "\"hello\" + \"world\"".to_string();
+
+        let evaluated = test_eval(input);
+
+        test_string_object(evaluated, "helloworld");
+    }
+
     fn test_eval(input: String) -> Object {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
@@ -795,6 +839,18 @@ mod tests {
             int_obj.value, expected,
             "Integer Object has wrong value. got:{}, want: {}",
             int_obj.value, expected
+        );
+    }
+
+    fn test_string_object(obj: Object, expected: &str) {
+        let Object::String(str_obj) = obj else {
+            panic!("object is not String. got: {:?}", obj)
+        };
+
+        assert_eq!(
+            str_obj.value, expected,
+            "String Object has wrong value. got:{}, want: {}",
+            str_obj.value, expected
         );
     }
 

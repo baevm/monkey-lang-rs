@@ -136,6 +136,12 @@ impl Lexer {
                     }
                 }
             }
+            '"' => {
+                token = Token {
+                    literal: self.read_string(),
+                    token_type: TokenType::String,
+                };
+            }
             Self::ASCII_NUL => {
                 token = Token {
                     literal: "".to_string(),
@@ -227,6 +233,20 @@ impl Lexer {
             self.input.chars().nth(self.read_position as usize).unwrap()
         }
     }
+
+    fn read_string(&mut self) -> String {
+        let position = self.position + 1; // skip " quote
+
+        loop {
+            self.read_char();
+
+            if self.ch == '"' || self.ch == Self::ASCII_NUL {
+                break;
+            }
+        }
+
+        return self.input[position as usize..self.position as usize].to_string();
+    }
 }
 
 #[cfg(test)]
@@ -237,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_next_token() {
-        let input = r"
+        let input = "
             let five = 5;
             let ten = 10;
 
@@ -258,6 +278,8 @@ mod tests {
 
             10 == 10;
             10 != 9;
+
+            \"randomString\";
         "
         .to_string();
 
@@ -334,6 +356,8 @@ mod tests {
             (TokenType::Int, "10"),
             (TokenType::NotEq, "!="),
             (TokenType::Int, "9"),
+            (TokenType::Semicolon, ";"),
+            (TokenType::String, "randomString"),
             (TokenType::Semicolon, ";"),
             (TokenType::Eof, ""),
         ];
