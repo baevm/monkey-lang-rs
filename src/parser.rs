@@ -1,8 +1,9 @@
 use crate::{
     ast::{
-        self, BlockStatement, Boolean, CallExpression, Expression, ExpressionStatement,
-        FunctionLiteral, Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement,
-        PrefixExpression, ReturnStatement, Statement, StringLiteral,
+        self, ArrayLiteral, BlockStatement, Boolean, CallExpression, Expression,
+        ExpressionStatement, FunctionLiteral, Identifier, IfExpression, IndexExpression,
+        InfixExpression, IntegerLiteral, LetStatement, PrefixExpression, ReturnStatement,
+        Statement, StringLiteral,
     },
     lexer::Lexer,
     token::{Token, TokenType},
@@ -17,6 +18,7 @@ enum Precedence {
     Product,     // *
     Prefix,      // --variable
     Call,        // function()
+    Index,
 }
 
 impl Precedence {
@@ -31,6 +33,7 @@ impl Precedence {
             TokenType::Slash => Some(Precedence::Product),
             TokenType::Asterisk => Some(Precedence::Product),
             TokenType::Lparen => Some(Precedence::Call),
+            TokenType::Lbracket => Some(Precedence::Index),
             _ => None,
         }
     }
@@ -214,6 +217,7 @@ impl Parser {
             TokenType::If => self.parse_if_expression(),
             TokenType::Function => self.parse_function_literal(),
             TokenType::String => self.parse_string_literal(),
+            TokenType::Lbracket => self.parse_array_literal(),
             _ => None,
         }
     }
@@ -229,6 +233,7 @@ impl Parser {
             | TokenType::Lt
             | TokenType::Gt => self.parse_infix_expression(left.clone()),
             TokenType::Lparen => self.parse_call_expression(left.clone()),
+            TokenType::Lbracket => self.parse_index_expression(left.clone()),
             _ => None,
         }
     }
@@ -394,7 +399,7 @@ impl Parser {
 
     fn parse_call_expression(&mut self, function: Expression) -> Option<Expression> {
         let token = self.curr_token.clone();
-        let arguments = self.parse_call_arguments();
+        let arguments = self.parse_expression_list(TokenType::Rparen);
 
         let call_expr = Expression::CallExpression(Box::new(CallExpression {
             token,
@@ -403,41 +408,6 @@ impl Parser {
         }));
 
         Some(call_expr)
-    }
-
-    fn parse_call_arguments(&mut self) -> Vec<Expression> {
-        let mut args: Vec<Expression> = vec![];
-
-        // empty args
-        if self.is_peek_token(&TokenType::Rparen) {
-            self.next_token();
-            return args;
-        }
-
-        self.next_token();
-
-        let first_arg = self.parse_expression(Precedence::Lowest);
-
-        if let Some(arg_val) = first_arg {
-            args.push(arg_val);
-        }
-
-        while self.is_peek_token(&TokenType::Comma) {
-            self.next_token();
-            self.next_token();
-
-            let arg = self.parse_expression(Precedence::Lowest);
-
-            if let Some(arg_val) = arg {
-                args.push(arg_val);
-            }
-        }
-
-        if !self.expect_peek(TokenType::Rparen) {
-            return vec![];
-        }
-
-        args
     }
 
     fn parse_block_statement(&mut self) -> BlockStatement {
@@ -466,6 +436,65 @@ impl Parser {
             token: self.curr_token.clone(),
             value: self.curr_token.literal.clone(),
         })))
+    }
+
+    fn parse_array_literal(&mut self) -> Option<Expression> {
+        let array_literal = Expression::ArrayLiteral(
+            (Box::new(ArrayLiteral {
+                token: self.curr_token.clone(),
+                elements: self.parse_expression_list(TokenType::Rbracket),
+            })),
+        );
+
+        Some(array_literal)
+    }
+
+    fn parse_expression_list(&mut self, end: TokenType) -> Vec<Expression> {
+        let mut list: Vec<Expression> = vec![];
+
+        if self.is_peek_token(&end) {
+            self.next_token();
+            return list;
+        }
+
+        self.next_token();
+
+        if let Some(new_expr) = self.parse_expression(Precedence::Lowest) {
+            list.push(new_expr);
+        }
+
+        while self.is_peek_token(&TokenType::Comma) {
+            self.next_token();
+            self.next_token();
+
+            if let Some(new_expr) = self.parse_expression(Precedence::Lowest) {
+                list.push(new_expr);
+            }
+        }
+
+        if !self.expect_peek(end) {
+            return vec![];
+        }
+
+        list
+    }
+
+    fn parse_index_expression(&mut self, left: Expression) -> Option<Expression> {
+        let token = self.curr_token.clone();
+
+        self.next_token();
+
+        let index_expr = Expression::IndexExpression(Box::new(IndexExpression {
+            token,
+            left,
+            index: self.parse_expression(Precedence::Lowest)?,
+        }));
+
+        if !self.expect_peek(TokenType::Rbracket) {
+            return None;
+        }
+
+        Some(index_expr)
     }
 
     fn expect_peek(&mut self, expected: TokenType) -> bool {
@@ -916,43 +945,11 @@ mod tests {
                 other => panic!("statement is not ExpressionStatement. got: {:?}", other),
             };
 
-            let infix_expr = match &expr_stmt.expression {
-                Some(Expression::InfixExpression(infix_expr)) => infix_expr,
-                other => panic!("expression is not InfixExpression. got: {:?}", other),
-            };
-
-            assert_eq!(
-                infix_expr.operator, test.operator,
-                "Expected InfixExpression operator: {}. Got: {}",
-                test.operator, infix_expr.operator
-            );
-
-            let left_literal = match &infix_expr.left {
-                Expression::IntegerLiteral(int_literal) => int_literal,
-                other => panic!(
-                    "infix expression left is not IntegerLiteral. got: {:?}",
-                    other
-                ),
-            };
-
-            assert_eq!(
-                left_literal.value, test.left_val,
-                "Expected InfixExpression left value: {}. Got: {}",
-                test.left_val, left_literal.value
-            );
-
-            let right_literal = match &infix_expr.right {
-                Expression::IntegerLiteral(int_literal) => int_literal,
-                other => panic!(
-                    "infix expression right is not IntegerLiteral. got: {:?}",
-                    other
-                ),
-            };
-
-            assert_eq!(
-                right_literal.value, test.right_val,
-                "Expected InfixExpression right value: {}. Got: {}",
-                test.right_val, right_literal.value
+            test_infix_expression(
+                &expr_stmt.expression.as_ref().expect("Expression is None"),
+                test.left_val,
+                &test.operator,
+                test.right_val,
             );
         }
     }
@@ -990,6 +987,14 @@ mod tests {
             (
                 "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
                 "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
+            ),
+            (
+                "a * [1, 2, 3, 4][b * c] * d",
+                "((a * ([1, 2, 3, 4][(b * c)])) * d)",
+            ),
+            (
+                "add(a * b[2], b[1], 2 * [1, 2][1])",
+                "add((a * (b[2])), (b[1]), (2 * ([1, 2][1])))",
             ),
         ];
 
@@ -1439,6 +1444,126 @@ mod tests {
         };
 
         assert_eq!(str_literal.value, "hello world");
+    }
+
+    #[test]
+    fn test_parsing_array_literal() {
+        let input = "[1, 2 * 2, 3 + 3]".to_string();
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(
+            parser.errors.len(),
+            0,
+            "found errors while parsing: {:#?}",
+            parser.errors
+        );
+
+        assert_eq!(program.body.len(), 1, "not enough statements in program");
+
+        let stmt = program.body.first().unwrap();
+
+        let Statement::ExpressionStatement(expr_stmt) = stmt else {
+            panic!("statement is not ExpressionStatement, got: {:?}", stmt);
+        };
+
+        let Some(Expression::ArrayLiteral(array_literal)) = &expr_stmt.expression else {
+            panic!(
+                "ExpressionStatement is not ArrayLiteral, got: {:?}",
+                expr_stmt.expression
+            );
+        };
+        assert_eq!(
+            array_literal.elements.len(),
+            3,
+            "not enough elements in array, got: {}",
+            array_literal.elements.len()
+        );
+
+        if let Expression::IntegerLiteral(int_literal) = &array_literal.elements[0] {
+            assert_eq!(int_literal.value, 1);
+            assert_eq!(int_literal.token.literal, "1");
+        } else {
+            panic!("array_literal.elements[0] is not IntegerLiteral");
+        }
+
+        test_infix_expression(&array_literal.elements[1], 2, "*", 2);
+        test_infix_expression(&array_literal.elements[2], 3, "+", 3);
+    }
+
+    #[test]
+    fn test_parsing_index_expression() {
+        let input = "arr[1 + 1]".to_string();
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(
+            parser.errors.len(),
+            0,
+            "found errors while parsing: {:#?}",
+            parser.errors
+        );
+
+        assert_eq!(program.body.len(), 1, "not enough statements in program");
+
+        let stmt = program.body.first().unwrap();
+
+        let Statement::ExpressionStatement(expr_stmt) = stmt else {
+            panic!("statement is not ExpressionStatement, got: {:?}", stmt);
+        };
+
+        let Some(Expression::IndexExpression(index_expr)) = &expr_stmt.expression else {
+            panic!("statement is not ExpressionStatement, got: {:?}", stmt);
+        };
+
+        test_identifier(index_expr.left.clone(), "arr");
+
+        test_infix_expression(&index_expr.index, 1, "+", 1);
+    }
+
+    fn test_infix_expression(expr: &Expression, left: i64, operator: &str, right: i64) {
+        let infix_expr = match expr {
+            Expression::InfixExpression(infix_expr) => infix_expr,
+            other => panic!("expression is not InfixExpression. got: {:?}", other),
+        };
+
+        assert_eq!(
+            infix_expr.operator, operator,
+            "Expected InfixExpression operator: {}. Got: {}",
+            operator, infix_expr.operator
+        );
+
+        let left_literal = match &infix_expr.left {
+            Expression::IntegerLiteral(int_literal) => int_literal,
+            other => panic!(
+                "infix expression left is not IntegerLiteral. got: {:?}",
+                other
+            ),
+        };
+
+        assert_eq!(
+            left_literal.value, left,
+            "Expected InfixExpression left value: {}. Got: {}",
+            left, left_literal.value
+        );
+
+        let right_literal = match &infix_expr.right {
+            Expression::IntegerLiteral(int_literal) => int_literal,
+            other => panic!(
+                "infix expression right is not IntegerLiteral. got: {:?}",
+                other
+            ),
+        };
+
+        assert_eq!(
+            right_literal.value, right,
+            "Expected InfixExpression right value: {}. Got: {}",
+            right, right_literal.value
+        );
     }
 
     fn test_let_statement(stmt: &Statement, expected: &str) {

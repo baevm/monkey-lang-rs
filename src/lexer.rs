@@ -142,6 +142,18 @@ impl Lexer {
                     token_type: TokenType::String,
                 };
             }
+            '[' => {
+                token = Token {
+                    literal: self.ch.to_string(),
+                    token_type: TokenType::Lbracket,
+                };
+            }
+            ']' => {
+                token = Token {
+                    literal: self.ch.to_string(),
+                    token_type: TokenType::Rbracket,
+                };
+            }
             Self::ASCII_NUL => {
                 token = Token {
                     literal: "".to_string(),
@@ -280,6 +292,7 @@ mod tests {
             10 != 9;
 
             \"randomString\";
+            [1, 2];
         "
         .to_string();
 
@@ -358,6 +371,12 @@ mod tests {
             (TokenType::Int, "9"),
             (TokenType::Semicolon, ";"),
             (TokenType::String, "randomString"),
+            (TokenType::Semicolon, ";"),
+            (TokenType::Lbracket, "["),
+            (TokenType::Int, "1"),
+            (TokenType::Comma, ","),
+            (TokenType::Int, "2"),
+            (TokenType::Rbracket, "]"),
             (TokenType::Semicolon, ";"),
             (TokenType::Eof, ""),
         ];

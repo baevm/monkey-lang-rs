@@ -147,6 +147,8 @@ impl Stringer for ExpressionStatement {
                 Expression::StringLiteral(string_literal) => {
                     sb.push_str(&string_literal.to_string())
                 }
+                Expression::ArrayLiteral(array_literal) => sb.push_str(&array_literal.to_string()),
+                Expression::IndexExpression(index_expr) => sb.push_str(&index_expr.to_string()),
             }
         }
 
@@ -166,6 +168,8 @@ pub enum Expression {
     FunctionLiteral(Box<FunctionLiteral>),
     CallExpression(Box<CallExpression>),
     StringLiteral(Box<StringLiteral>),
+    ArrayLiteral(Box<ArrayLiteral>),
+    IndexExpression(Box<IndexExpression>),
 }
 
 impl Expression {
@@ -182,6 +186,8 @@ impl Expression {
             Expression::FunctionLiteral(function_literal) => function_literal.token.literal.clone(),
             Expression::CallExpression(call_expression) => call_expression.token.literal.clone(),
             Expression::StringLiteral(string_literal) => string_literal.to_string(),
+            Expression::ArrayLiteral(array_literal) => array_literal.to_string(),
+            Expression::IndexExpression(index_expr) => index_expr.to_string(),
         }
     }
 }
@@ -198,6 +204,8 @@ impl Stringer for Expression {
             Expression::FunctionLiteral(function_literal) => function_literal.to_string(),
             Expression::CallExpression(call_expression) => call_expression.to_string(),
             Expression::StringLiteral(string_literal) => string_literal.to_string(),
+            Expression::ArrayLiteral(array_literal) => array_literal.to_string(),
+            Expression::IndexExpression(index_expression) => index_expression.to_string(),
         }
     }
 }
@@ -362,6 +370,33 @@ pub struct StringLiteral {
 impl Stringer for StringLiteral {
     fn to_string(&self) -> String {
         self.token.literal.clone()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ArrayLiteral {
+    pub token: Token,
+    pub elements: Vec<Expression>,
+}
+
+impl Stringer for ArrayLiteral {
+    fn to_string(&self) -> String {
+        let elements: Vec<String> = self.elements.iter().map(|e| e.to_string()).collect();
+
+        format!("[{}]", elements.join(", "))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct IndexExpression {
+    pub token: Token,
+    pub left: Expression,
+    pub index: Expression,
+}
+
+impl Stringer for IndexExpression {
+    fn to_string(&self) -> String {
+        format!("({}[{}])", self.left.to_string(), self.index.to_string())
     }
 }
 
