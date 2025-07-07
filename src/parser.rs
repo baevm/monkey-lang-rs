@@ -98,14 +98,11 @@ impl Parser {
     }
 
     fn parse_let_statement(&mut self) -> Option<Statement> {
-        let let_token = self.curr_token.clone();
-
         if !self.expect_peek(TokenType::Ident) {
             return None;
         }
 
         let name = Identifier {
-            token: self.curr_token.clone(),
             value: self.curr_token.literal.clone(),
         };
 
@@ -117,11 +114,7 @@ impl Parser {
 
         let value = self.parse_expression(Precedence::Lowest);
 
-        let let_stmt = Statement::LetStatement(Box::new(LetStatement {
-            token: let_token,
-            name,
-            value,
-        }));
+        let let_stmt = Statement::LetStatement(Box::new(LetStatement { name, value }));
 
         if self.is_peek_token(&TokenType::Semicolon) {
             self.next_token();
@@ -131,15 +124,11 @@ impl Parser {
     }
 
     fn parse_return_statement(&mut self) -> Option<Statement> {
-        let token = self.curr_token.clone();
         self.next_token();
 
         let return_value = self.parse_expression(Precedence::Lowest);
 
-        let return_stmt = Statement::ReturnStatement(Box::new(ReturnStatement {
-            token,
-            return_value,
-        }));
+        let return_stmt = Statement::ReturnStatement(Box::new(ReturnStatement { return_value }));
 
         if self.is_peek_token(&TokenType::Semicolon) {
             self.next_token();
@@ -150,7 +139,6 @@ impl Parser {
 
     fn parse_expression_statement(&mut self) -> Option<Statement> {
         let expr_stmt = Statement::ExpressionStatement(Box::new(ExpressionStatement {
-            token: self.curr_token.clone(),
             expression: self.parse_expression(Precedence::Lowest),
         }));
 
@@ -198,7 +186,6 @@ impl Parser {
         }
 
         let int_literal = Expression::IntegerLiteral(Box::new(IntegerLiteral {
-            token: self.curr_token.clone(),
             value: value.unwrap(),
         }));
 
@@ -240,19 +227,16 @@ impl Parser {
 
     fn parse_identifier(&self) -> Option<Expression> {
         Some(Expression::Identifier(Box::new(Identifier {
-            token: self.curr_token.clone(),
             value: self.curr_token.literal.clone(),
         })))
     }
 
     fn parse_prefix_expression(&mut self) -> Option<Expression> {
-        let token = self.curr_token.clone();
         let operator = self.curr_token.literal.clone();
 
         self.next_token();
 
         let prefix_expr = Expression::PrefixExpression(Box::new(PrefixExpression {
-            token,
             operator,
             right: self.parse_expression(Precedence::Prefix)?,
         }));
@@ -261,14 +245,12 @@ impl Parser {
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
-        let token = self.curr_token.clone();
         let operator = self.curr_token.literal.clone();
         let precedence = self.curr_precedence();
 
         self.next_token();
 
         let infix_expr = Expression::InfixExpression(Box::new(InfixExpression {
-            token,
             left,
             operator,
             right: self.parse_expression(precedence)?,
@@ -279,7 +261,6 @@ impl Parser {
 
     fn parse_boolean(&self) -> Option<Expression> {
         Some(Expression::Boolean(Box::new(Boolean {
-            token: self.curr_token.clone(),
             value: self.is_curr_token(TokenType::True),
         })))
     }
@@ -297,8 +278,6 @@ impl Parser {
     }
 
     fn parse_if_expression(&mut self) -> Option<Expression> {
-        let token = self.curr_token.clone();
-
         if !self.expect_peek(TokenType::Lparen) {
             return None;
         }
@@ -331,7 +310,6 @@ impl Parser {
         };
 
         let if_expr = Expression::IfExpression(Box::new(IfExpression {
-            token,
             condition,
             consequence,
             alternative,
@@ -341,8 +319,6 @@ impl Parser {
     }
 
     fn parse_function_literal(&mut self) -> Option<Expression> {
-        let token = self.curr_token.clone();
-
         if !self.expect_peek(TokenType::Lparen) {
             return None;
         }
@@ -355,11 +331,8 @@ impl Parser {
 
         let body = self.parse_block_statement();
 
-        let func_literal = Expression::FunctionLiteral(Box::new(FunctionLiteral {
-            token,
-            parameters,
-            body,
-        }));
+        let func_literal =
+            Expression::FunctionLiteral(Box::new(FunctionLiteral { parameters, body }));
 
         Some(func_literal)
     }
@@ -375,7 +348,6 @@ impl Parser {
         self.next_token();
 
         let ident = Identifier {
-            token: self.curr_token.clone(),
             value: self.curr_token.literal.clone(),
         };
         identifiers.push(ident);
@@ -385,7 +357,6 @@ impl Parser {
             self.next_token();
 
             let ident = Identifier {
-                token: self.curr_token.clone(),
                 value: self.curr_token.literal.clone(),
             };
 
@@ -398,11 +369,9 @@ impl Parser {
     }
 
     fn parse_call_expression(&mut self, function: Expression) -> Option<Expression> {
-        let token = self.curr_token.clone();
         let arguments = self.parse_expression_list(TokenType::Rparen);
 
         let call_expr = Expression::CallExpression(Box::new(CallExpression {
-            token,
             function,
             arguments,
         }));
@@ -411,10 +380,7 @@ impl Parser {
     }
 
     fn parse_block_statement(&mut self) -> BlockStatement {
-        let mut block_statement = BlockStatement {
-            token: self.curr_token.clone(),
-            statements: vec![],
-        };
+        let mut block_statement = BlockStatement { statements: vec![] };
 
         self.next_token();
 
@@ -433,7 +399,6 @@ impl Parser {
 
     fn parse_string_literal(&self) -> Option<Expression> {
         Some(Expression::StringLiteral(Box::new(StringLiteral {
-            token: self.curr_token.clone(),
             value: self.curr_token.literal.clone(),
         })))
     }
@@ -441,7 +406,6 @@ impl Parser {
     fn parse_array_literal(&mut self) -> Option<Expression> {
         let array_literal = Expression::ArrayLiteral(
             (Box::new(ArrayLiteral {
-                token: self.curr_token.clone(),
                 elements: self.parse_expression_list(TokenType::Rbracket),
             })),
         );
@@ -480,12 +444,9 @@ impl Parser {
     }
 
     fn parse_index_expression(&mut self, left: Expression) -> Option<Expression> {
-        let token = self.curr_token.clone();
-
         self.next_token();
 
         let index_expr = Expression::IndexExpression(Box::new(IndexExpression {
-            token,
             left,
             index: self.parse_expression(Precedence::Lowest)?,
         }));
@@ -707,13 +668,6 @@ mod tests {
                 other => panic!("statement is not ReturnStatement. got: {:?}", other),
             };
 
-            assert_eq!(
-                statement.token_literal(),
-                "return",
-                "return statement token literal is not 'return'. Got: {}",
-                statement.token_literal()
-            );
-
             let value_expr = return_stmt
                 .return_value
                 .as_ref()
@@ -765,7 +719,6 @@ mod tests {
         if let Statement::ExpressionStatement(expr_stmt) = program.body.first().unwrap() {
             if let Expression::Identifier(identifier) = expr_stmt.expression.as_ref().unwrap() {
                 assert_eq!(identifier.value, "variableName");
-                assert_eq!(identifier.token.literal, "variableName");
             } else {
                 panic!("expression statement is not Identifier");
             }
@@ -796,7 +749,6 @@ mod tests {
             if let Expression::IntegerLiteral(int_literal) = expr_stmt.expression.as_ref().unwrap()
             {
                 assert_eq!(int_literal.value, 5);
-                assert_eq!(int_literal.token.literal, "5");
             } else {
                 panic!("expression statement is not IntegerLiteral");
             }
@@ -849,7 +801,6 @@ mod tests {
 
                     if let Expression::IntegerLiteral(int_literal) = &prefix_expr.right {
                         assert_eq!(int_literal.value, test.int_value);
-                        assert_eq!(int_literal.token.literal, test.int_value.to_string());
                     } else {
                         panic!("prefix expression right is not IntegerLiteral")
                     }
@@ -1484,7 +1435,6 @@ mod tests {
 
         if let Expression::IntegerLiteral(int_literal) = &array_literal.elements[0] {
             assert_eq!(int_literal.value, 1);
-            assert_eq!(int_literal.token.literal, "1");
         } else {
             panic!("array_literal.elements[0] is not IntegerLiteral");
         }
@@ -1567,11 +1517,8 @@ mod tests {
     }
 
     fn test_let_statement(stmt: &Statement, expected: &str) {
-        assert_eq!(stmt.token_literal(), "let");
-
         if let Statement::LetStatement(let_stmt) = stmt {
             assert_eq!(let_stmt.name.value, expected);
-            assert_eq!(let_stmt.name.token.literal, expected);
         } else {
             panic!("stmt is not LetStatement");
         };
@@ -1587,12 +1534,6 @@ mod tests {
             identifier.value, value,
             "identifier value is not {}. got: {}",
             value, identifier.value
-        );
-
-        assert_eq!(
-            identifier.token.literal, value,
-            "identifier token literal is not {}. got: {}",
-            value, identifier.token.literal
         );
     }
 }

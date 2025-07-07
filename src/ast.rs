@@ -1,5 +1,3 @@
-use crate::token::Token;
-
 pub trait Stringer {
     fn to_string(&self) -> String;
 }
@@ -17,19 +15,6 @@ pub enum Statement {
     BlockStatement(Box<BlockStatement>),
 }
 
-impl Statement {
-    pub fn token_literal(&self) -> String {
-        match self {
-            Statement::LetStatement(let_statement) => let_statement.token.literal.clone(),
-            Statement::ReturnStatement(return_statement) => return_statement.token.literal.clone(),
-            Statement::ExpressionStatement(expression_statement) => {
-                expression_statement.token.literal.clone()
-            }
-            Statement::BlockStatement(block_stmt) => block_stmt.token.literal.clone(),
-        }
-    }
-}
-
 impl Stringer for Statement {
     fn to_string(&self) -> String {
         match self {
@@ -44,14 +29,6 @@ impl Stringer for Statement {
 }
 
 impl Program {
-    fn token_literal(&self) -> String {
-        if self.body.len() > 0 {
-            self.body.first().unwrap().token_literal()
-        } else {
-            "".to_string()
-        }
-    }
-
     pub fn to_string(&self) -> String {
         let mut sb = String::new();
 
@@ -65,7 +42,6 @@ impl Program {
 
 #[derive(Debug, Clone)]
 pub struct LetStatement {
-    pub token: Token,
     pub name: Identifier,
     pub value: Option<Expression>,
 }
@@ -74,11 +50,7 @@ impl Stringer for LetStatement {
     fn to_string(&self) -> String {
         let mut sb = String::new();
 
-        sb.push_str(&format!(
-            "{} {} = ",
-            self.token.literal,
-            self.name.to_string(),
-        ));
+        sb.push_str(&format!("let {} = ", self.name.to_string(),));
 
         if let Some(val) = &self.value {
             sb.push_str(&val.to_string());
@@ -92,7 +64,6 @@ impl Stringer for LetStatement {
 
 #[derive(Debug, Clone)]
 pub struct ReturnStatement {
-    pub token: Token,
     pub return_value: Option<Expression>,
 }
 
@@ -100,7 +71,7 @@ impl Stringer for ReturnStatement {
     fn to_string(&self) -> String {
         let mut sb = String::new();
 
-        sb.push_str(&format!("{} ", self.token.literal));
+        sb.push_str("return");
 
         if let Some(return_val) = &self.return_value {
             sb.push_str(&return_val.to_string());
@@ -114,7 +85,6 @@ impl Stringer for ReturnStatement {
 
 #[derive(Debug, Clone)]
 pub struct ExpressionStatement {
-    pub token: Token,
     pub expression: Option<Expression>,
 }
 
@@ -172,26 +142,6 @@ pub enum Expression {
     IndexExpression(Box<IndexExpression>),
 }
 
-impl Expression {
-    pub fn token_literal(&self) -> String {
-        match self {
-            Expression::Identifier(identifier) => identifier.token.literal.clone(),
-            Expression::IntegerLiteral(int_litereal) => int_litereal.token.literal.clone(),
-            Expression::PrefixExpression(prefix_expression) => {
-                prefix_expression.token.literal.clone()
-            }
-            Expression::InfixExpression(infix_expression) => infix_expression.token.literal.clone(),
-            Expression::Boolean(boolean) => boolean.token.literal.clone(),
-            Expression::IfExpression(if_expression) => if_expression.token.literal.clone(),
-            Expression::FunctionLiteral(function_literal) => function_literal.token.literal.clone(),
-            Expression::CallExpression(call_expression) => call_expression.token.literal.clone(),
-            Expression::StringLiteral(string_literal) => string_literal.to_string(),
-            Expression::ArrayLiteral(array_literal) => array_literal.to_string(),
-            Expression::IndexExpression(index_expr) => index_expr.to_string(),
-        }
-    }
-}
-
 impl Stringer for Expression {
     fn to_string(&self) -> String {
         match self {
@@ -212,7 +162,6 @@ impl Stringer for Expression {
 
 #[derive(Debug, Clone)]
 pub struct Identifier {
-    pub token: Token,
     pub value: String,
 }
 
@@ -224,19 +173,17 @@ impl Stringer for Identifier {
 
 #[derive(Debug, Clone)]
 pub struct IntegerLiteral {
-    pub token: Token,
     pub value: i64,
 }
 
 impl Stringer for IntegerLiteral {
     fn to_string(&self) -> String {
-        self.token.literal.clone()
+        self.value.to_string()
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct PrefixExpression {
-    pub token: Token,
     pub operator: String,
     pub right: Expression,
 }
@@ -249,7 +196,6 @@ impl Stringer for PrefixExpression {
 
 #[derive(Debug, Clone)]
 pub struct InfixExpression {
-    pub token: Token,
     pub left: Expression,
     pub operator: String,
     pub right: Expression,
@@ -268,19 +214,17 @@ impl Stringer for InfixExpression {
 
 #[derive(Debug, Clone)]
 pub struct Boolean {
-    pub token: Token,
     pub value: bool,
 }
 
 impl Stringer for Boolean {
     fn to_string(&self) -> String {
-        self.token.literal.clone()
+        self.value.to_string()
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct IfExpression {
-    pub token: Token,
     pub condition: Expression,
     pub consequence: BlockStatement,         // if body
     pub alternative: Option<BlockStatement>, // optional else body
@@ -306,7 +250,6 @@ impl Stringer for IfExpression {
 
 #[derive(Debug, Clone)]
 pub struct BlockStatement {
-    pub token: Token,
     pub statements: Vec<Statement>,
 }
 
@@ -318,7 +261,6 @@ impl Stringer for BlockStatement {
 
 #[derive(Debug, Clone)]
 pub struct FunctionLiteral {
-    pub token: Token,
     pub parameters: Vec<Identifier>,
     pub body: BlockStatement,
 }
@@ -332,18 +274,12 @@ impl Stringer for FunctionLiteral {
             .collect::<Vec<String>>()
             .join(", ");
 
-        format!(
-            "{}({}){}",
-            self.token.literal,
-            params,
-            self.body.to_string()
-        )
+        format!("function({}){}", params, self.body.to_string())
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct CallExpression {
-    pub token: Token,
     pub function: Expression,
     pub arguments: Vec<Expression>,
 }
@@ -363,19 +299,17 @@ impl Stringer for CallExpression {
 
 #[derive(Debug, Clone)]
 pub struct StringLiteral {
-    pub token: Token,
     pub value: String,
 }
 
 impl Stringer for StringLiteral {
     fn to_string(&self) -> String {
-        self.token.literal.clone()
+        self.value.clone()
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct ArrayLiteral {
-    pub token: Token,
     pub elements: Vec<Expression>,
 }
 
@@ -389,7 +323,6 @@ impl Stringer for ArrayLiteral {
 
 #[derive(Debug, Clone)]
 pub struct IndexExpression {
-    pub token: Token,
     pub left: Expression,
     pub index: Expression,
 }
@@ -402,32 +335,17 @@ impl Stringer for IndexExpression {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::{Expression, Identifier, LetStatement, Program, Statement},
-        token::{Token, TokenType},
-    };
+    use crate::ast::{Expression, Identifier, LetStatement, Program, Statement};
 
     #[test]
     fn test_string_method() {
         // let myVar = anotherVar;
         let program = Program {
             body: vec![Statement::LetStatement(Box::new(LetStatement {
-                token: Token {
-                    token_type: TokenType::Let,
-                    literal: "let".to_string(),
-                },
                 name: Identifier {
-                    token: Token {
-                        token_type: TokenType::Ident,
-                        literal: "myVar".to_string(),
-                    },
                     value: "myVar".to_string(),
                 },
                 value: Some(Expression::Identifier(Box::new(Identifier {
-                    token: Token {
-                        token_type: TokenType::Ident,
-                        literal: "anotherVar".to_string(),
-                    },
                     value: "anotherVar".to_string(),
                 }))),
             }))],
