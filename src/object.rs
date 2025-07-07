@@ -18,6 +18,7 @@ pub enum Object {
     Function(Box<Function>),
     String(Box<StringObj>),
     Builtin(Box<Builtin>),
+    Array(Box<Array>),
 }
 
 impl ObjectTrait for Object {
@@ -31,6 +32,7 @@ impl ObjectTrait for Object {
             Object::Function(function) => function.inspect(),
             Object::String(string_obj) => string_obj.inspect(),
             Object::Builtin(builtin) => builtin.inspect(),
+            Object::Array(array) => array.inspect(),
         }
     }
 }
@@ -222,6 +224,18 @@ macro_rules! impl_display_name {
     };
 }
 
+#[derive(Debug, Clone)]
+pub struct Array {
+    pub elements: Vec<Object>,
+}
+
+impl ObjectTrait for Array {
+    fn inspect(&self) -> String {
+        let elements: Vec<String> = self.elements.iter().map(|el| el.inspect()).collect();
+        format!("[{}]", elements.join(", "))
+    }
+}
+
 impl_display_name! {
     Integer => "Integer",
     Boolean => "Boolean",
@@ -230,5 +244,6 @@ impl_display_name! {
     InternalError => "InternalError",
     Function => "Function",
     StringObj => "String",
-    Builtin => "Builtin Function"
+    Builtin => "Builtin Function",
+    Array => "Array"
 }

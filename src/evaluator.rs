@@ -1,13 +1,10 @@
 use crate::ast::{Identifier, IfExpression};
-use crate::object::{
-    Builtin, BuiltinFunc, Environment, Function, InternalError, Return, StringObj,
-};
+use crate::object::{Array, Builtin, Environment, Function, InternalError, Return, StringObj};
 use crate::{
     ast::{Expression, Program, Statement},
     object::{Boolean, Integer, Null, Object},
 };
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::mem::discriminant;
 use std::rc::Rc;
 
@@ -150,6 +147,26 @@ impl Evaluator {
                 }
 
                 self.apply_function(func, args)
+            }
+            Expression::ArrayLiteral(array_literal) => {
+                let elements = self.eval_expressions(&array_literal.elements, env);
+
+                if elements.len() == 1 && self.is_err_obj(&elements[0]) {
+                    return elements[0].clone();
+                }
+
+                Object::Array(Box::new(Array { elements }))
+            }
+            Expression::IndexExpression(index_expr) => {
+                let left = self.eval_expression(&index_expr.left, env);
+
+                if self.is_err_obj(&left) {
+                    return left;
+                }
+
+                let index = self.eval_expression(&index_expr.index, env);
+
+                self.eval_index_expression(left, index)
             }
 
             _ => Object::Null(Box::new(Null {})),
@@ -327,9 +344,9 @@ impl Evaluator {
             return builtin_func;
         }
 
-        return Object::InternalError(Box::new(InternalError {
+        Object::InternalError(Box::new(InternalError {
             message: format!("identifier not found: {}", ident.value),
-        }));
+        }))
     }
 
     fn is_truthy(&self, obj: &Object) -> bool {
@@ -397,6 +414,24 @@ impl Evaluator {
             })),
         }
     }
+
+    fn eval_index_expression(&self, left: Object, index: Object) -> Object {
+        if let Object::Array(arr) = &left
+            && let Object::Integer(arr_idx) = &index
+        {
+            let max = arr.elements.len() as i64 - 1;
+
+            if arr_idx.value < 0 || arr_idx.value > max {
+                return Object::Null(Box::new(Null {}));
+            }
+
+            return arr.elements[arr_idx.value as usize].clone();
+        }
+
+        Object::InternalError(Box::new(InternalError {
+            message: format!("index operator not supported: {}", left),
+        }))
+    }
 }
 
 #[cfg(test)]
@@ -407,7 +442,7 @@ mod tests {
         ast::Stringer,
         evaluator::Evaluator,
         lexer::Lexer,
-        object::{Environment, Object},
+        object::{Array, Environment, Object},
         parser::Parser,
     };
 
@@ -455,7 +490,7 @@ mod tests {
 
         for test in tests {
             let evaled = test_eval(test.input);
-            test_integer_object(evaled, test.expected);
+            test_integer_object(&evaled, test.expected);
         }
     }
 
@@ -595,12 +630,12 @@ mod tests {
 
             if test.expected.is_some() {
                 if let Object::Integer(int_obj) = &evaluated {
-                    test_integer_object(evaluated, test.expected.unwrap());
+                    test_integer_object(&evaluated, test.expected.unwrap());
                 } else {
                     panic!("got null: {:?} expected: {:?}", evaluated, test.expected);
                 }
             } else {
-                test_null_object(evaluated)
+                test_null_object(&evaluated)
             }
         }
     }
@@ -641,7 +676,7 @@ mod tests {
 
         for test in tests {
             let evaluated = test_eval(test.input);
-            test_integer_object(evaluated, test.expected);
+            test_integer_object(&evaluated, test.expected);
         }
     }
 
@@ -736,7 +771,7 @@ mod tests {
 
         for test in tests {
             let evaluated = test_eval(test.input);
-            test_integer_object(evaluated, test.expected);
+            test_integer_object(&evaluated, test.expected);
         }
     }
 
@@ -778,7 +813,7 @@ mod tests {
 
         let evaluated = test_eval(input);
 
-        test_integer_object(evaluated, 4);
+        test_integer_object(&evaluated, 4);
     }
 
     #[test]
@@ -808,7 +843,7 @@ mod tests {
 
         for test in tests {
             let evaluated = test_eval(test.input);
-            test_integer_object(evaluated, test.expected);
+            test_integer_object(&evaluated, test.expected);
         }
     }
 
@@ -855,7 +890,78 @@ mod tests {
             let evaluated = test_eval(test.input);
 
             if test.expected.is_some() {
-                test_integer_object(evaluated, test.expected.unwrap());
+                test_integer_object(&evaluated, test.expected.unwrap());
+            }
+        }
+    }
+
+    #[test]
+    fn test_array_literals() {
+        let input = "[1, 2 * 2, 3 + 3]".to_string();
+        let evaluated = test_eval(input);
+
+        let Object::Array(arr) = evaluated else {
+            panic!("Object is not Array, got: {}", evaluated);
+        };
+
+        assert_eq!(arr.elements.len(), 3);
+        test_integer_object(&arr.elements[0], 1);
+        test_integer_object(&arr.elements[1], 4);
+        test_integer_object(&arr.elements[2], 6);
+    }
+
+    #[test]
+    fn test_array_index_expressions() {
+        let tests = vec![
+            TestCase {
+                input: "[1, 2, 3][0]".to_string(),
+                expected: Some(1),
+            },
+            TestCase {
+                input: "[1, 2, 3][1]".to_string(),
+                expected: Some(2),
+            },
+            TestCase {
+                input: "[1, 2, 3][2]".to_string(),
+                expected: Some(3),
+            },
+            TestCase {
+                input: "let i = 0; [1][i];".to_string(),
+                expected: Some(1),
+            },
+            TestCase {
+                input: "[1, 2, 3][1 + 1];".to_string(),
+                expected: Some(3),
+            },
+            TestCase {
+                input: "let myArray = [1, 2, 3]; myArray[2];".to_string(),
+                expected: Some(3),
+            },
+            TestCase {
+                input: "let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2];".to_string(),
+                expected: Some(6),
+            },
+            TestCase {
+                input: "let myArray = [1, 2, 3]; let i = myArray[0]; myArray[i]".to_string(),
+                expected: Some(2),
+            },
+            TestCase {
+                input: "[1, 2, 3][3]".to_string(),
+                expected: None,
+            },
+            TestCase {
+                input: "[1, 2, 3][-1]".to_string(),
+                expected: None,
+            },
+        ];
+
+        for test in tests {
+            let evaluated = test_eval(test.input);
+
+            if test.expected.is_some() {
+                test_integer_object(&evaluated, test.expected.unwrap());
+            } else {
+                test_null_object(&evaluated);
             }
         }
     }
@@ -871,7 +977,7 @@ mod tests {
         evaluator.eval(&program, &mut environment)
     }
 
-    fn test_integer_object(obj: Object, expected: i64) {
+    fn test_integer_object(obj: &Object, expected: i64) {
         let Object::Integer(int_obj) = obj else {
             panic!("object is not Integer. got: {:?}", obj)
         };
@@ -907,7 +1013,7 @@ mod tests {
         );
     }
 
-    fn test_null_object(obj: Object) {
+    fn test_null_object(obj: &Object) {
         let Object::Null(null_obj) = obj else {
             panic!("object is not NULL. got: {:?}", obj);
         };
