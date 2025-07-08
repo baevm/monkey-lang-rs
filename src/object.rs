@@ -183,6 +183,15 @@ impl Builtin {
             "len" => Some(Object::Builtin(Box::new(Builtin {
                 func: Rc::new(Self::length),
             }))),
+            "first" => Some(Object::Builtin(Box::new(Builtin {
+                func: Rc::new(Self::first),
+            }))),
+            "last" => Some(Object::Builtin(Box::new(Builtin {
+                func: Rc::new(Self::last),
+            }))),
+            "push" => Some(Object::Builtin(Box::new(Builtin {
+                func: Rc::new(Self::push),
+            }))),
             _ => None,
         }
     }
@@ -194,15 +203,67 @@ impl Builtin {
             }));
         }
 
-        if let Object::String(str) = &args[0] {
-            return Object::Integer(Box::new(Integer {
-                value: str.value.len() as i64,
+        match &args[0] {
+            Object::String(str_obj) => Object::Integer(Box::new(Integer {
+                value: str_obj.value.len() as i64,
+            })),
+            Object::Array(arr) => Object::Integer(Box::new(Integer {
+                value: arr.elements.len() as i64,
+            })),
+            _ => Object::InternalError(Box::new(InternalError {
+                message: format!("argument to \"len\" is not supported, got: {}", args[0]),
+            })),
+        }
+    }
+
+    fn first(args: &[Object]) -> Object {
+        if args.len() != 1 {
+            return Object::InternalError(Box::new(InternalError {
+                message: format!("wrong number of arguments. Got: {}, want: 1", args.len()),
             }));
         }
 
-        return Object::InternalError(Box::new(InternalError {
-            message: format!("argument to \"len\" is not supported, got: {}", args[0]),
-        }));
+        if let Object::Array(arr) = &args[0]
+            && arr.elements.len() > 0
+        {
+            return arr.elements[0].clone();
+        }
+
+        Object::Null(Box::new(Null {}))
+    }
+
+    fn last(args: &[Object]) -> Object {
+        if args.len() != 1 {
+            return Object::InternalError(Box::new(InternalError {
+                message: format!("wrong number of arguments. Got: {}, want: 1", args.len()),
+            }));
+        }
+
+        if let Object::Array(arr) = &args[0]
+            && arr.elements.len() > 0
+        {
+            return arr.elements.last().unwrap().clone();
+        }
+
+        Object::Null(Box::new(Null {}))
+    }
+
+    fn push(args: &[Object]) -> Object {
+        if args.len() != 2 {
+            return Object::InternalError(Box::new(InternalError {
+                message: format!("wrong number of arguments. Got: {}, want: 2", args.len()),
+            }));
+        }
+
+        if let Object::Array(arr) = &args[0] {
+            let mut new_elements = arr.elements.clone();
+            new_elements.push(args[1].clone());
+            return Object::Array(Box::new(Array {
+                elements: new_elements,
+            }));
+        }
+
+        Object::Null(Box::new(Null {}))
     }
 }
 
