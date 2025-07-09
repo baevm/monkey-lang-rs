@@ -22,8 +22,9 @@ pub enum TokenType {
     NotEq,
 
     // Delimeters
-    Comma,
-    Semicolon,
+    Comma,     // ,
+    Semicolon, // ;
+    Colon,     // :
 
     Lparen,   // (
     Rparen,   // )

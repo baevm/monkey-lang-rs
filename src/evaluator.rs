@@ -1,10 +1,14 @@
-use crate::ast::{Identifier, IfExpression};
-use crate::object::{Array, Builtin, Environment, Function, InternalError, Return, StringObj};
+use crate::ast::{HashLiteral, Identifier, IfExpression};
+use crate::object::{
+    Array, Builtin, Environment, Function, HashKey, HashObj, HashPair, InternalError, Return,
+    StringObj,
+};
 use crate::{
     ast::{Expression, Program, Statement},
     object::{Boolean, Integer, Null, Object},
 };
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::mem::discriminant;
 use std::rc::Rc;
 
@@ -168,6 +172,7 @@ impl Evaluator {
 
                 self.eval_index_expression(left, index)
             }
+            Expression::HashLiteral(hash_literal) => self.eval_hash_literal(hash_literal, env),
 
             _ => Object::Null(Box::new(Null {})),
         }
@@ -432,17 +437,58 @@ impl Evaluator {
             message: format!("index operator not supported: {}", left),
         }))
     }
+
+    fn eval_hash_literal(&self, hash_literal: &HashLiteral, env: &mut Environment) -> Object {
+        let mut pairs: HashMap<HashKey, HashPair> = HashMap::new();
+
+        for (key_node, value_node) in &hash_literal.pairs {
+            let key = self.eval_expression(&key_node, env);
+
+            if self.is_err_obj(&key) {
+                return key;
+            }
+
+            if !matches!(
+                key,
+                Object::Integer(_) | Object::Boolean(_) | Object::String(_)
+            ) {
+                return Object::InternalError(Box::new(InternalError {
+                    message: format!("unusable as hash key: {}", key),
+                }));
+            }
+
+            let hashed = match &key {
+                Object::Integer(integer) => integer.hash_key(),
+                Object::Boolean(boolean) => boolean.hash_key(),
+                Object::String(string_obj) => string_obj.hash_key(),
+                other => unreachable!(),
+            };
+
+            let value = self.eval_expression(value_node, env);
+
+            pairs.insert(
+                hashed,
+                HashPair {
+                    key: key.clone(),
+                    value,
+                },
+            );
+        }
+
+        Object::HashObj(Box::new(HashObj { pairs }))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use core::panic;
+    use std::collections::HashMap;
 
     use crate::{
         ast::Stringer,
         evaluator::Evaluator,
         lexer::Lexer,
-        object::{Array, Environment, Object},
+        object::{Boolean, Environment, HashKey, Integer, Object, StringObj},
         parser::Parser,
     };
 
@@ -963,6 +1009,62 @@ mod tests {
             } else {
                 test_null_object(&evaluated);
             }
+        }
+    }
+
+    #[test]
+    fn test_hash_literals() {
+        let input = "
+            let two =\"two\";
+
+            {
+                \"one\": 10-9,
+                two: 1 + 1,
+                \"thr\" + \"ee\": 6 / 2,
+                4: 4,
+                true: 5,
+                false: 6,
+            }
+        "
+        .to_string();
+        let evaluated = test_eval(input);
+
+        let Object::HashObj(hash_obj) = evaluated else {
+            panic!("Object is not HashObj, got: {}", evaluated);
+        };
+
+        let expected: HashMap<HashKey, i64> = HashMap::from([
+            (
+                StringObj {
+                    value: "one".to_string(),
+                }
+                .hash_key(),
+                1,
+            ),
+            (
+                StringObj {
+                    value: "two".to_string(),
+                }
+                .hash_key(),
+                2,
+            ),
+            (
+                StringObj {
+                    value: "three".to_string(),
+                }
+                .hash_key(),
+                3,
+            ),
+            (Integer { value: 4 }.hash_key(), 4),
+            (Boolean { value: true }.hash_key(), 5),
+            (Boolean { value: false }.hash_key(), 6),
+        ]);
+
+        assert_eq!(hash_obj.pairs.len(), expected.len());
+
+        for (key, value) in &hash_obj.pairs {
+            let expected_value = expected.get(&key).unwrap();
+            test_integer_object(&value.value, *expected_value);
         }
     }
 

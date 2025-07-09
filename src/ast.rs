@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 pub trait Stringer {
     fn to_string(&self) -> String;
 }
@@ -119,6 +121,7 @@ impl Stringer for ExpressionStatement {
                 }
                 Expression::ArrayLiteral(array_literal) => sb.push_str(&array_literal.to_string()),
                 Expression::IndexExpression(index_expr) => sb.push_str(&index_expr.to_string()),
+                Expression::HashLiteral(hash_literal) => sb.push_str(&hash_literal.to_string()),
             }
         }
 
@@ -140,6 +143,7 @@ pub enum Expression {
     StringLiteral(Box<StringLiteral>),
     ArrayLiteral(Box<ArrayLiteral>),
     IndexExpression(Box<IndexExpression>),
+    HashLiteral(Box<HashLiteral>),
 }
 
 impl Stringer for Expression {
@@ -156,6 +160,7 @@ impl Stringer for Expression {
             Expression::StringLiteral(string_literal) => string_literal.to_string(),
             Expression::ArrayLiteral(array_literal) => array_literal.to_string(),
             Expression::IndexExpression(index_expression) => index_expression.to_string(),
+            Expression::HashLiteral(hash_literal) => hash_literal.to_string(),
         }
     }
 }
@@ -330,6 +335,23 @@ pub struct IndexExpression {
 impl Stringer for IndexExpression {
     fn to_string(&self) -> String {
         format!("({}[{}])", self.left.to_string(), self.index.to_string())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct HashLiteral {
+    pub pairs: Vec<(Expression, Expression)>,
+}
+
+impl Stringer for HashLiteral {
+    fn to_string(&self) -> String {
+        let elements: Vec<String> = self
+            .pairs
+            .iter()
+            .map(|(k, v)| format!("{}:{}", k.to_string(), v.to_string()))
+            .collect();
+
+        format!("{{{}}}", elements.join(", "))
     }
 }
 

@@ -64,6 +64,12 @@ impl Lexer {
                     token_type: TokenType::Semicolon,
                 }
             }
+            ':' => {
+                token = Token {
+                    literal: self.ch.to_string(),
+                    token_type: TokenType::Colon,
+                }
+            }
             ',' => {
                 token = Token {
                     literal: self.ch.to_string(),
@@ -293,6 +299,8 @@ mod tests {
 
             \"randomString\";
             [1, 2];
+            
+            {\"foo\": \"bar\"};
         "
         .to_string();
 
@@ -377,6 +385,12 @@ mod tests {
             (TokenType::Comma, ","),
             (TokenType::Int, "2"),
             (TokenType::Rbracket, "]"),
+            (TokenType::Semicolon, ";"),
+            (TokenType::Lbrace, "{"),
+            (TokenType::String, "foo"),
+            (TokenType::Colon, ":"),
+            (TokenType::String, "bar"),
+            (TokenType::Rbrace, "}"),
             (TokenType::Semicolon, ";"),
             (TokenType::Eof, ""),
         ];

@@ -1,5 +1,11 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    hash::{Hash, Hasher},
+    rc::Rc,
+};
 
+use fnv::FnvHasher;
 use strum_macros::{Display, VariantNames};
 
 use crate::ast::{BlockStatement, Identifier, Stringer};
@@ -19,6 +25,7 @@ pub enum Object {
     String(Box<StringObj>),
     Builtin(Box<Builtin>),
     Array(Box<Array>),
+    HashObj(Box<HashObj>),
 }
 
 impl ObjectTrait for Object {
@@ -33,6 +40,7 @@ impl ObjectTrait for Object {
             Object::String(string_obj) => string_obj.inspect(),
             Object::Builtin(builtin) => builtin.inspect(),
             Object::Array(array) => array.inspect(),
+            Object::HashObj(hash_obj) => hash_obj.inspect(),
         }
     }
 }
@@ -89,6 +97,14 @@ impl ObjectTrait for Integer {
     }
 }
 
+impl Integer {
+    pub fn hash_key(&self) -> HashKey {
+        HashKey {
+            value: self.value.try_into().unwrap_or(0),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Boolean {
     pub value: bool,
@@ -97,6 +113,13 @@ pub struct Boolean {
 impl ObjectTrait for Boolean {
     fn inspect(&self) -> String {
         self.value.to_string()
+    }
+}
+
+impl Boolean {
+    pub fn hash_key(&self) -> HashKey {
+        let value = if self.value { 1 } else { 0 };
+        HashKey { value }
     }
 }
 
@@ -161,6 +184,17 @@ pub struct StringObj {
 impl ObjectTrait for StringObj {
     fn inspect(&self) -> String {
         self.value.clone()
+    }
+}
+
+impl StringObj {
+    pub fn hash_key(&self) -> HashKey {
+        let mut hasher = FnvHasher::default();
+        self.value.hash(&mut hasher);
+
+        HashKey {
+            value: hasher.finish(),
+        }
     }
 }
 
@@ -297,6 +331,34 @@ impl ObjectTrait for Array {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct HashKey {
+    pub value: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct HashPair {
+    pub key: Object,
+    pub value: Object,
+}
+
+#[derive(Debug, Clone)]
+pub struct HashObj {
+    pub pairs: HashMap<HashKey, HashPair>,
+}
+
+impl ObjectTrait for HashObj {
+    fn inspect(&self) -> String {
+        let elements: Vec<String> = self
+            .pairs
+            .values()
+            .map(|pair| format!("{}: {}", pair.key.inspect(), pair.value.inspect()))
+            .collect();
+
+        format!("{{{}}}", elements.join(", "))
+    }
+}
+
 impl_display_name! {
     Integer => "Integer",
     Boolean => "Boolean",
@@ -307,4 +369,32 @@ impl_display_name! {
     StringObj => "String",
     Builtin => "Builtin Function",
     Array => "Array"
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::object::StringObj;
+
+    #[test]
+    fn test_string_hash_key() {
+        let same1 = StringObj {
+            value: "Hello world".to_string(),
+        };
+        let same2 = StringObj {
+            value: "Hello world".to_string(),
+        };
+
+        assert_eq!(same1.hash_key().value, same2.hash_key().value);
+
+        let diff1 = StringObj {
+            value: "Bob".to_string(),
+        };
+        let diff2 = StringObj {
+            value: "Bob".to_string(),
+        };
+
+        assert_eq!(diff1.hash_key().value, diff2.hash_key().value);
+
+        assert_ne!(same1.hash_key().value, diff2.hash_key().value);
+    }
 }
