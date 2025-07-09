@@ -226,6 +226,9 @@ impl Builtin {
             "push" => Some(Object::Builtin(Box::new(Builtin {
                 func: Rc::new(Self::push),
             }))),
+            "print" => Some(Object::Builtin(Box::new(Builtin {
+                func: Rc::new(Self::print),
+            }))),
             _ => None,
         }
     }
@@ -295,6 +298,14 @@ impl Builtin {
             return Object::Array(Box::new(Array {
                 elements: new_elements,
             }));
+        }
+
+        Object::Null(Box::new(Null {}))
+    }
+
+    fn print(args: &[Object]) -> Object {
+        for arg in args {
+            println!("{}", arg.inspect());
         }
 
         Object::Null(Box::new(Null {}))

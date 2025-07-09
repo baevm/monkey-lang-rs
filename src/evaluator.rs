@@ -433,6 +433,29 @@ impl Evaluator {
             return arr.elements[arr_idx.value as usize].clone();
         }
 
+        if let Object::HashObj(hash_obj) = &left {
+            if !self.is_hashable(&index) {
+                return Object::InternalError(Box::new(InternalError {
+                    message: format!("unusable as hash key: {}", index),
+                }));
+            }
+
+            let hash_key = match &index {
+                Object::Integer(integer) => integer.hash_key(),
+                Object::Boolean(boolean) => boolean.hash_key(),
+                Object::String(string_obj) => string_obj.hash_key(),
+                _ => unreachable!(),
+            };
+
+            let pair = hash_obj.pairs.get(&hash_key);
+
+            if pair.is_none() {
+                return Object::Null(Box::new(Null {}));
+            }
+
+            return pair.unwrap().value.clone();
+        }
+
         Object::InternalError(Box::new(InternalError {
             message: format!("index operator not supported: {}", left),
         }))
@@ -448,10 +471,7 @@ impl Evaluator {
                 return key;
             }
 
-            if !matches!(
-                key,
-                Object::Integer(_) | Object::Boolean(_) | Object::String(_)
-            ) {
+            if !self.is_hashable(&key) {
                 return Object::InternalError(Box::new(InternalError {
                     message: format!("unusable as hash key: {}", key),
                 }));
@@ -476,6 +496,13 @@ impl Evaluator {
         }
 
         Object::HashObj(Box::new(HashObj { pairs }))
+    }
+
+    fn is_hashable(&self, obj: &Object) -> bool {
+        matches!(
+            obj,
+            Object::Integer(_) | Object::Boolean(_) | Object::String(_)
+        )
     }
 }
 
@@ -774,6 +801,10 @@ mod tests {
                 input: "\"Hi\" - \"Batman\"".to_string(),
                 expected: "unknown operator: String - String",
             },
+            TestCase {
+                input: "{\"name\": \"Monkey\"}[function(x) {x}];".to_string(),
+                expected: "unusable as hash key: Function",
+            },
         ];
 
         for test in tests {
@@ -1065,6 +1096,50 @@ mod tests {
         for (key, value) in &hash_obj.pairs {
             let expected_value = expected.get(&key).unwrap();
             test_integer_object(&value.value, *expected_value);
+        }
+    }
+
+    #[test]
+    fn test_hash_index_expression() {
+        let tests = vec![
+            TestCase {
+                input: "{\"foo\": 5}[\"foo\"]".to_string(),
+                expected: Some(5),
+            },
+            TestCase {
+                input: "{\"foo\": 5}[\"bar\"]".to_string(),
+                expected: None,
+            },
+            TestCase {
+                input: "let key = \"foo\"; {\"foo\": 5}[key]".to_string(),
+                expected: Some(5),
+            },
+            TestCase {
+                input: "{}[\"foo\"]".to_string(),
+                expected: None,
+            },
+            TestCase {
+                input: "{5: 5}[5]".to_string(),
+                expected: Some(5),
+            },
+            TestCase {
+                input: "{true: 5}[true]".to_string(),
+                expected: Some(5),
+            },
+            TestCase {
+                input: "{false: 5}[false]".to_string(),
+                expected: Some(5),
+            },
+        ];
+
+        for test in tests {
+            let evaluated = test_eval(test.input);
+
+            if test.expected.is_some() {
+                test_integer_object(&evaluated, test.expected.unwrap());
+            } else {
+                test_null_object(&evaluated);
+            }
         }
     }
 
