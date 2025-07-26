@@ -19,10 +19,10 @@ mod tests {
             let mut parser = Parser::new(lexer);
 
             let program = parser.parse_program();
-            let evaluator = Evaluator::new();
-            let mut environment = Environment::new();
+            let environment = Environment::new();
+            let mut evaluator = Evaluator::new(environment);
 
-            evaluator.eval(&program, &mut environment);
+            evaluator.eval(&program);
         });
     }
 }

@@ -12,18 +12,22 @@ use std::collections::HashMap;
 use std::mem::discriminant;
 use std::rc::Rc;
 
-pub struct Evaluator {}
+pub struct Evaluator {
+    env: Rc<RefCell<Environment>>,
+}
 
 impl Evaluator {
-    pub fn new() -> Self {
-        Evaluator {}
+    pub fn new(env: Environment) -> Self {
+        Evaluator {
+            env: Rc::new(RefCell::new(env)),
+        }
     }
 
-    pub fn eval(&self, program: &Program, env: &mut Environment) -> Object {
+    pub fn eval(&mut self, program: &Program) -> Object {
         let mut result = Object::Null(Box::new(Null {}));
 
         for stmt in &program.body {
-            result = self.eval_statement(&stmt, env);
+            result = self.eval_statement(&stmt);
 
             if let Object::Return(return_obj) = result {
                 return return_obj.value;
@@ -37,20 +41,20 @@ impl Evaluator {
         result
     }
 
-    fn eval_statement(&self, stmt: &Statement, env: &mut Environment) -> Object {
+    fn eval_statement(&mut self, stmt: &Statement) -> Object {
         match stmt {
             Statement::LetStatement(let_stmt) => {
                 if let_stmt.value.is_none() {
                     return Object::Null(Box::new(Null {}));
                 }
 
-                let evaluated = self.eval_expression(&let_stmt.value.as_ref().unwrap(), env);
+                let evaluated = self.eval_expression(&let_stmt.value.as_ref().unwrap());
 
                 if self.is_err_obj(&evaluated) {
                     return evaluated;
                 }
 
-                env.set(&let_stmt.name.value, evaluated);
+                self.env.borrow_mut().set(&let_stmt.name.value, evaluated);
 
                 Object::Null(Box::new(Null {}))
             }
@@ -59,8 +63,7 @@ impl Evaluator {
                     return Object::Null(Box::new(Null {}));
                 }
 
-                let value =
-                    self.eval_expression(&return_statement.return_value.as_ref().unwrap(), env);
+                let value = self.eval_expression(&return_statement.return_value.as_ref().unwrap());
 
                 if self.is_err_obj(&value) {
                     return value;
@@ -70,7 +73,7 @@ impl Evaluator {
             }
             Statement::ExpressionStatement(expression_statement) => {
                 if let Some(expr) = &expression_statement.expression {
-                    self.eval_expression(expr, env)
+                    self.eval_expression(expr)
                 } else {
                     Object::Null(Box::new(Null {}))
                 }
@@ -79,7 +82,7 @@ impl Evaluator {
                 let mut result = Object::Null(Box::new(Null {}));
 
                 for stmt in &block_stmt.statements {
-                    result = self.eval_statement(&stmt, env);
+                    result = self.eval_statement(&stmt);
 
                     if let Object::Return(_) = &result {
                         return result;
@@ -95,7 +98,7 @@ impl Evaluator {
         }
     }
 
-    fn eval_expression(&self, expr: &Expression, env: &mut Environment) -> Object {
+    fn eval_expression(&mut self, expr: &Expression) -> Object {
         match expr {
             Expression::IntegerLiteral(integer_literal) => Object::Integer(Box::new(Integer {
                 value: integer_literal.value,
@@ -107,7 +110,7 @@ impl Evaluator {
                 value: boolean_literal.value,
             })),
             Expression::PrefixExpression(prefix_expr) => {
-                let right = self.eval_expression(&prefix_expr.right, env);
+                let right = self.eval_expression(&prefix_expr.right);
 
                 if self.is_err_obj(&right) {
                     return right;
@@ -116,13 +119,13 @@ impl Evaluator {
                 self.eval_prefix_expression(&prefix_expr.operator, right)
             }
             Expression::InfixExpression(infix_expr) => {
-                let left = self.eval_expression(&infix_expr.left, env);
+                let left = self.eval_expression(&infix_expr.left);
 
                 if self.is_err_obj(&left) {
                     return left;
                 }
 
-                let right = self.eval_expression(&infix_expr.right, env);
+                let right = self.eval_expression(&infix_expr.right);
 
                 if self.is_err_obj(&right) {
                     return right;
@@ -130,30 +133,30 @@ impl Evaluator {
 
                 self.eval_infix_expression(&infix_expr.operator, left, right)
             }
-            Expression::IfExpression(if_expr) => self.eval_if_expression(&if_expr, env),
-            Expression::Identifier(ident) => self.eval_identifier(ident, env),
+            Expression::IfExpression(if_expr) => self.eval_if_expression(&if_expr),
+            Expression::Identifier(ident) => self.eval_identifier(ident),
             Expression::FunctionLiteral(func) => Object::Function(Box::new(Function {
                 parameters: func.parameters.clone(),
                 body: func.body.clone(),
-                env: env.clone(),
+                env: self.env.borrow().clone(),
             })),
             Expression::CallExpression(call_expr) => {
-                let func = self.eval_expression(&call_expr.function, env);
+                let func = self.eval_expression(&call_expr.function);
 
                 if self.is_err_obj(&func) {
                     return func;
                 }
 
-                let args = self.eval_expressions(&call_expr.arguments, env);
+                let args = self.eval_expressions(&call_expr.arguments);
 
                 if args.len() == 1 && self.is_err_obj(&args[0]) {
                     return args[0].clone();
                 }
 
-                self.apply_function(func, args)
+                self.apply_function(func, &args)
             }
             Expression::ArrayLiteral(array_literal) => {
-                let elements = self.eval_expressions(&array_literal.elements, env);
+                let elements = self.eval_expressions(&array_literal.elements);
 
                 if elements.len() == 1 && self.is_err_obj(&elements[0]) {
                     return elements[0].clone();
@@ -162,29 +165,25 @@ impl Evaluator {
                 Object::Array(Box::new(Array { elements }))
             }
             Expression::IndexExpression(index_expr) => {
-                let left = self.eval_expression(&index_expr.left, env);
+                let left = self.eval_expression(&index_expr.left);
 
                 if self.is_err_obj(&left) {
                     return left;
                 }
 
-                let index = self.eval_expression(&index_expr.index, env);
+                let index = self.eval_expression(&index_expr.index);
 
                 self.eval_index_expression(left, index)
             }
-            Expression::HashLiteral(hash_literal) => self.eval_hash_literal(hash_literal, env),
+            Expression::HashLiteral(hash_literal) => self.eval_hash_literal(hash_literal),
         }
     }
 
-    fn eval_expressions(
-        &self,
-        expressions: &Vec<Expression>,
-        env: &mut Environment,
-    ) -> Vec<Object> {
+    fn eval_expressions(&mut self, expressions: &Vec<Expression>) -> Vec<Object> {
         let mut result = vec![];
 
         for expr in expressions {
-            let evaluated = self.eval_expression(expr, env);
+            let evaluated = self.eval_expression(expr);
 
             if self.is_err_obj(&evaluated) {
                 return vec![evaluated];
@@ -316,8 +315,8 @@ impl Evaluator {
         }
     }
 
-    fn eval_if_expression(&self, if_expr: &Box<IfExpression>, env: &mut Environment) -> Object {
-        let condition = self.eval_expression(&if_expr.condition, env);
+    fn eval_if_expression(&mut self, if_expr: &Box<IfExpression>) -> Object {
+        let condition = self.eval_expression(&if_expr.condition);
 
         if self.is_err_obj(&condition) {
             return condition;
@@ -327,19 +326,19 @@ impl Evaluator {
             let consequence_as_stmt =
                 Statement::BlockStatement(Box::new(if_expr.consequence.clone()));
 
-            return self.eval_statement(&consequence_as_stmt, env);
+            return self.eval_statement(&consequence_as_stmt);
         } else if if_expr.alternative.is_some() {
             let alternative_as_stmt =
                 Statement::BlockStatement(Box::new(if_expr.alternative.as_ref().unwrap().clone()));
 
-            return self.eval_statement(&alternative_as_stmt, env);
+            return self.eval_statement(&alternative_as_stmt);
         }
 
         Object::Null(Box::new(Null {}))
     }
 
-    fn eval_identifier(&self, ident: &Identifier, env: &mut Environment) -> Object {
-        if let Some(ident_val) = env.get(&ident.value) {
+    fn eval_identifier(&self, ident: &Identifier) -> Object {
+        if let Some(ident_val) = self.env.borrow().get(&ident.value) {
             return ident_val.clone();
         }
 
@@ -368,14 +367,24 @@ impl Evaluator {
         false
     }
 
-    fn apply_function(&self, func: Object, args: Vec<Object>) -> Object {
+    fn apply_function(&mut self, func: Object, args: &Vec<Object>) -> Object {
         match func {
             Object::Function(func_obj) => {
-                let mut extended_env = self.extend_function_env(&func_obj, args);
-                let evaluated = self.eval_statement(
-                    &Statement::BlockStatement(Box::new(func_obj.body.clone())),
-                    &mut extended_env,
-                );
+                let mut extended_env = self.extend_function_env(&func_obj, &args);
+
+                for (param, arg) in func_obj.parameters.iter().zip(args.iter()) {
+                    extended_env.set(&param.value, arg.clone());
+                }
+
+                let current_env = self.env.clone();
+
+                // Temporarily set the current environment to the function's environment
+                self.env = Rc::new(RefCell::new(extended_env));
+
+                let evaluated = self
+                    .eval_statement(&Statement::BlockStatement(Box::new(func_obj.body.clone())));
+
+                self.env = current_env;
 
                 if let Object::Return(return_val) = evaluated {
                     return return_val.value;
@@ -392,7 +401,7 @@ impl Evaluator {
         }
     }
 
-    fn extend_function_env(&self, func_obj: &Box<Function>, args: Vec<Object>) -> Environment {
+    fn extend_function_env(&self, func_obj: &Box<Function>, args: &Vec<Object>) -> Environment {
         let mut new_env = Environment::new_enclosed(Rc::new(RefCell::new(func_obj.env.clone())));
 
         for (idx, param) in func_obj.parameters.iter().enumerate() {
@@ -459,11 +468,11 @@ impl Evaluator {
         }))
     }
 
-    fn eval_hash_literal(&self, hash_literal: &HashLiteral, env: &mut Environment) -> Object {
+    fn eval_hash_literal(&mut self, hash_literal: &HashLiteral) -> Object {
         let mut pairs: HashMap<HashKey, HashPair> = HashMap::new();
 
         for (key_node, value_node) in &hash_literal.pairs {
-            let key = self.eval_expression(&key_node, env);
+            let key = self.eval_expression(&key_node);
 
             if self.is_err_obj(&key) {
                 return key;
@@ -482,7 +491,7 @@ impl Evaluator {
                 _ => unreachable!(),
             };
 
-            let value = self.eval_expression(value_node, env);
+            let value = self.eval_expression(value_node);
 
             pairs.insert(
                 hashed,
@@ -1146,10 +1155,10 @@ mod tests {
         let mut parser = Parser::new(lexer);
 
         let program = parser.parse_program();
-        let evaluator = Evaluator::new();
-        let mut environment = Environment::new();
+        let environment = Environment::new();
+        let mut evaluator = Evaluator::new(environment);
 
-        evaluator.eval(&program, &mut environment)
+        evaluator.eval(&program)
     }
 
     fn test_integer_object(obj: &Object, expected: i64) {
