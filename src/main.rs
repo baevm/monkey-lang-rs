@@ -1,6 +1,9 @@
+#![feature(test)]
+
 use crate::repl::Repl;
 
 mod ast;
+mod benchmark;
 mod evaluator;
 mod lexer;
 mod object;
