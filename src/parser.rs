@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     ast::{
         self, ArrayLiteral, BlockStatement, Boolean, CallExpression, Expression,
@@ -20,7 +18,7 @@ enum Precedence {
     Product,     // *
     Prefix,      // --variable
     Call,        // function()
-    Index,
+    Index,       // array[someIndex]
 }
 
 impl Precedence {
@@ -407,11 +405,9 @@ impl Parser {
     }
 
     fn parse_array_literal(&mut self) -> Option<Expression> {
-        let array_literal = Expression::ArrayLiteral(
-            (Box::new(ArrayLiteral {
-                elements: self.parse_expression_list(TokenType::Rbracket),
-            })),
-        );
+        let array_literal = Expression::ArrayLiteral(Box::new(ArrayLiteral {
+            elements: self.parse_expression_list(TokenType::Rbracket),
+        }));
 
         Some(array_literal)
     }

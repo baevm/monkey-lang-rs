@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 pub trait Stringer {
     fn to_string(&self) -> String;
 }
@@ -95,34 +93,7 @@ impl Stringer for ExpressionStatement {
         let mut sb = String::new();
 
         if let Some(expr_stmt) = &self.expression {
-            match &*expr_stmt {
-                Expression::Identifier(identifier) => {
-                    sb.push_str(&identifier.to_string());
-                }
-                Expression::IntegerLiteral(integer_literal) => {
-                    sb.push_str(&integer_literal.to_string());
-                }
-                Expression::PrefixExpression(prefix_expression) => {
-                    sb.push_str(&prefix_expression.to_string())
-                }
-                Expression::InfixExpression(infix_expression) => {
-                    sb.push_str(&infix_expression.to_string())
-                }
-                Expression::Boolean(boolean) => sb.push_str(&boolean.to_string()),
-                Expression::IfExpression(if_expression) => sb.push_str(&if_expression.to_string()),
-                Expression::FunctionLiteral(function_literal) => {
-                    sb.push_str(&function_literal.to_string())
-                }
-                Expression::CallExpression(call_expression) => {
-                    sb.push_str(&call_expression.to_string())
-                }
-                Expression::StringLiteral(string_literal) => {
-                    sb.push_str(&string_literal.to_string())
-                }
-                Expression::ArrayLiteral(array_literal) => sb.push_str(&array_literal.to_string()),
-                Expression::IndexExpression(index_expr) => sb.push_str(&index_expr.to_string()),
-                Expression::HashLiteral(hash_literal) => sb.push_str(&hash_literal.to_string()),
-            }
+            sb.push_str(&expr_stmt.to_string())
         }
 
         sb

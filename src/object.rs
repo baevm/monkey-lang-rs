@@ -318,18 +318,6 @@ impl std::fmt::Debug for Builtin {
     }
 }
 
-macro_rules! impl_display_name {
-    ($($type:ty => $name:expr),* $(,)?) => {
-        $(
-            impl std::fmt::Display for $type {
-                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    write!(f, $name)
-                }
-            }
-        )*
-    };
-}
-
 #[derive(Debug, Clone)]
 pub struct Array {
     pub elements: Vec<Object>,
@@ -368,6 +356,18 @@ impl ObjectTrait for HashObj {
 
         format!("{{{}}}", elements.join(", "))
     }
+}
+
+macro_rules! impl_display_name {
+    ($($type:ty => $name:expr),* $(,)?) => {
+        $(
+            impl std::fmt::Display for $type {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    write!(f, $name)
+                }
+            }
+        )*
+    };
 }
 
 impl_display_name! {

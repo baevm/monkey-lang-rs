@@ -173,8 +173,6 @@ impl Evaluator {
                 self.eval_index_expression(left, index)
             }
             Expression::HashLiteral(hash_literal) => self.eval_hash_literal(hash_literal, env),
-
-            _ => Object::Null(Box::new(Null {})),
         }
     }
 
@@ -363,7 +361,7 @@ impl Evaluator {
     }
 
     fn is_err_obj(&self, obj: &Object) -> bool {
-        if let Object::InternalError(err) = obj {
+        if let Object::InternalError(_) = obj {
             return true;
         }
 
@@ -481,7 +479,7 @@ impl Evaluator {
                 Object::Integer(integer) => integer.hash_key(),
                 Object::Boolean(boolean) => boolean.hash_key(),
                 Object::String(string_obj) => string_obj.hash_key(),
-                other => unreachable!(),
+                _ => unreachable!(),
             };
 
             let value = self.eval_expression(value_node, env);
@@ -702,7 +700,7 @@ mod tests {
             let evaluated = test_eval(test.input);
 
             if test.expected.is_some() {
-                if let Object::Integer(int_obj) = &evaluated {
+                if let Object::Integer(_) = &evaluated {
                     test_integer_object(&evaluated, test.expected.unwrap());
                 } else {
                     panic!("got null: {:?} expected: {:?}", evaluated, test.expected);
@@ -1191,7 +1189,7 @@ mod tests {
     }
 
     fn test_null_object(obj: &Object) {
-        let Object::Null(null_obj) = obj else {
+        let Object::Null(_) = obj else {
             panic!("object is not NULL. got: {:?}", obj);
         };
     }
