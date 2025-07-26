@@ -13,7 +13,6 @@ impl Repl {
     pub fn start() {
         println!("Welcome to Monkey programming language!");
 
-        // reuse defined user variables between inputs
         let environment = Environment::new();
 
         loop {
