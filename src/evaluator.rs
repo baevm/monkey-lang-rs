@@ -223,7 +223,13 @@ impl Evaluator {
                 if let Object::Integer(mut left_int) = existing_val
                     && let Object::Integer(right_int) = right
                 {
-                    left_int.value += right_int.value;
+                    left_int.value = match infix_expr.operator.as_str() {
+                        "+=" => left_int.value + right_int.value,
+                        "-=" => left_int.value - right_int.value,
+                        "*=" => left_int.value * right_int.value,
+                        "/=" => left_int.value / right_int.value,
+                        _ => left_int.value,
+                    };
                     env.set(&left_ident.value, Object::Integer(left_int));
 
                     return Object::Null(Box::new(Null {}));
@@ -235,7 +241,7 @@ impl Evaluator {
             }
         }
 
-        return Object::Null(Box::new(Null {}));
+        Object::Null(Box::new(Null {}))
     }
 
     fn eval_bang_operator_expression(&self, right: Object) -> Object {
@@ -917,16 +923,41 @@ mod tests {
     fn test_compound_assign_operator() {
         let tests = vec![
             TestCase {
-                input: "let a = 1; a += 1; a".to_string(),
+                input: "let a = 1; a += 1; a;".to_string(),
                 expected: 2,
             },
             TestCase {
                 input: "let a = 1; let b = 2; a += b; a;".to_string(),
                 expected: 3,
             },
+            TestCase {
+                input: "let a = 2; a *= 2; a;".to_string(),
+                expected: 4,
+            },
+            TestCase {
+                input: "let a = 2; let b = 2; a *= b; a;".to_string(),
+                expected: 4,
+            },
+            TestCase {
+                input: "let a = 2; a -= 2; a;".to_string(),
+                expected: 0,
+            },
+            TestCase {
+                input: "let a = 2; let b = 2; a -= b; a;".to_string(),
+                expected: 0,
+            },
+            TestCase {
+                input: "let a = 6; a /= 2; a".to_string(),
+                expected: 3,
+            },
+            TestCase {
+                input: "let a = 4; let b = 2; a /= b; a;".to_string(),
+                expected: 2,
+            },
         ];
 
         for test in tests {
+            println!("{:?}", test.input);
             let evaluated = test_eval(test.input);
             test_integer_object(&evaluated, test.expected);
         }

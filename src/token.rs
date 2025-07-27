@@ -17,6 +17,9 @@ pub enum TokenType {
     Asterisk,
 
     AssignAdd, // +=
+    AssignSub, // -=
+    AssignMul, // *=
+    AssignDiv, // /=
 
     Lt,
     Gt,

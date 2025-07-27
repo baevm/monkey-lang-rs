@@ -26,13 +26,20 @@ impl Precedence {
         match token {
             TokenType::Eq => Some(Precedence::Equals),
             TokenType::NotEq => Some(Precedence::Equals),
+
             TokenType::Lt => Some(Precedence::LessGreater),
             TokenType::Gt => Some(Precedence::LessGreater),
+
             TokenType::Plus => Some(Precedence::Sum),
             TokenType::Minus => Some(Precedence::Sum),
             TokenType::AssignAdd => Some(Precedence::Sum),
+            TokenType::AssignSub => Some(Precedence::Sum),
+
             TokenType::Slash => Some(Precedence::Product),
             TokenType::Asterisk => Some(Precedence::Product),
+            TokenType::AssignDiv => Some(Precedence::Product),
+            TokenType::AssignMul => Some(Precedence::Product),
+
             TokenType::Lparen => Some(Precedence::Call),
             TokenType::Lbracket => Some(Precedence::Index),
             _ => None,
@@ -221,7 +228,10 @@ impl Parser {
             | TokenType::NotEq
             | TokenType::Lt
             | TokenType::Gt
-            | TokenType::AssignAdd => self.parse_infix_expression(left.clone()),
+            | TokenType::AssignAdd
+            | TokenType::AssignSub
+            | TokenType::AssignDiv
+            | TokenType::AssignMul => self.parse_infix_expression(left.clone()),
             TokenType::Lparen => self.parse_call_expression(left.clone()),
             TokenType::Lbracket => self.parse_index_expression(left.clone()),
             _ => None,
@@ -941,7 +951,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parsing_assign_number_to_ident_infix_expressions() {
+    fn test_parsing_compound_operator_infix_expression() {
         struct TestCase {
             input: String,
             left_val: String,
@@ -949,12 +959,32 @@ mod tests {
             right_val: i64,
         }
 
-        let tests: Vec<TestCase> = vec![TestCase {
-            input: "a += 1;".to_string(),
-            left_val: "a".to_string(),
-            operator: "+=".to_string(),
-            right_val: 1,
-        }];
+        let tests: Vec<TestCase> = vec![
+            TestCase {
+                input: "a += 1;".to_string(),
+                left_val: "a".to_string(),
+                operator: "+=".to_string(),
+                right_val: 1,
+            },
+            TestCase {
+                input: "a *= 1;".to_string(),
+                left_val: "a".to_string(),
+                operator: "*=".to_string(),
+                right_val: 1,
+            },
+            TestCase {
+                input: "a -= 1;".to_string(),
+                left_val: "a".to_string(),
+                operator: "-=".to_string(),
+                right_val: 1,
+            },
+            TestCase {
+                input: "a /= 1;".to_string(),
+                left_val: "a".to_string(),
+                operator: "/=".to_string(),
+                right_val: 1,
+            },
+        ];
 
         for test in tests {
             let lexer = Lexer::new(test.input);

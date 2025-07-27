@@ -180,7 +180,7 @@ pub struct InfixExpression {
 impl InfixExpression {
     pub fn is_compound_assign(&self) -> bool {
         match self.operator.as_str() {
-            "+=" => true,
+            "+=" | "-=" | "*=" | "/=" => true,
             _ => false,
         }
     }

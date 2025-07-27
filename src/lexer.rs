@@ -92,21 +92,48 @@ impl Lexer {
                 }
             }
             '-' => {
-                token = Token {
-                    literal: self.ch.to_string(),
-                    token_type: TokenType::Minus,
+                if self.peek_char() == '=' {
+                    token = Token {
+                        literal: "-=".to_string(),
+                        token_type: TokenType::AssignSub,
+                    };
+
+                    self.read_char();
+                } else {
+                    token = Token {
+                        literal: self.ch.to_string(),
+                        token_type: TokenType::Minus,
+                    }
                 }
             }
             '*' => {
-                token = Token {
-                    literal: self.ch.to_string(),
-                    token_type: TokenType::Asterisk,
+                if self.peek_char() == '=' {
+                    token = Token {
+                        literal: "*=".to_string(),
+                        token_type: TokenType::AssignMul,
+                    };
+
+                    self.read_char();
+                } else {
+                    token = Token {
+                        literal: self.ch.to_string(),
+                        token_type: TokenType::Asterisk,
+                    }
                 }
             }
             '/' => {
-                token = Token {
-                    literal: self.ch.to_string(),
-                    token_type: TokenType::Slash,
+                if self.peek_char() == '=' {
+                    token = Token {
+                        literal: "/=".to_string(),
+                        token_type: TokenType::AssignDiv,
+                    };
+
+                    self.read_char();
+                } else {
+                    token = Token {
+                        literal: self.ch.to_string(),
+                        token_type: TokenType::Slash,
+                    }
                 }
             }
             '<' => {
@@ -312,6 +339,9 @@ mod tests {
             {\"foo\": \"bar\"};
 
             a += 1;
+            a -= 1;
+            a *= 1;
+            a /= 1;
         "
         .to_string();
 
@@ -405,6 +435,18 @@ mod tests {
             (TokenType::Semicolon, ";"),
             (TokenType::Ident, "a"),
             (TokenType::AssignAdd, "+="),
+            (TokenType::Int, "1"),
+            (TokenType::Semicolon, ";"),
+            (TokenType::Ident, "a"),
+            (TokenType::AssignSub, "-="),
+            (TokenType::Int, "1"),
+            (TokenType::Semicolon, ";"),
+            (TokenType::Ident, "a"),
+            (TokenType::AssignMul, "*="),
+            (TokenType::Int, "1"),
+            (TokenType::Semicolon, ";"),
+            (TokenType::Ident, "a"),
+            (TokenType::AssignDiv, "/="),
             (TokenType::Int, "1"),
             (TokenType::Semicolon, ";"),
             (TokenType::Eof, ""),
