@@ -16,6 +16,8 @@ pub enum TokenType {
     Slash,
     Asterisk,
 
+    AssignAdd, // +=
+
     Lt,
     Gt,
     Eq,

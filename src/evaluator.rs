@@ -1,4 +1,4 @@
-use crate::ast::{HashLiteral, Identifier, IfExpression};
+use crate::ast::{HashLiteral, Identifier, IfExpression, InfixExpression};
 use crate::object::{
     Array, Builtin, Environment, Function, HashKey, HashObj, HashPair, InternalError, Return,
     StringObj,
@@ -119,19 +119,23 @@ impl Evaluator {
                 self.eval_prefix_expression(&prefix_expr.operator, right)
             }
             Expression::InfixExpression(infix_expr) => {
-                let left = self.eval_expression(&infix_expr.left);
+                if infix_expr.is_compound_assign() {
+                    return self.eval_compound_assign(infix_expr);
+                }
+
+                let mut left = self.eval_expression(&infix_expr.left);
 
                 if self.is_err_obj(&left) {
                     return left;
                 }
 
-                let right = self.eval_expression(&infix_expr.right);
+                let mut right = self.eval_expression(&infix_expr.right);
 
                 if self.is_err_obj(&right) {
                     return right;
                 }
 
-                self.eval_infix_expression(&infix_expr.operator, left, right)
+                self.eval_infix_expression(&infix_expr.operator, &mut left, &mut right)
             }
             Expression::IfExpression(if_expr) => self.eval_if_expression(&if_expr),
             Expression::Identifier(ident) => self.eval_identifier(ident),
@@ -205,6 +209,35 @@ impl Evaluator {
         }
     }
 
+    fn eval_compound_assign(&mut self, infix_expr: &Box<InfixExpression>) -> Object {
+        if let Expression::Identifier(left_ident) = &infix_expr.left {
+            let right = self.eval_expression(&infix_expr.right);
+
+            if self.is_err_obj(&right) {
+                return right;
+            }
+
+            let mut env = self.env.borrow_mut();
+
+            if let Some(existing_val) = env.get(&left_ident.value) {
+                if let Object::Integer(mut left_int) = existing_val
+                    && let Object::Integer(right_int) = right
+                {
+                    left_int.value += right_int.value;
+                    env.set(&left_ident.value, Object::Integer(left_int));
+
+                    return Object::Null(Box::new(Null {}));
+                }
+
+                return Object::InternalError(Box::new(InternalError {
+                    message: format!("cannot assign to: {}", left_ident.value),
+                }));
+            }
+        }
+
+        return Object::Null(Box::new(Null {}));
+    }
+
     fn eval_bang_operator_expression(&self, right: Object) -> Object {
         match right {
             Object::Boolean(boolean) => {
@@ -231,8 +264,13 @@ impl Evaluator {
         }))
     }
 
-    fn eval_infix_expression(&self, operator: &str, left: Object, right: Object) -> Object {
-        if discriminant(&left) != discriminant(&right) {
+    fn eval_infix_expression(
+        &self,
+        operator: &str,
+        left: &mut Object,
+        right: &mut Object,
+    ) -> Object {
+        if discriminant(left) != discriminant(right) {
             return Object::InternalError(Box::new(InternalError {
                 message: format!("type mismatch: {} {} {}", left, operator, right),
             }));
@@ -262,8 +300,8 @@ impl Evaluator {
     fn eval_integer_infix_expression(
         &self,
         operator: &str,
-        left: Box<Integer>,
-        right: Box<Integer>,
+        left: &mut Box<Integer>,
+        right: &mut Box<Integer>,
     ) -> Object {
         match operator {
             "+" => Object::Integer(Box::new(Integer {
@@ -299,8 +337,8 @@ impl Evaluator {
     fn eval_boolean_infix_expression(
         &self,
         operator: &str,
-        left: Box<Boolean>,
-        right: Box<Boolean>,
+        left: &mut Box<Boolean>,
+        right: &mut Box<Boolean>,
     ) -> Object {
         match operator {
             "==" => Object::Boolean(Box::new(Boolean {
@@ -414,8 +452,8 @@ impl Evaluator {
     fn eval_string_concatenation(
         &self,
         operator: &str,
-        left: Box<StringObj>,
-        right: Box<StringObj>,
+        left: &mut Box<StringObj>,
+        right: &mut Box<StringObj>,
     ) -> Object {
         match operator {
             "+" => Object::String(Box::new(StringObj {
@@ -812,6 +850,22 @@ mod tests {
                 input: "{\"name\": \"Monkey\"}[function(x) {x}];".to_string(),
                 expected: "unusable as hash key: Function",
             },
+            TestCase {
+                input: "let a = false; a += 1; a;".to_string(),
+                expected: "cannot assign to: a",
+            },
+            TestCase {
+                input: r#"let a = "some_string"; a += 1; a;"#.to_string(),
+                expected: "cannot assign to: a",
+            },
+            TestCase {
+                input: r#"let a = "some_string"; let b = 1; a += b; a;"#.to_string(),
+                expected: "cannot assign to: a",
+            },
+            TestCase {
+                input: r#"let a = 1; a += "str"; a"#.to_string(),
+                expected: "cannot assign to: a",
+            },
         ];
 
         for test in tests {
@@ -850,6 +904,25 @@ mod tests {
             TestCase {
                 input: "let a = 5; let b = a; let c = a + b + 5; c".to_string(),
                 expected: 15,
+            },
+        ];
+
+        for test in tests {
+            let evaluated = test_eval(test.input);
+            test_integer_object(&evaluated, test.expected);
+        }
+    }
+
+    #[test]
+    fn test_compound_assign_operator() {
+        let tests = vec![
+            TestCase {
+                input: "let a = 1; a += 1; a".to_string(),
+                expected: 2,
+            },
+            TestCase {
+                input: "let a = 1; let b = 2; a += b; a;".to_string(),
+                expected: 3,
             },
         ];
 

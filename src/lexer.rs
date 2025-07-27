@@ -77,9 +77,18 @@ impl Lexer {
                 }
             }
             '+' => {
-                token = Token {
-                    literal: self.ch.to_string(),
-                    token_type: TokenType::Plus,
+                if self.peek_char() == '=' {
+                    token = Token {
+                        literal: "+=".to_string(),
+                        token_type: TokenType::AssignAdd,
+                    };
+
+                    self.read_char();
+                } else {
+                    token = Token {
+                        literal: self.ch.to_string(),
+                        token_type: TokenType::Plus,
+                    }
                 }
             }
             '-' => {
@@ -301,6 +310,8 @@ mod tests {
             [1, 2];
             
             {\"foo\": \"bar\"};
+
+            a += 1;
         "
         .to_string();
 
@@ -391,6 +402,10 @@ mod tests {
             (TokenType::Colon, ":"),
             (TokenType::String, "bar"),
             (TokenType::Rbrace, "}"),
+            (TokenType::Semicolon, ";"),
+            (TokenType::Ident, "a"),
+            (TokenType::AssignAdd, "+="),
+            (TokenType::Int, "1"),
             (TokenType::Semicolon, ";"),
             (TokenType::Eof, ""),
         ];

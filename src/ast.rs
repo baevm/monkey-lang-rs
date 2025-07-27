@@ -177,6 +177,15 @@ pub struct InfixExpression {
     pub right: Expression,
 }
 
+impl InfixExpression {
+    pub fn is_compound_assign(&self) -> bool {
+        match self.operator.as_str() {
+            "+=" => true,
+            _ => false,
+        }
+    }
+}
+
 impl Stringer for InfixExpression {
     fn to_string(&self) -> String {
         format!(

@@ -14,7 +14,7 @@ enum Precedence {
     Lowest,
     Equals,      // ==
     LessGreater, // < >
-    Sum,         // +
+    Sum,         // +, -, +=
     Product,     // *
     Prefix,      // --variable
     Call,        // function()
@@ -30,6 +30,7 @@ impl Precedence {
             TokenType::Gt => Some(Precedence::LessGreater),
             TokenType::Plus => Some(Precedence::Sum),
             TokenType::Minus => Some(Precedence::Sum),
+            TokenType::AssignAdd => Some(Precedence::Sum),
             TokenType::Slash => Some(Precedence::Product),
             TokenType::Asterisk => Some(Precedence::Product),
             TokenType::Lparen => Some(Precedence::Call),
@@ -219,7 +220,8 @@ impl Parser {
             | TokenType::Eq
             | TokenType::NotEq
             | TokenType::Lt
-            | TokenType::Gt => self.parse_infix_expression(left.clone()),
+            | TokenType::Gt
+            | TokenType::AssignAdd => self.parse_infix_expression(left.clone()),
             TokenType::Lparen => self.parse_call_expression(left.clone()),
             TokenType::Lbracket => self.parse_index_expression(left.clone()),
             _ => None,
@@ -934,6 +936,90 @@ mod tests {
                 test.left_val,
                 &test.operator,
                 test.right_val,
+            );
+        }
+    }
+
+    #[test]
+    fn test_parsing_assign_number_to_ident_infix_expressions() {
+        struct TestCase {
+            input: String,
+            left_val: String,
+            operator: String,
+            right_val: i64,
+        }
+
+        let tests: Vec<TestCase> = vec![TestCase {
+            input: "a += 1;".to_string(),
+            left_val: "a".to_string(),
+            operator: "+=".to_string(),
+            right_val: 1,
+        }];
+
+        for test in tests {
+            let lexer = Lexer::new(test.input);
+
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+
+            assert_eq!(
+                parser.errors.len(),
+                0,
+                "found errors while parsing: {:#?}",
+                parser.errors
+            );
+
+            assert_eq!(program.body.len(), 1, "not enough statements in program");
+
+            let stmt = program.body.first().unwrap();
+
+            let expr_stmt = match stmt {
+                Statement::ExpressionStatement(expression_statement) => expression_statement,
+
+                other => panic!("statement is not ExpressionStatement. got: {:?}", other),
+            };
+
+            let infix_expr = match expr_stmt
+                .expression
+                .as_ref()
+                .expect("Expression statement Expression is None")
+            {
+                Expression::InfixExpression(infix_expr) => infix_expr,
+                other => panic!("expression is not InfixExpression. got: {:?}", other),
+            };
+
+            assert_eq!(
+                infix_expr.operator, test.operator,
+                "Expected InfixExpression operator: {}. Got: {}",
+                test.operator, infix_expr.operator
+            );
+
+            let left_ident = match &infix_expr.left {
+                Expression::Identifier(ident) => ident,
+                other => panic!(
+                    "infix expression left is not IntegerLiteral. got: {:?}",
+                    other
+                ),
+            };
+
+            assert_eq!(
+                left_ident.value, test.left_val,
+                "Expected InfixExpression left value: {}. Got: {}",
+                test.left_val, left_ident.value
+            );
+
+            let right_literal = match &infix_expr.right {
+                Expression::IntegerLiteral(int_literal) => int_literal,
+                other => panic!(
+                    "infix expression right is not IntegerLiteral. got: {:?}",
+                    other
+                ),
+            };
+
+            assert_eq!(
+                right_literal.value, test.right_val,
+                "Expected InfixExpression right value: {}. Got: {}",
+                test.right_val, right_literal.value
             );
         }
     }
