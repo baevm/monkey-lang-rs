@@ -1,0 +1,11 @@
+let compare = function(x, y) {
+    if(x > y) {
+        return "x bigger than y";
+    } else {
+        return "y bigger than x";
+    }
+}
+
+let result = compare(5, 4);
+
+print(result);

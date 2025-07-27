@@ -1,0 +1,7 @@
+let a = 100;
+let b = 500;
+
+a += b;
+
+print("Result:");
+print(a);
