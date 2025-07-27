@@ -261,7 +261,7 @@ impl Builtin {
         }
 
         if let Object::Array(arr) = &args[0]
-            && arr.elements.len() > 0
+            && !arr.elements.is_empty()
         {
             return arr.elements[0].clone();
         }
@@ -277,7 +277,7 @@ impl Builtin {
         }
 
         if let Object::Array(arr) = &args[0]
-            && arr.elements.len() > 0
+            && !arr.elements.is_empty()
         {
             return arr.elements.last().unwrap().clone();
         }

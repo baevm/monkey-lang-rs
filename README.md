@@ -5,7 +5,7 @@ Monkey language interpreter based on book "Writing an Interpreter in Go"
 Supported features:
 - [x] Variables
 - [x] Types: integers, booleans, strings, null
-- [x] Arithmetic operations: +, -, *, /
+- [x] Arithmetic operations and compound operators: +, -, *, /, +=, -=, *=, /=
 - [x] Comparison operations: ==, !=, <, <=, >, >=
 - [x] If statements
 - [x] Functions

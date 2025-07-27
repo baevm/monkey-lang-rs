@@ -19,12 +19,12 @@ impl Repl {
             let mut stdout = std::io::stdout().lock();
 
             if let Err(err) = write!(stdout, ">> ") {
-                println!("{}", err);
+                println!("{err}");
                 break;
             }
 
             if let Err(err) = stdout.flush() {
-                println!("{}", err);
+                println!("{err}");
                 break;
             }
 

@@ -261,7 +261,7 @@ impl Lexer {
             self.read_char();
         }
 
-        return self.input[position as usize..self.position as usize].to_string();
+        self.input[position as usize..self.position as usize].to_string()
     }
 
     fn read_number(&mut self) -> String {
@@ -271,7 +271,7 @@ impl Lexer {
             self.read_char();
         }
 
-        return self.input[position as usize..self.position as usize].to_string();
+        self.input[position as usize..self.position as usize].to_string()
     }
 
     fn skip_whitespace(&mut self) {
@@ -299,7 +299,7 @@ impl Lexer {
             }
         }
 
-        return self.input[position as usize..self.position as usize].to_string();
+        self.input[position as usize..self.position as usize].to_string()
     }
 }
 

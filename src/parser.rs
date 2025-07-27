@@ -484,9 +484,7 @@ impl Parser {
             self.next_token();
             let value = self.parse_expression(Precedence::Lowest);
 
-            if value.is_none() {
-                return None;
-            }
+            value.as_ref()?;
 
             hash_literal.pairs.push((key.unwrap(), value.unwrap()));
 
@@ -505,10 +503,10 @@ impl Parser {
     fn expect_peek(&mut self, expected: TokenType) -> bool {
         if self.is_peek_token(&expected) {
             self.next_token();
-            return true;
+            true
         } else {
             self.peek_error(expected);
-            return false;
+            false
         }
     }
 
@@ -549,8 +547,7 @@ impl Parser {
 
     fn no_prefix_parse_fn_err(&mut self, token_type: TokenType) {
         self.errors.push(format!(
-            "no prefix parse function found for: {:?}",
-            token_type
+            "no prefix parse function found for: {token_type:?}"
         ));
     }
 }

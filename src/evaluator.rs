@@ -27,7 +27,7 @@ impl Evaluator {
         let mut result = Object::Null(Box::new(Null {}));
 
         for stmt in &program.body {
-            result = self.eval_statement(&stmt);
+            result = self.eval_statement(stmt);
 
             if let Object::Return(return_obj) = result {
                 return return_obj.value;
@@ -48,7 +48,7 @@ impl Evaluator {
                     return Object::Null(Box::new(Null {}));
                 }
 
-                let evaluated = self.eval_expression(&let_stmt.value.as_ref().unwrap());
+                let evaluated = self.eval_expression(let_stmt.value.as_ref().unwrap());
 
                 if self.is_err_obj(&evaluated) {
                     return evaluated;
@@ -63,7 +63,7 @@ impl Evaluator {
                     return Object::Null(Box::new(Null {}));
                 }
 
-                let value = self.eval_expression(&return_statement.return_value.as_ref().unwrap());
+                let value = self.eval_expression(return_statement.return_value.as_ref().unwrap());
 
                 if self.is_err_obj(&value) {
                     return value;
@@ -82,7 +82,7 @@ impl Evaluator {
                 let mut result = Object::Null(Box::new(Null {}));
 
                 for stmt in &block_stmt.statements {
-                    result = self.eval_statement(&stmt);
+                    result = self.eval_statement(stmt);
 
                     if let Object::Return(_) = &result {
                         return result;
@@ -137,7 +137,7 @@ impl Evaluator {
 
                 self.eval_infix_expression(&infix_expr.operator, &mut left, &mut right)
             }
-            Expression::IfExpression(if_expr) => self.eval_if_expression(&if_expr),
+            Expression::IfExpression(if_expr) => self.eval_if_expression(if_expr),
             Expression::Identifier(ident) => self.eval_identifier(ident),
             Expression::FunctionLiteral(func) => Object::Function(Box::new(Function {
                 parameters: func.parameters.clone(),
@@ -204,7 +204,7 @@ impl Evaluator {
             "!" => self.eval_bang_operator_expression(right),
             "-" => self.eval_minus_prefix_operator_expression(right),
             _ => Object::InternalError(Box::new(InternalError {
-                message: format!("unknown operator: {operator}{}", right),
+                message: format!("unknown operator: {operator}{right}"),
             })),
         }
     }
@@ -261,7 +261,7 @@ impl Evaluator {
     fn eval_minus_prefix_operator_expression(&self, right: Object) -> Object {
         let Object::Integer(int_expr) = right else {
             return Object::InternalError(Box::new(InternalError {
-                message: format!("unknown operator: -{}", right),
+                message: format!("unknown operator: -{right}"),
             }));
         };
 
@@ -278,24 +278,23 @@ impl Evaluator {
     ) -> Object {
         if discriminant(left) != discriminant(right) {
             return Object::InternalError(Box::new(InternalError {
-                message: format!("type mismatch: {} {} {}", left, operator, right),
+                message: format!("type mismatch: {left} {operator} {right}"),
             }));
         }
 
         match (left, right) {
             (Object::Integer(left_expr), Object::Integer(right_expr)) => {
-                return self.eval_integer_infix_expression(&operator, left_expr, right_expr);
+                return self.eval_integer_infix_expression(operator, left_expr, right_expr);
             }
             (Object::Boolean(left_expr), Object::Boolean(right_expr)) => {
-                return self.eval_boolean_infix_expression(&operator, left_expr, right_expr);
+                return self.eval_boolean_infix_expression(operator, left_expr, right_expr);
             }
             (Object::String(left_expr), Object::String(right_expr)) => {
-                return self.eval_string_concatenation(&operator, left_expr, right_expr);
+                return self.eval_string_concatenation(operator, left_expr, right_expr);
             }
             (left_expr, right_expr) => Object::InternalError(Box::new(InternalError {
                 message: format!(
-                    "unknown operator: {} {} {}",
-                    left_expr, operator, right_expr
+                    "unknown operator: {left_expr} {operator} {right_expr}"
                 ),
             })),
         };
@@ -335,7 +334,7 @@ impl Evaluator {
                 value: left.value != right.value,
             })),
             _ => Object::InternalError(Box::new(InternalError {
-                message: format!("unknown operator: {} {} {}", left, operator, right),
+                message: format!("unknown operator: {left} {operator} {right}"),
             })),
         }
     }
@@ -354,7 +353,7 @@ impl Evaluator {
                 value: left.value != right.value,
             })),
             _ => Object::InternalError(Box::new(InternalError {
-                message: format!("unknown operator: {} {} {}", left, operator, right),
+                message: format!("unknown operator: {left} {operator} {right}"),
             })),
         }
     }
@@ -414,7 +413,7 @@ impl Evaluator {
     fn apply_function(&mut self, func: Object, args: &Vec<Object>) -> Object {
         match func {
             Object::Function(func_obj) => {
-                let mut extended_env = self.extend_function_env(&func_obj, &args);
+                let mut extended_env = self.extend_function_env(&func_obj, args);
 
                 for (param, arg) in func_obj.parameters.iter().zip(args.iter()) {
                     extended_env.set(&param.value, arg.clone());
@@ -436,11 +435,11 @@ impl Evaluator {
 
                 evaluated
             }
-            Object::Builtin(builtin) => return (builtin.func)(&args),
+            Object::Builtin(builtin) => (builtin.func)(args),
             _ => {
-                return Object::InternalError(Box::new(InternalError {
-                    message: format!("not a function: {}", func),
-                }));
+                Object::InternalError(Box::new(InternalError {
+                    message: format!("not a function: {func}"),
+                }))
             }
         }
     }
@@ -466,7 +465,7 @@ impl Evaluator {
                 value: format!("{}{}", left.value, right.value),
             })),
             _ => Object::InternalError(Box::new(InternalError {
-                message: format!("unknown operator: {} {} {}", left, operator, right),
+                message: format!("unknown operator: {left} {operator} {right}"),
             })),
         }
     }
@@ -487,7 +486,7 @@ impl Evaluator {
         if let Object::HashObj(hash_obj) = &left {
             if !self.is_hashable(&index) {
                 return Object::InternalError(Box::new(InternalError {
-                    message: format!("unusable as hash key: {}", index),
+                    message: format!("unusable as hash key: {index}"),
                 }));
             }
 
@@ -508,7 +507,7 @@ impl Evaluator {
         }
 
         Object::InternalError(Box::new(InternalError {
-            message: format!("index operator not supported: {}", left),
+            message: format!("index operator not supported: {left}"),
         }))
     }
 
@@ -516,7 +515,7 @@ impl Evaluator {
         let mut pairs: HashMap<HashKey, HashPair> = HashMap::new();
 
         for (key_node, value_node) in &hash_literal.pairs {
-            let key = self.eval_expression(&key_node);
+            let key = self.eval_expression(key_node);
 
             if self.is_err_obj(&key) {
                 return key;
@@ -524,7 +523,7 @@ impl Evaluator {
 
             if !self.is_hashable(&key) {
                 return Object::InternalError(Box::new(InternalError {
-                    message: format!("unusable as hash key: {}", key),
+                    message: format!("unusable as hash key: {key}"),
                 }));
             }
 

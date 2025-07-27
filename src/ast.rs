@@ -56,7 +56,7 @@ impl Stringer for LetStatement {
             sb.push_str(&val.to_string());
         }
 
-        sb.push_str(";");
+        sb.push(';');
 
         sb
     }
@@ -77,7 +77,7 @@ impl Stringer for ReturnStatement {
             sb.push_str(&return_val.to_string());
         }
 
-        sb.push_str(";");
+        sb.push(';');
 
         sb
     }
