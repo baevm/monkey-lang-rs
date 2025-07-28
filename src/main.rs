@@ -4,6 +4,7 @@ use crate::run::{Repl, run_file};
 
 mod ast;
 mod benchmark;
+mod code;
 mod evaluator;
 mod lexer;
 mod object;
