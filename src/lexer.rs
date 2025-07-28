@@ -342,6 +342,8 @@ mod tests {
             a -= 1;
             a *= 1;
             a /= 1;
+
+            for(let i = 0; i < 10; i += 1) {}
         "
         .to_string();
 
@@ -449,6 +451,23 @@ mod tests {
             (TokenType::AssignDiv, "/="),
             (TokenType::Int, "1"),
             (TokenType::Semicolon, ";"),
+            (TokenType::For, "for"),
+            (TokenType::Lparen, "("),
+            (TokenType::Let, "let"),
+            (TokenType::Ident, "i"),
+            (TokenType::Assign, "="),
+            (TokenType::Int, "0"),
+            (TokenType::Semicolon, ";"),
+            (TokenType::Ident, "i"),
+            (TokenType::Lt, "<"),
+            (TokenType::Int, "10"),
+            (TokenType::Semicolon, ";"),
+            (TokenType::Ident, "i"),
+            (TokenType::AssignAdd, "+="),
+            (TokenType::Int, "1"),
+            (TokenType::Rparen, ")"),
+            (TokenType::Lbrace, "{"),
+            (TokenType::Rbrace, "}"),
             (TokenType::Eof, ""),
         ];
 

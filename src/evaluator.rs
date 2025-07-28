@@ -95,6 +95,9 @@ impl Evaluator {
 
                 result
             }
+            Statement::ForStatement(for_statement) => {
+                todo!()
+            }
         }
     }
 
@@ -293,9 +296,7 @@ impl Evaluator {
                 return self.eval_string_concatenation(operator, left_expr, right_expr);
             }
             (left_expr, right_expr) => Object::InternalError(Box::new(InternalError {
-                message: format!(
-                    "unknown operator: {left_expr} {operator} {right_expr}"
-                ),
+                message: format!("unknown operator: {left_expr} {operator} {right_expr}"),
             })),
         };
 
@@ -436,11 +437,9 @@ impl Evaluator {
                 evaluated
             }
             Object::Builtin(builtin) => (builtin.func)(args),
-            _ => {
-                Object::InternalError(Box::new(InternalError {
-                    message: format!("not a function: {func}"),
-                }))
-            }
+            _ => Object::InternalError(Box::new(InternalError {
+                message: format!("not a function: {func}"),
+            })),
         }
     }
 
@@ -747,6 +746,28 @@ mod tests {
                 expected: Some(5),
             },
         ];
+
+        for test in tests {
+            let evaluated = test_eval(test.input);
+
+            if test.expected.is_some() {
+                if let Object::Integer(_) = &evaluated {
+                    test_integer_object(&evaluated, test.expected.unwrap());
+                } else {
+                    panic!("got null: {:?} expected: {:?}", evaluated, test.expected);
+                }
+            } else {
+                test_null_object(&evaluated)
+            }
+        }
+    }
+
+    #[test]
+    fn test_for_statement() {
+        let tests = vec![TestCase {
+            input: "let x = 0; for (let i = 0; i < 5; i += 1) { x += 1; }".to_string(),
+            expected: Some(5),
+        }];
 
         for test in tests {
             let evaluated = test_eval(test.input);

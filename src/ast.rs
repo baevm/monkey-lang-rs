@@ -13,6 +13,7 @@ pub enum Statement {
     ReturnStatement(Box<ReturnStatement>),
     ExpressionStatement(Box<ExpressionStatement>),
     BlockStatement(Box<BlockStatement>),
+    ForStatement(Box<ForStatement>),
 }
 
 impl Stringer for Statement {
@@ -24,6 +25,7 @@ impl Stringer for Statement {
                 expression_statement.to_string()
             }
             Statement::BlockStatement(block_stmt) => block_stmt.to_string(),
+            Statement::ForStatement(for_statement) => for_statement.to_string(),
         }
     }
 }
@@ -95,6 +97,30 @@ impl Stringer for ExpressionStatement {
         if let Some(expr_stmt) = &self.expression {
             sb.push_str(&expr_stmt.to_string())
         }
+
+        sb
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ForStatement {
+    pub init: Statement,
+    pub test: Expression,
+    pub update: Expression,
+    pub body: BlockStatement,
+}
+
+impl Stringer for ForStatement {
+    fn to_string(&self) -> String {
+        let mut sb = String::new();
+
+        sb.push_str(&format!(
+            "for({};{};{}) {{\n {} \n}}",
+            self.init.to_string(),
+            self.test.to_string(),
+            self.update.to_string(),
+            self.body.to_string(),
+        ));
 
         sb
     }

@@ -46,6 +46,7 @@ pub enum TokenType {
     Return,
     True,
     False,
+    For,
 }
 
 #[derive(Debug, Clone)]
@@ -77,6 +78,7 @@ impl Token {
             "return" => TokenType::Return,
             "true" => TokenType::True,
             "false" => TokenType::False,
+            "for" => TokenType::For,
             _ => TokenType::Ident,
         }
     }

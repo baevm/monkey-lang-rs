@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         self, ArrayLiteral, BlockStatement, Boolean, CallExpression, Expression,
-        ExpressionStatement, FunctionLiteral, HashLiteral, Identifier, IfExpression,
+        ExpressionStatement, ForStatement, FunctionLiteral, HashLiteral, Identifier, IfExpression,
         IndexExpression, InfixExpression, IntegerLiteral, LetStatement, PrefixExpression,
         ReturnStatement, Statement, StringLiteral,
     },
@@ -101,6 +101,7 @@ impl Parser {
         match self.curr_token.token_type {
             TokenType::Let => self.parse_let_statement(),
             TokenType::Return => self.parse_return_statement(),
+            TokenType::For => self.parse_for_statement(),
             _ => self.parse_expression_statement(),
         }
     }
@@ -143,6 +144,47 @@ impl Parser {
         }
 
         Some(return_stmt)
+    }
+
+    fn parse_for_statement(&mut self) -> Option<Statement> {
+        if !self.expect_peek(TokenType::Lparen) {
+            return None;
+        }
+
+        self.next_token();
+
+        let init = self.parse_statement()?;
+
+        // skip semicolon
+        self.next_token();
+
+        let test = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.expect_peek(TokenType::Semicolon) {
+            return None;
+        }
+        self.next_token();
+
+        let update = self.parse_expression(Precedence::Lowest)?;
+
+        if !self.expect_peek(TokenType::Rparen) {
+            return None;
+        }
+
+        if !self.expect_peek(TokenType::Lbrace) {
+            return None;
+        }
+
+        let body = self.parse_block_statement();
+
+        let for_statement = Statement::ForStatement(Box::new(ForStatement {
+            init,
+            test,
+            update,
+            body,
+        }));
+
+        Some(for_statement)
     }
 
     fn parse_expression_statement(&mut self) -> Option<Statement> {
@@ -558,7 +600,7 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::{
-        ast::{Expression, ExpressionStatement, Statement},
+        ast::{Expression, ExpressionStatement, Statement, Stringer},
         lexer::Lexer,
         parser::Parser,
     };
@@ -737,6 +779,54 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    #[test]
+    fn test_parsing_for_statement() {
+        #[derive(Debug)]
+        struct TestCase {
+            input: String,
+            expected_init: String,
+            expected_test: String,
+            expected_update: String,
+            expected_body_str: String,
+        }
+
+        let tests = vec![TestCase {
+            input: "for (let i = 0; i < 10; i += 1) { let b = 0; }".to_string(),
+            expected_body_str: "let b = 0;".to_string(),
+            expected_init: "let i = 0;".to_string(),
+            expected_test: "(i < 10)".to_string(),
+            expected_update: "(i += 1)".to_string(),
+        }];
+
+        for test in tests {
+            let lexer = Lexer::new(test.input);
+            let mut parser = Parser::new(lexer);
+
+            let program = parser.parse_program();
+
+            assert_eq!(
+                parser.errors.len(),
+                0,
+                "found errors while parsing: {:#?}",
+                parser.errors
+            );
+
+            assert_eq!(program.body.len(), 1, "not enough statements in program");
+
+            let statement = &program.body[0];
+
+            let for_stmt = match statement {
+                Statement::ForStatement(for_stmt) => for_stmt,
+                other => panic!("statement is not ForStatement. got: {:?}", other),
+            };
+
+            assert_eq!(for_stmt.init.to_string(), test.expected_init);
+            assert_eq!(for_stmt.test.to_string(), test.expected_test);
+            assert_eq!(for_stmt.update.to_string(), test.expected_update);
+            assert_eq!(for_stmt.body.to_string(), test.expected_body_str);
         }
     }
 
