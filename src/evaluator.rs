@@ -1,4 +1,4 @@
-use crate::ast::{HashLiteral, Identifier, IfExpression, InfixExpression};
+use crate::ast::{self, HashLiteral, Identifier, IfExpression, InfixExpression};
 use crate::object::{
     Array, Builtin, Environment, Function, HashKey, HashObj, HashPair, InternalError, Return,
     StringObj,
@@ -96,9 +96,46 @@ impl Evaluator {
                 result
             }
             Statement::ForStatement(for_statement) => {
-                todo!()
+                let _init = self.eval_statement(&for_statement.init);
+                let mut result = Object::Null(Box::new(Null {}));
+
+                loop {
+                    let test = self.eval_expression(&for_statement.test);
+
+                    if let Object::Boolean(boolean_obj) = test {
+                        if !boolean_obj.value {
+                            break;
+                        }
+
+                        result = self.eval_block_statement(&for_statement.body);
+
+                        let _upd = self.eval_expression(&for_statement.update);
+                    } else {
+                        break;
+                    }
+                }
+
+                result
             }
         }
+    }
+
+    fn eval_block_statement(&mut self, block_stmt: &ast::BlockStatement) -> Object {
+        let mut result = Object::Null(Box::new(Null {}));
+
+        for stmt in &block_stmt.statements {
+            result = self.eval_statement(stmt);
+
+            if let Object::Return(_) = &result {
+                return result;
+            }
+
+            if let Object::InternalError(_) = &result {
+                return result;
+            }
+        }
+
+        result
     }
 
     fn eval_expression(&mut self, expr: &Expression) -> Object {
@@ -122,6 +159,11 @@ impl Evaluator {
                 self.eval_prefix_expression(&prefix_expr.operator, right)
             }
             Expression::InfixExpression(infix_expr) => {
+                // if infix_expr.operator == "=" {
+                //     println!("{:?}", infix_expr);
+                //     return self.eval_assigment(infix_expr);
+                // }
+
                 if infix_expr.is_compound_assign() {
                     return self.eval_compound_assign(infix_expr);
                 }
@@ -553,6 +595,66 @@ impl Evaluator {
             Object::Integer(_) | Object::Boolean(_) | Object::String(_)
         )
     }
+
+    fn eval_assigment(&mut self, infix_expr: &InfixExpression) -> Object {
+        match &infix_expr.left {
+            Expression::Identifier(ident) => {
+                let val = self.eval_expression(&infix_expr.right);
+
+                if self.is_err_obj(&val) {
+                    return val;
+                }
+
+                self.env.borrow_mut().set(&ident.value, val.clone());
+                val
+            }
+            Expression::IndexExpression(index_expr) => {
+                let arr = self.eval_expression(&index_expr.left);
+
+                if self.is_err_obj(&arr) {
+                    return arr;
+                }
+
+                let index_obj = self.eval_expression(&index_expr.index);
+
+                if self.is_err_obj(&index_obj) {
+                    return index_obj;
+                }
+
+                let val = self.eval_expression(&infix_expr.right);
+
+                if self.is_err_obj(&val) {
+                    return val;
+                }
+
+                if let Expression::Identifier(array_ident) = &index_expr.left {
+                    if let Some(Object::Array(mut array)) =
+                        self.env.borrow().get(&array_ident.value)
+                    {
+                        if let Object::Integer(index_int) = index_obj {
+                            let idx = index_int.value as usize;
+
+                            if idx < array.elements.len() {
+                                array.elements[idx] = val.clone();
+                                self.env
+                                    .borrow_mut()
+                                    .set(&array_ident.value, Object::Array(array));
+                                return val;
+                            }
+                        }
+                    }
+                }
+
+                Object::InternalError(Box::new(InternalError {
+                    message: "invalid assignment target".to_string(),
+                }))
+            }
+
+            _ => Object::InternalError(Box::new(InternalError {
+                message: "invalid assignment target".to_string(),
+            })),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -764,10 +866,52 @@ mod tests {
 
     #[test]
     fn test_for_statement() {
-        let tests = vec![TestCase {
-            input: "let x = 0; for (let i = 0; i < 5; i += 1) { x += 1; }".to_string(),
-            expected: Some(5),
-        }];
+        let tests = vec![
+            TestCase {
+                input: "let x = 0; for (let i = 0; i < 5; i += 1) { x += 1; }; x;".to_string(),
+                expected: Some(5),
+            },
+            TestCase {
+                input: "let x = 0; for (let i = 0; i < 10; i += 2) { x += i; }; x;".to_string(),
+                expected: Some(20),
+            },
+            TestCase {
+                input: "let x = 0; for (let i = 5; i > 0; i -= 1) { x += i; }; x;".to_string(),
+                expected: Some(15),
+            },
+            TestCase {
+                input: "let x = 0; for (let i = 10; i < 5; i += 1) { x += 1; }; x;".to_string(),
+                expected: Some(0),
+            },
+            TestCase {
+                input: "let x = 0; for (let i = 1; i < 10; i *= 2) { x += 1; }; x;".to_string(),
+                expected: Some(4),
+            },
+            TestCase {
+                input: "let x = 0; for (let i = 16; i > 1; i /= 2) { x += i; }; x;".to_string(),
+                expected: Some(30),
+            },
+            TestCase {
+                input: "let sum = 0; let n = 3; for (let i = 0; i < n; i += 1) { sum += i; }; sum;"
+                    .to_string(),
+                expected: Some(3),
+            },
+            TestCase {
+                input: "let x = 0; for (let i = 0; i + 2 < 8; i += 1) { x += 1; }; x;".to_string(),
+                expected: Some(6),
+            },
+            TestCase {
+                input:
+                    "let start = 2; let x = 0; for (let i = start; i < 5; i += 1) { x += i; }; x;"
+                        .to_string(),
+                expected: Some(9),
+            },
+            // TODO: reassigment not supported
+            // TestCase {
+            //     input: "let arr = [0, 0, 0]; for (let i = 0; i < 3; i += 1) { arr[i] = i + 1; }; arr[0] + arr[1] + arr[2];".to_string(),
+            //     expected: Some(6),
+            // },
+        ];
 
         for test in tests {
             let evaluated = test_eval(test.input);
