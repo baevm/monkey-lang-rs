@@ -12,10 +12,11 @@ use crate::{
 #[derive(Debug, PartialEq, PartialOrd)]
 enum Precedence {
     Lowest,
+    Assign,      // =
     Equals,      // ==
     LessGreater, // < >
-    Sum,         // +, -, +=
-    Product,     // *
+    Sum,         // +, -, +=, -=
+    Product,     // *, /, *=, /=
     Prefix,      // --variable
     Call,        // function()
     Index,       // array[someIndex]
@@ -24,6 +25,8 @@ enum Precedence {
 impl Precedence {
     pub fn token_to_precedence(token: &TokenType) -> Option<Self> {
         match token {
+            TokenType::Assign => Some(Precedence::Assign),
+
             TokenType::Eq => Some(Precedence::Equals),
             TokenType::NotEq => Some(Precedence::Equals),
 
@@ -270,6 +273,7 @@ impl Parser {
             | TokenType::NotEq
             | TokenType::Lt
             | TokenType::Gt
+            | TokenType::Assign
             | TokenType::AssignAdd
             | TokenType::AssignSub
             | TokenType::AssignDiv
@@ -1038,7 +1042,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parsing_compound_operator_infix_expression() {
+    fn test_parsing_assign_operators_infix_expression() {
         struct TestCase {
             input: String,
             left_val: String,
@@ -1070,6 +1074,12 @@ mod tests {
                 left_val: "a".to_string(),
                 operator: "/=".to_string(),
                 right_val: 1,
+            },
+            TestCase {
+                input: "a = 5;".to_string(),
+                left_val: "a".to_string(),
+                operator: "=".to_string(),
+                right_val: 5,
             },
         ];
 

@@ -72,7 +72,6 @@ mod tests {
 
         for test in tests {
             let instruction = make(test.op, &test.operands);
-            println!("{:?}", instruction.len());
 
             assert_eq!(instruction.len(), test.expected.len());
 

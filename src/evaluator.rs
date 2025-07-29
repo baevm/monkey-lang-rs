@@ -159,10 +159,9 @@ impl Evaluator {
                 self.eval_prefix_expression(&prefix_expr.operator, right)
             }
             Expression::InfixExpression(infix_expr) => {
-                // if infix_expr.operator == "=" {
-                //     println!("{:?}", infix_expr);
-                //     return self.eval_assigment(infix_expr);
-                // }
+                if infix_expr.operator == "=" {
+                    return self.eval_assigment(infix_expr);
+                }
 
                 if infix_expr.is_compound_assign() {
                     return self.eval_compound_assign(infix_expr);
@@ -605,7 +604,16 @@ impl Evaluator {
                     return val;
                 }
 
-                self.env.borrow_mut().set(&ident.value, val.clone());
+                let mut env = self.env.borrow_mut();
+
+                // if identifier doesnt exist
+                if env.get(&ident.value).is_none() {
+                    return Object::InternalError(Box::new(InternalError {
+                        message: "invalid assignment target".to_string(),
+                    }));
+                }
+
+                env.set(&ident.value, val.clone());
                 val
             }
             Expression::IndexExpression(index_expr) => {
@@ -628,17 +636,15 @@ impl Evaluator {
                 }
 
                 if let Expression::Identifier(array_ident) = &index_expr.left {
-                    if let Some(Object::Array(mut array)) =
-                        self.env.borrow().get(&array_ident.value)
-                    {
+                    let mut env = self.env.borrow_mut();
+
+                    if let Some(Object::Array(mut array)) = env.get(&array_ident.value) {
                         if let Object::Integer(index_int) = index_obj {
                             let idx = index_int.value as usize;
 
                             if idx < array.elements.len() {
                                 array.elements[idx] = val.clone();
-                                self.env
-                                    .borrow_mut()
-                                    .set(&array_ident.value, Object::Array(array));
+                                env.set(&array_ident.value, Object::Array(array));
                                 return val;
                             }
                         }
@@ -906,11 +912,10 @@ mod tests {
                         .to_string(),
                 expected: Some(9),
             },
-            // TODO: reassigment not supported
-            // TestCase {
-            //     input: "let arr = [0, 0, 0]; for (let i = 0; i < 3; i += 1) { arr[i] = i + 1; }; arr[0] + arr[1] + arr[2];".to_string(),
-            //     expected: Some(6),
-            // },
+            TestCase {
+                input: "let arr = [0, 0, 0]; for (let i = 0; i < 3; i += 1) { arr[i] = i + 1; }; arr[0] + arr[1] + arr[2];".to_string(),
+                expected: Some(6),
+            },
         ];
 
         for test in tests {
@@ -1036,6 +1041,10 @@ mod tests {
                 input: r#"let a = 1; a += "str"; a"#.to_string(),
                 expected: "cannot assign to: a",
             },
+            TestCase {
+                input: "let a = 200; b = 400; a;".to_string(),
+                expected: "invalid assignment target",
+            },
         ];
 
         for test in tests {
@@ -1074,6 +1083,11 @@ mod tests {
             TestCase {
                 input: "let a = 5; let b = a; let c = a + b + 5; c".to_string(),
                 expected: 15,
+            },
+            // Test reassigment to variable
+            TestCase {
+                input: "let a = 100; a = 500; a;".to_string(),
+                expected: 500,
             },
         ];
 
@@ -1121,7 +1135,6 @@ mod tests {
         ];
 
         for test in tests {
-            println!("{:?}", test.input);
             let evaluated = test_eval(test.input);
             test_integer_object(&evaluated, test.expected);
         }

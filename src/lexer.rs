@@ -342,6 +342,7 @@ mod tests {
             a -= 1;
             a *= 1;
             a /= 1;
+            a = 1;
 
             for(let i = 0; i < 10; i += 1) {}
         "
@@ -449,6 +450,10 @@ mod tests {
             (TokenType::Semicolon, ";"),
             (TokenType::Ident, "a"),
             (TokenType::AssignDiv, "/="),
+            (TokenType::Int, "1"),
+            (TokenType::Semicolon, ";"),
+            (TokenType::Ident, "a"),
+            (TokenType::Assign, "="),
             (TokenType::Int, "1"),
             (TokenType::Semicolon, ";"),
             (TokenType::For, "for"),
