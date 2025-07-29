@@ -144,8 +144,31 @@ impl ObjectTrait for Return {
 }
 
 #[derive(Debug, Clone)]
+pub enum EvaluateErr {
+    UnknownOperator(String),
+    TypeError(String),
+    IndexNotSupported(String),
+    UnknownIdentifier(String),
+    UnknownHashKey(String),
+    WrongNumberOfArgs(String),
+}
+
+impl std::fmt::Display for EvaluateErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EvaluateErr::UnknownOperator(e) => write!(f, "unknown operator: {e}"),
+            EvaluateErr::UnknownIdentifier(e) => write!(f, "unknown identifier: {e}"),
+            EvaluateErr::TypeError(e) => write!(f, "type error: {e}"),
+            EvaluateErr::IndexNotSupported(e) => write!(f, "index operator not supported: {e}"),
+            EvaluateErr::UnknownHashKey(e) => write!(f, "unknown as hash key: {e}"),
+            EvaluateErr::WrongNumberOfArgs(e) => write!(f, "wrong number of arguments. {e}"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct InternalError {
-    pub message: String,
+    pub message: EvaluateErr,
 }
 
 impl ObjectTrait for InternalError {
@@ -236,7 +259,7 @@ impl Builtin {
     fn length(args: &[Object]) -> Object {
         if args.len() != 1 {
             return Object::InternalError(Box::new(InternalError {
-                message: format!("wrong number of arguments. Got: {}, want: 1", args.len()),
+                message: EvaluateErr::WrongNumberOfArgs(format!("Got: {}, want: 1", args.len())),
             }));
         }
 
@@ -248,7 +271,7 @@ impl Builtin {
                 value: arr.elements.len() as i64,
             })),
             _ => Object::InternalError(Box::new(InternalError {
-                message: format!("argument to \"len\" is not supported, got: {}", args[0]),
+                message: EvaluateErr::WrongNumberOfArgs(format!("Got: {}, want: 0", args[0])),
             })),
         }
     }
@@ -256,7 +279,7 @@ impl Builtin {
     fn first(args: &[Object]) -> Object {
         if args.len() != 1 {
             return Object::InternalError(Box::new(InternalError {
-                message: format!("wrong number of arguments. Got: {}, want: 1", args.len()),
+                message: EvaluateErr::WrongNumberOfArgs(format!("Got: {}, want: 1", args.len())),
             }));
         }
 
@@ -272,7 +295,7 @@ impl Builtin {
     fn last(args: &[Object]) -> Object {
         if args.len() != 1 {
             return Object::InternalError(Box::new(InternalError {
-                message: format!("wrong number of arguments. Got: {}, want: 1", args.len()),
+                message: EvaluateErr::WrongNumberOfArgs(format!("Got: {}, want: 1", args.len())),
             }));
         }
 
@@ -288,7 +311,7 @@ impl Builtin {
     fn push(args: &[Object]) -> Object {
         if args.len() != 2 {
             return Object::InternalError(Box::new(InternalError {
-                message: format!("wrong number of arguments. Got: {}, want: 2", args.len()),
+                message: EvaluateErr::WrongNumberOfArgs(format!("Got: {}, want: 2", args.len())),
             }));
         }
 
@@ -379,7 +402,8 @@ impl_display_name! {
     Function => "Function",
     StringObj => "String",
     Builtin => "Builtin Function",
-    Array => "Array"
+    Array => "Array",
+    HashObj => "Object"
 }
 
 #[cfg(test)]

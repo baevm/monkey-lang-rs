@@ -3,5 +3,10 @@ let b = 500;
 
 a += b;
 
-print("Result:");
+print("Sum result:");
+print(a);
+
+a = 1337;
+
+print("Reassignment:");
 print(a);

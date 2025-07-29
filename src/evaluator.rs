@@ -1,7 +1,7 @@
 use crate::ast::{self, HashLiteral, Identifier, IfExpression, InfixExpression};
 use crate::object::{
-    Array, Builtin, Environment, Function, HashKey, HashObj, HashPair, InternalError, Return,
-    StringObj,
+    Array, Builtin, Environment, EvaluateErr, Function, HashKey, HashObj, HashPair, InternalError,
+    Return, StringObj,
 };
 use crate::{
     ast::{Expression, Program, Statement},
@@ -248,7 +248,7 @@ impl Evaluator {
             "!" => self.eval_bang_operator_expression(right),
             "-" => self.eval_minus_prefix_operator_expression(right),
             _ => Object::InternalError(Box::new(InternalError {
-                message: format!("unknown operator: {operator}{right}"),
+                message: EvaluateErr::UnknownOperator(format!("{operator}{right}")),
             })),
         }
     }
@@ -280,7 +280,7 @@ impl Evaluator {
                 }
 
                 return Object::InternalError(Box::new(InternalError {
-                    message: format!("cannot assign to: {}", left_ident.value),
+                    message: EvaluateErr::TypeError(format!("{}", left_ident.value,)),
                 }));
             }
         }
@@ -305,7 +305,7 @@ impl Evaluator {
     fn eval_minus_prefix_operator_expression(&self, right: Object) -> Object {
         let Object::Integer(int_expr) = right else {
             return Object::InternalError(Box::new(InternalError {
-                message: format!("unknown operator: -{right}"),
+                message: EvaluateErr::UnknownOperator(format!("-{right}")),
             }));
         };
 
@@ -322,7 +322,7 @@ impl Evaluator {
     ) -> Object {
         if discriminant(left) != discriminant(right) {
             return Object::InternalError(Box::new(InternalError {
-                message: format!("type mismatch: {left} {operator} {right}"),
+                message: EvaluateErr::UnknownOperator(format!("{left} {operator} {right}")),
             }));
         }
 
@@ -337,7 +337,9 @@ impl Evaluator {
                 return self.eval_string_concatenation(operator, left_expr, right_expr);
             }
             (left_expr, right_expr) => Object::InternalError(Box::new(InternalError {
-                message: format!("unknown operator: {left_expr} {operator} {right_expr}"),
+                message: EvaluateErr::UnknownOperator(format!(
+                    "{left_expr} {operator} {right_expr}"
+                )),
             })),
         };
 
@@ -376,7 +378,7 @@ impl Evaluator {
                 value: left.value != right.value,
             })),
             _ => Object::InternalError(Box::new(InternalError {
-                message: format!("unknown operator: {left} {operator} {right}"),
+                message: EvaluateErr::UnknownOperator(format!("{left} {operator} {right}")),
             })),
         }
     }
@@ -395,7 +397,7 @@ impl Evaluator {
                 value: left.value != right.value,
             })),
             _ => Object::InternalError(Box::new(InternalError {
-                message: format!("unknown operator: {left} {operator} {right}"),
+                message: EvaluateErr::UnknownOperator(format!("{left} {operator} {right}")),
             })),
         }
     }
@@ -432,7 +434,7 @@ impl Evaluator {
         }
 
         Object::InternalError(Box::new(InternalError {
-            message: format!("identifier not found: {}", ident.value),
+            message: EvaluateErr::UnknownIdentifier(ident.value.clone()),
         }))
     }
 
@@ -479,7 +481,7 @@ impl Evaluator {
             }
             Object::Builtin(builtin) => (builtin.func)(args),
             _ => Object::InternalError(Box::new(InternalError {
-                message: format!("not a function: {func}"),
+                message: EvaluateErr::TypeError(format!("{func}")),
             })),
         }
     }
@@ -505,7 +507,7 @@ impl Evaluator {
                 value: format!("{}{}", left.value, right.value),
             })),
             _ => Object::InternalError(Box::new(InternalError {
-                message: format!("unknown operator: {left} {operator} {right}"),
+                message: EvaluateErr::UnknownOperator(format!("{left} {operator} {right}")),
             })),
         }
     }
@@ -526,7 +528,7 @@ impl Evaluator {
         if let Object::HashObj(hash_obj) = &left {
             if !self.is_hashable(&index) {
                 return Object::InternalError(Box::new(InternalError {
-                    message: format!("unusable as hash key: {index}"),
+                    message: EvaluateErr::UnknownHashKey(format!("{index}")),
                 }));
             }
 
@@ -547,7 +549,7 @@ impl Evaluator {
         }
 
         Object::InternalError(Box::new(InternalError {
-            message: format!("index operator not supported: {left}"),
+            message: EvaluateErr::IndexNotSupported(format!("{left}")),
         }))
     }
 
@@ -563,7 +565,7 @@ impl Evaluator {
 
             if !self.is_hashable(&key) {
                 return Object::InternalError(Box::new(InternalError {
-                    message: format!("unusable as hash key: {key}"),
+                    message: EvaluateErr::UnknownHashKey(format!("{key}")),
                 }));
             }
 
@@ -609,7 +611,7 @@ impl Evaluator {
                 // if identifier doesnt exist
                 if env.get(&ident.value).is_none() {
                     return Object::InternalError(Box::new(InternalError {
-                        message: "invalid assignment target".to_string(),
+                        message: EvaluateErr::UnknownIdentifier(ident.value.clone()),
                     }));
                 }
 
@@ -652,12 +654,12 @@ impl Evaluator {
                 }
 
                 Object::InternalError(Box::new(InternalError {
-                    message: "invalid assignment target".to_string(),
+                    message: EvaluateErr::TypeError("".to_string()),
                 }))
             }
 
             _ => Object::InternalError(Box::new(InternalError {
-                message: "invalid assignment target".to_string(),
+                message: EvaluateErr::TypeError("".to_string()),
             })),
         }
     }
@@ -978,11 +980,11 @@ mod tests {
         let tests = vec![
             TestCase {
                 input: "5 + true;".to_string(),
-                expected: "type mismatch: Integer + Boolean",
+                expected: "unknown operator: Integer + Boolean",
             },
             TestCase {
                 input: "5 + true; 5;".to_string(),
-                expected: "type mismatch: Integer + Boolean",
+                expected: "unknown operator: Integer + Boolean",
             },
             TestCase {
                 input: "-true".to_string(),
@@ -1015,7 +1017,7 @@ mod tests {
             },
             TestCase {
                 input: "randomVariable".to_string(),
-                expected: "identifier not found: randomVariable",
+                expected: "unknown identifier: randomVariable",
             },
             TestCase {
                 input: "\"Hi\" - \"Batman\"".to_string(),
@@ -1023,27 +1025,27 @@ mod tests {
             },
             TestCase {
                 input: "{\"name\": \"Monkey\"}[function(x) {x}];".to_string(),
-                expected: "unusable as hash key: Function",
+                expected: "unknown as hash key: Function",
             },
             TestCase {
                 input: "let a = false; a += 1; a;".to_string(),
-                expected: "cannot assign to: a",
+                expected: "type error: a",
             },
             TestCase {
                 input: r#"let a = "some_string"; a += 1; a;"#.to_string(),
-                expected: "cannot assign to: a",
+                expected: "type error: a",
             },
             TestCase {
                 input: r#"let a = "some_string"; let b = 1; a += b; a;"#.to_string(),
-                expected: "cannot assign to: a",
+                expected: "type error: a",
             },
             TestCase {
                 input: r#"let a = 1; a += "str"; a"#.to_string(),
-                expected: "cannot assign to: a",
+                expected: "type error: a",
             },
             TestCase {
                 input: "let a = 200; b = 400; a;".to_string(),
-                expected: "invalid assignment target",
+                expected: "unknown identifier: b",
             },
         ];
 
@@ -1058,9 +1060,11 @@ mod tests {
             };
 
             assert_eq!(
-                test.expected, internal_err.message,
+                test.expected,
+                internal_err.message.to_string(),
                 "wrong error message. got: {:?}, need: {:?}",
-                internal_err.message, test.expected
+                internal_err.message,
+                test.expected
             );
         }
     }
