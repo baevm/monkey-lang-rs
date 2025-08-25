@@ -2,9 +2,15 @@
 name = "monkey-lang-rs"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.89"
 
 [dependencies]
 clap = { version = "4.5.41", features = ["derive"] }
+criterion = "0.7.0"
 fnv = "1.0.7"
 strum = "0.27.1"
 strum_macros = "0.27.1"
+
+[[bench]]
+name = "benchmark"
+harness = false
