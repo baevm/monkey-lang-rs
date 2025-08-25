@@ -5,6 +5,8 @@ pub struct Lexer {
     position: u64,      // current position in input (points to current char)
     read_position: u64, // current reading position in input (after current char)
     ch: char,           // current char
+    pub line: usize,    // current line
+    pub col: usize,     // current column
 }
 
 impl Lexer {
@@ -16,6 +18,8 @@ impl Lexer {
             position: 0,
             read_position: 0,
             ch: Self::ASCII_NUL,
+            line: 1,
+            col: 0,
         };
 
         // read next character at the start
@@ -36,57 +40,57 @@ impl Lexer {
         match self.ch {
             '(' => {
                 token = Token {
-                    literal: self.ch.to_string(),
+                    literal: TokenType::Lparen.to_string(),
                     token_type: TokenType::Lparen,
                 }
             }
             ')' => {
                 token = Token {
-                    literal: self.ch.to_string(),
+                    literal: TokenType::Rparen.to_string(),
                     token_type: TokenType::Rparen,
                 }
             }
             '{' => {
                 token = Token {
-                    literal: self.ch.to_string(),
+                    literal: TokenType::Lbrace.to_string(),
                     token_type: TokenType::Lbrace,
                 }
             }
             '}' => {
                 token = Token {
-                    literal: self.ch.to_string(),
+                    literal: TokenType::Rbrace.to_string(),
                     token_type: TokenType::Rbrace,
                 }
             }
             ';' => {
                 token = Token {
-                    literal: self.ch.to_string(),
+                    literal: TokenType::Semicolon.to_string(),
                     token_type: TokenType::Semicolon,
                 }
             }
             ':' => {
                 token = Token {
-                    literal: self.ch.to_string(),
+                    literal: TokenType::Colon.to_string(),
                     token_type: TokenType::Colon,
                 }
             }
             ',' => {
                 token = Token {
-                    literal: self.ch.to_string(),
+                    literal: TokenType::Comma.to_string(),
                     token_type: TokenType::Comma,
                 }
             }
             '+' => {
                 if self.peek_char() == '=' {
                     token = Token {
-                        literal: "+=".to_string(),
+                        literal: TokenType::AssignAdd.to_string(),
                         token_type: TokenType::AssignAdd,
                     };
 
                     self.read_char();
                 } else {
                     token = Token {
-                        literal: self.ch.to_string(),
+                        literal: TokenType::Plus.to_string(),
                         token_type: TokenType::Plus,
                     }
                 }
@@ -94,14 +98,14 @@ impl Lexer {
             '-' => {
                 if self.peek_char() == '=' {
                     token = Token {
-                        literal: "-=".to_string(),
+                        literal: TokenType::AssignSub.to_string(),
                         token_type: TokenType::AssignSub,
                     };
 
                     self.read_char();
                 } else {
                     token = Token {
-                        literal: self.ch.to_string(),
+                        literal: TokenType::Minus.to_string(),
                         token_type: TokenType::Minus,
                     }
                 }
@@ -109,14 +113,14 @@ impl Lexer {
             '*' => {
                 if self.peek_char() == '=' {
                     token = Token {
-                        literal: "*=".to_string(),
+                        literal: TokenType::AssignMul.to_string(),
                         token_type: TokenType::AssignMul,
                     };
 
                     self.read_char();
                 } else {
                     token = Token {
-                        literal: self.ch.to_string(),
+                        literal: TokenType::Asterisk.to_string(),
                         token_type: TokenType::Asterisk,
                     }
                 }
@@ -124,41 +128,41 @@ impl Lexer {
             '/' => {
                 if self.peek_char() == '=' {
                     token = Token {
-                        literal: "/=".to_string(),
+                        literal: TokenType::AssignDiv.to_string(),
                         token_type: TokenType::AssignDiv,
                     };
 
                     self.read_char();
                 } else {
                     token = Token {
-                        literal: self.ch.to_string(),
+                        literal: TokenType::Slash.to_string(),
                         token_type: TokenType::Slash,
                     }
                 }
             }
             '<' => {
                 token = Token {
-                    literal: self.ch.to_string(),
+                    literal: TokenType::Lt.to_string(),
                     token_type: TokenType::Lt,
                 }
             }
             '>' => {
                 token = Token {
-                    literal: self.ch.to_string(),
+                    literal: TokenType::Gt.to_string(),
                     token_type: TokenType::Gt,
                 }
             }
             '=' => {
                 if self.peek_char() == '=' {
                     token = Token {
-                        literal: "==".to_string(),
+                        literal: TokenType::Eq.to_string(),
                         token_type: TokenType::Eq,
                     };
 
                     self.read_char();
                 } else {
                     token = Token {
-                        literal: self.ch.to_string(),
+                        literal: TokenType::Assign.to_string(),
                         token_type: TokenType::Assign,
                     }
                 }
@@ -166,14 +170,14 @@ impl Lexer {
             '!' => {
                 if self.peek_char() == '=' {
                     token = Token {
-                        literal: "!=".to_string(),
+                        literal: TokenType::NotEq.to_string(),
                         token_type: TokenType::NotEq,
                     };
 
                     self.read_char();
                 } else {
                     token = Token {
-                        literal: self.ch.to_string(),
+                        literal: TokenType::Bang.to_string(),
                         token_type: TokenType::Bang,
                     }
                 }
@@ -186,19 +190,19 @@ impl Lexer {
             }
             '[' => {
                 token = Token {
-                    literal: self.ch.to_string(),
+                    literal: TokenType::Lbracket.to_string(),
                     token_type: TokenType::Lbracket,
                 };
             }
             ']' => {
                 token = Token {
-                    literal: self.ch.to_string(),
+                    literal: TokenType::Rbracket.to_string(),
                     token_type: TokenType::Rbracket,
                 };
             }
             Self::ASCII_NUL => {
                 token = Token {
-                    literal: "".to_string(),
+                    literal: TokenType::Eof.to_string(),
                     token_type: TokenType::Eof,
                 }
             }
@@ -221,7 +225,7 @@ impl Lexer {
                     };
                 } else {
                     token = Token {
-                        literal: self.ch.to_string(),
+                        literal: TokenType::Illegal.to_string(),
                         token_type: TokenType::Illegal,
                     }
                 }
@@ -244,6 +248,7 @@ impl Lexer {
 
         self.position = self.read_position;
         self.read_position += 1;
+        self.col += 1;
     }
 
     fn is_letter(&self, ch: char) -> bool {
@@ -276,6 +281,11 @@ impl Lexer {
 
     fn skip_whitespace(&mut self) {
         while self.ch == ' ' || self.ch == '\t' || self.ch == '\n' || self.ch == '\r' {
+            if self.ch == '\n' {
+                self.line += 1;
+                self.col = 0;
+            }
+
             self.read_char();
         }
     }
@@ -473,7 +483,7 @@ mod tests {
             (TokenType::Rparen, ")"),
             (TokenType::Lbrace, "{"),
             (TokenType::Rbrace, "}"),
-            (TokenType::Eof, ""),
+            (TokenType::Eof, "EOF"),
         ];
 
         let mut lexer = Lexer::new(input);
@@ -492,6 +502,49 @@ mod tests {
                 "token literal wrong: expected={:?}, got={:?}",
                 test.1, token.literal
             )
+        }
+    }
+
+    #[test]
+    fn test_line_column_counter() {
+        let input = r#"let a = 250;
+let b = 440;"#
+            .to_string();
+
+        let expected = vec![
+            // token, line, col
+            (TokenType::Let, 1, 4),
+            (TokenType::Ident, 1, 6),
+            (TokenType::Assign, 1, 8),
+            (TokenType::Int, 1, 12),
+            (TokenType::Semicolon, 1, 13),
+            (TokenType::Let, 2, 4),
+            (TokenType::Ident, 2, 6),
+            (TokenType::Assign, 2, 8),
+            (TokenType::Int, 2, 12),
+            (TokenType::Semicolon, 2, 13),
+            (TokenType::Eof, 2, 14),
+        ];
+
+        let mut lexer = Lexer::new(input);
+
+        for expect in expected {
+            let token = lexer.next_token();
+            assert_eq!(
+                expect.0, token.token_type,
+                "token type wrong: expected={:?}, got={:?}",
+                expect.0, token.token_type
+            );
+            assert_eq!(
+                expect.1, lexer.line,
+                "line wrong for literal '{}': expected={}, got={}",
+                token.literal, expect.1, lexer.line
+            );
+            assert_eq!(
+                expect.2, lexer.col,
+                "col wrong for literal '{}': expected={}, got={}",
+                token.literal, expect.2, lexer.col
+            );
         }
     }
 }

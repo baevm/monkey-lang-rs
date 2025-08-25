@@ -16,10 +16,10 @@ pub enum TokenType {
     Slash,
     Asterisk,
 
-    AssignAdd, // +=
-    AssignSub, // -=
-    AssignMul, // *=
-    AssignDiv, // /=
+    AssignAdd,
+    AssignSub,
+    AssignMul,
+    AssignDiv,
 
     Lt,
     Gt,
@@ -27,16 +27,16 @@ pub enum TokenType {
     NotEq,
 
     // Delimeters
-    Comma,     // ,
-    Semicolon, // ;
-    Colon,     // :
+    Comma,
+    Semicolon,
+    Colon,
 
-    Lparen,   // (
-    Rparen,   // )
-    Lbrace,   // {
-    Rbrace,   // }
-    Lbracket, // [
-    Rbracket, // ]
+    Lparen,
+    Rparen,
+    Lbrace,
+    Rbrace,
+    Lbracket,
+    Rbracket,
 
     // Keywords
     Function,
@@ -49,16 +49,59 @@ pub enum TokenType {
     For,
 }
 
+impl TokenType {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            TokenType::Illegal => "ILLEGAL",
+            TokenType::Eof => "EOF",
+            TokenType::Ident => "IDENT",
+            TokenType::Int => "INT",
+            TokenType::String => "STRING",
+            TokenType::Assign => "=",
+            TokenType::Plus => "+",
+            TokenType::Minus => "-",
+            TokenType::Bang => "!",
+            TokenType::Slash => "/",
+            TokenType::Asterisk => "*",
+            TokenType::AssignAdd => "+=",
+            TokenType::AssignSub => "-=",
+            TokenType::AssignMul => "*=",
+            TokenType::AssignDiv => "/=",
+            TokenType::Lt => "<",
+            TokenType::Gt => ">",
+            TokenType::Eq => "==",
+            TokenType::NotEq => "!=",
+            TokenType::Comma => ",",
+            TokenType::Semicolon => ";",
+            TokenType::Colon => ":",
+            TokenType::Lparen => "(",
+            TokenType::Rparen => ")",
+            TokenType::Lbrace => "{",
+            TokenType::Rbrace => "}",
+            TokenType::Lbracket => "[",
+            TokenType::Rbracket => "]",
+            TokenType::Function => "FUNCTION",
+            TokenType::Let => "LET",
+            TokenType::If => "IF",
+            TokenType::Else => "ELSE",
+            TokenType::Return => "RETURN",
+            TokenType::True => "TRUE",
+            TokenType::False => "FALSE",
+            TokenType::For => "FOR",
+        }
+    }
+}
+
+impl std::fmt::Display for TokenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.to_str().fmt(f)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub literal: String,
-}
-
-impl std::fmt::Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Token: {:?}. Literal: {}", self.token_type, self.literal)
-    }
 }
 
 impl Token {

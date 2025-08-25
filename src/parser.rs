@@ -50,13 +50,59 @@ impl Precedence {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct InfoPosition {
+    pub line: usize,
+    pub column: usize,
+}
+
+#[derive(Debug, Clone)]
+pub enum ParseErr {
+    UnexpectedToken {
+        expected: Option<TokenType>,
+        got: TokenType,
+        info: InfoPosition,
+    },
+    MissingPrefixParseFn(TokenType),
+    CouldNotParseInteger(String),
+}
+
+impl std::fmt::Display for ParseErr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseErr::UnexpectedToken {
+                expected,
+                got,
+                info,
+            } => match expected {
+                Some(with_expected) => write!(
+                    f,
+                    "SyntaxError(Line: {}, Column: {}): Expected next token to be '{}', got '{}' instead",
+                    info.line, info.column, with_expected, got
+                ),
+                None => write!(
+                    f,
+                    "SyntaxError(Line: {}, Column: {}): Unexpected token: '{}'",
+                    info.line, info.column, got
+                ),
+            },
+            ParseErr::MissingPrefixParseFn(token_type) => {
+                write!(f, "No prefix parse function found for: '{:?}'", token_type)
+            }
+            ParseErr::CouldNotParseInteger(literal) => {
+                write!(f, "Could not parse '{}' as integer", literal)
+            }
+        }
+    }
+}
+
 pub struct Parser {
     lexer: Lexer,
 
     curr_token: Token,
     peek_token: Token,
 
-    pub errors: Vec<String>,
+    errors: Vec<ParseErr>,
 }
 
 impl Parser {
@@ -75,9 +121,12 @@ impl Parser {
         parser
     }
 
-    fn next_token(&mut self) {
-        self.curr_token = self.peek_token.clone();
-        self.peek_token = self.lexer.next_token();
+    pub fn errors(&self) -> Vec<ParseErr> {
+        self.errors.clone()
+    }
+
+    pub fn is_err(&self) -> bool {
+        self.errors.len() > 0
     }
 
     pub fn parse_program(&mut self) -> ast::Program {
@@ -95,9 +144,18 @@ impl Parser {
             }
 
             self.next_token();
+
+            if self.is_err() {
+                break;
+            }
         }
 
         program
+    }
+
+    fn next_token(&mut self) {
+        self.curr_token = self.peek_token.clone();
+        self.peek_token = self.lexer.next_token();
     }
 
     fn parse_statement(&mut self) -> Option<Statement> {
@@ -187,12 +245,18 @@ impl Parser {
             body,
         }));
 
+        if self.is_peek_token(&TokenType::Semicolon) {
+            self.next_token();
+        }
+
         Some(for_statement)
     }
 
     fn parse_expression_statement(&mut self) -> Option<Statement> {
+        let expression = self.parse_expression(Precedence::Lowest)?;
+
         let expr_stmt = Statement::ExpressionStatement(Box::new(ExpressionStatement {
-            expression: self.parse_expression(Precedence::Lowest),
+            expression: Some(expression),
         }));
 
         if self.is_peek_token(&TokenType::Semicolon) {
@@ -206,7 +270,14 @@ impl Parser {
         let prefix = self.parse_prefix(self.curr_token.token_type.clone());
 
         if prefix.is_none() {
-            self.no_prefix_parse_fn_err(self.curr_token.token_type.clone());
+            if self.errors.last().map_or(true, |e| match e {
+                ParseErr::UnexpectedToken { info, .. } => {
+                    info.line != self.lexer.line || info.column != self.lexer.col
+                }
+                _ => true,
+            }) {
+                self.peek_error(None);
+            }
             return None;
         }
 
@@ -231,9 +302,8 @@ impl Parser {
         let value = self.curr_token.literal.parse::<i64>();
 
         if value.is_err() {
-            self.errors.push(format!(
-                "could not parse {} as integer",
-                self.curr_token.literal
+            self.errors.push(ParseErr::CouldNotParseInteger(
+                self.curr_token.literal.clone(),
             ));
             return None;
         }
@@ -359,7 +429,6 @@ impl Parser {
             self.next_token();
 
             if !self.expect_peek(TokenType::Lbrace) {
-                panic!("TODO: add missing lbrace handling here");
                 return None;
             }
 
@@ -551,7 +620,7 @@ impl Parser {
             self.next_token();
             true
         } else {
-            self.peek_error(expected);
+            self.peek_error(Some(expected));
             false
         }
     }
@@ -582,19 +651,15 @@ impl Parser {
         }
     }
 
-    fn peek_error(&mut self, expected: TokenType) {
-        let msg = format!(
-            "expected next token to be {:?}, got {:?} instead",
-            expected, self.peek_token.token_type
-        );
-
-        self.errors.push(msg);
-    }
-
-    fn no_prefix_parse_fn_err(&mut self, token_type: TokenType) {
-        self.errors.push(format!(
-            "no prefix parse function found for: {token_type:?}"
-        ));
+    fn peek_error(&mut self, expected: Option<TokenType>) {
+        self.errors.push(ParseErr::UnexpectedToken {
+            expected,
+            got: self.peek_token.token_type.clone(),
+            info: InfoPosition {
+                line: self.lexer.line,
+                column: self.lexer.col,
+            },
+        });
     }
 }
 
@@ -1801,6 +1866,47 @@ mod tests {
         };
 
         assert_eq!(hash_literal.pairs.len(), 0);
+    }
+
+    #[test]
+    fn test_syntax_error_position() {
+        // TODO: !!!!! fix index by 1 errors, maybe move line and columns to Token struct
+        let tests = vec![
+            (
+                "let x 5;",
+                "SyntaxError(Line: 1, Column: 8): Expected next token to be '=', got 'INT' instead",
+            ),
+            (
+                "let = 5;",
+                "SyntaxError(Line: 1, Column: 6): Expected next token to be 'IDENT', got '=' instead",
+            ),
+            (
+                "if (x > y) { x } else",
+                "SyntaxError(Line: 1, Column: 23): Expected next token to be '{', got 'EOF' instead",
+            ),
+        ];
+
+        for (input, expected_error) in tests {
+            let lexer = Lexer::new(input.to_string());
+            let mut parser = Parser::new(lexer);
+            parser.parse_program();
+
+            assert!(
+                parser.is_err(),
+                "parser should have errors for input: \"{}\"",
+                input
+            );
+            assert_eq!(
+                parser.errors.len(),
+                1,
+                "parser should have exactly one error for input: \"{}\", got: {:?}",
+                input,
+                parser.errors
+            );
+
+            let error = parser.errors[0].to_string();
+            assert_eq!(error, expected_error, "for input \"{}\"", input);
+        }
     }
 
     fn parse(input: &str) -> ExpressionStatement {

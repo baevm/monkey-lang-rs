@@ -8,7 +8,7 @@ use crate::{
     evaluator::Evaluator,
     lexer::Lexer,
     object::{Environment, Object, ObjectTrait},
-    parser::Parser,
+    parser::{ParseErr, Parser},
 };
 
 pub struct Repl {}
@@ -41,23 +41,31 @@ impl Repl {
 
             let evaluated = interpret(buf);
 
-            println!("{:?}", evaluated.inspect());
+            match evaluated {
+                Ok(obj) => println!("{:?}", obj.inspect()),
+                Err(errors) => errors.iter().for_each(|err| println!("{}", err)),
+            }
         }
     }
 }
 
-pub fn interpret(buf: String) -> Object {
+pub fn interpret(buf: String) -> Result<Object, Vec<ParseErr>> {
     let lexer = Lexer::new(buf);
     let mut parser = Parser::new(lexer);
 
     let program = parser.parse_program();
+
+    if parser.is_err() {
+        return Err(parser.errors());
+    }
+
     let environment = Environment::new();
 
     let mut evaluator = Evaluator::new(environment);
 
     let evaluated = evaluator.eval(&program);
 
-    evaluated
+    Ok(evaluated)
 }
 
 const FILE_EXT: &str = "monke";
@@ -84,5 +92,17 @@ pub fn run_file(path: String) -> Result<Object, std::io::Error> {
 
     let code = fs::read_to_string(path)?;
 
-    Ok(interpret(code))
+    let evaluated = interpret(code);
+
+    match evaluated {
+        Ok(obj) => Ok(obj),
+        Err(errors) => {
+            let error_messages: String = errors
+                .iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<String>>()
+                .join("\n");
+            Err(Error::new(ErrorKind::Other, error_messages))
+        }
+    }
 }

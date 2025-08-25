@@ -173,7 +173,7 @@ pub struct InternalError {
 
 impl ObjectTrait for InternalError {
     fn inspect(&self) -> String {
-        format!("ERROR: {:?}", self.message)
+        format!("ERROR: {}", self.message)
     }
 }
 
