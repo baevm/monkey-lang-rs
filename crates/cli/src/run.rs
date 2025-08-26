@@ -4,7 +4,7 @@ use std::{
     path::Path,
 };
 
-use crate::{
+use monke_core::{
     evaluator::Evaluator,
     lexer::Lexer,
     object::{Environment, Object, ObjectTrait},
@@ -15,7 +15,7 @@ pub struct Repl {}
 
 impl Repl {
     pub fn start() {
-        println!("Welcome to Monkey programming language!");
+        println!("Welcome to Monke programming language!");
 
         loop {
             let mut stdout = std::io::stdout().lock();

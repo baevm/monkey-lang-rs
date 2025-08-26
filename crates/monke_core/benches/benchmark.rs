@@ -1,6 +1,6 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 
-use monkey_lang_rs::{
+use monke_core::{
     evaluator::Evaluator,
     lexer::Lexer,
     object::{Environment, Object},

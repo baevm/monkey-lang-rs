@@ -1,6 +1,7 @@
-use monkey_lang_rs::run::{Repl, run_file};
-
 use clap::Parser;
+
+use crate::run::{Repl, run_file};
+mod run;
 
 #[derive(Parser)]
 struct Cli {
