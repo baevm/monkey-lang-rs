@@ -1,0 +1,208 @@
+use std::fmt::Error;
+
+use monke_core::object::{Integer, Null, Object};
+
+use crate::{
+    code::{self, Instructions, Opcode},
+    compiler::Bytecode,
+};
+
+const STACK_SIZE: usize = 2048;
+
+struct Vm {
+    constants: Vec<Object>,
+    instructions: Instructions,
+
+    stack: Vec<Object>,
+    sp: usize, // stack pointer - always points to the next value.
+}
+
+#[derive(Debug)]
+enum VmError {
+    StackOverflowError(StackOverflowError),
+    InvalidType,
+}
+
+#[derive(Debug)]
+struct StackOverflowError;
+
+impl std::fmt::Display for StackOverflowError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "stack overflow")
+    }
+}
+
+impl Vm {
+    pub fn new(bytecode: Bytecode) -> Self {
+        Self {
+            constants: bytecode.constants,
+            instructions: bytecode.instructions,
+            stack: vec![Object::Null(Box::new(Null {})); STACK_SIZE as usize],
+            sp: 0,
+        }
+    }
+
+    pub fn run(&mut self) -> Result<(), VmError> {
+        let mut i = 0;
+
+        while i < self.instructions.len() {
+            let instruction = self.instructions[i];
+            let opcode = Opcode::from_byte(instruction);
+
+            let Some(opcode) = opcode else {
+                continue;
+            };
+
+            match opcode {
+                Opcode::OpConstant => {
+                    // first byte is opcode, read 2 bytes from i+1..i+3
+                    let const_index = u16::from_be_bytes(
+                        self.instructions[(i as usize + 1)..(i as usize + 3)]
+                            .try_into()
+                            .expect("failed to convert instruction to u16"),
+                    );
+                    i += 2;
+
+                    let constant = self.constants[const_index as usize].clone();
+
+                    if let Err(err) = self.push(constant) {
+                        return Err(VmError::StackOverflowError(err));
+                    };
+                }
+                Opcode::OpAdd => {
+                    let right = self.pop();
+
+                    let Object::Integer(right_int) = right else {
+                        return Err(VmError::InvalidType);
+                    };
+
+                    let left = self.pop();
+
+                    let Object::Integer(left_int) = left else {
+                        return Err(VmError::InvalidType);
+                    };
+
+                    let result = left_int.value + right_int.value;
+
+                    self.push(Object::Integer(Box::new(Integer { value: result })));
+                }
+            }
+
+            i += 1;
+        }
+
+        Ok(())
+    }
+
+    fn stack_top(&self) -> Option<&Object> {
+        if self.sp == 0 {
+            return None;
+        }
+
+        return self.stack.get((self.sp - 1) as usize);
+    }
+
+    fn push(&mut self, object: Object) -> Result<(), StackOverflowError> {
+        if self.sp >= STACK_SIZE {
+            return Err(StackOverflowError);
+        }
+
+        self.stack[self.sp] = object;
+        self.sp += 1;
+
+        Ok(())
+    }
+
+    fn pop(&mut self) -> Object {
+        let object = &self.stack[self.sp - 1];
+        self.sp -= 1;
+        object.clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use monke_core::{ast, lexer::Lexer, object::Object, parser::Parser};
+
+    use crate::{compiler::Compiler, vm::Vm};
+
+    enum Expected {
+        Integer(i64),
+    }
+
+    struct VmTestCase {
+        input: String,
+        expected: Expected,
+    }
+
+    #[test]
+    fn test_integer_arithmetic() {
+        let tests = vec![
+            VmTestCase {
+                input: "1".to_string(),
+                expected: Expected::Integer(1),
+            },
+            VmTestCase {
+                input: "2".to_string(),
+                expected: Expected::Integer(2),
+            },
+            VmTestCase {
+                input: "1 + 2".to_string(),
+                expected: Expected::Integer(3),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    fn run_vm_tests(tests: Vec<VmTestCase>) {
+        for test in tests {
+            let program = parse(test.input);
+            let mut compiler = Compiler::new();
+
+            if let Err(err) = compiler.compile(program) {
+                panic!("compiler error: {:?}", err);
+            }
+
+            let mut vm = Vm::new(compiler.bytecode());
+
+            if let Err(err) = vm.run() {
+                panic!("vm error: {:?}", err);
+            }
+
+            let stack_element = vm.stack_top();
+
+            let Some(stack_element) = &stack_element else {
+                panic!("stack is empty");
+            };
+
+            test_expected_object(&test.expected, &stack_element);
+        }
+    }
+
+    fn test_expected_object(expected: &Expected, actual: &Object) {
+        match expected {
+            Expected::Integer(int) => {
+                test_integer_object(&int, actual);
+            }
+        }
+    }
+
+    fn test_integer_object(expected: &i64, actual: &Object) {
+        let Object::Integer(int_obj) = actual else {
+            panic!("object is not Integer. got: {}", actual);
+        };
+
+        assert_eq!(
+            int_obj.value, *expected,
+            "object has wrong value. got: {}, want: {}",
+            int_obj.value, expected
+        );
+    }
+
+    fn parse(input: String) -> ast::Program {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        return parser.parse_program();
+    }
+}

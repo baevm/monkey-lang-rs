@@ -24,6 +24,7 @@ impl Instructions {
         }
 
         match operand_count {
+            0 => def.name.clone(),
             1 => format!("{} {}", def.name, operands[0]),
             _ => format!("ERROR: unhandled operandCount for {}", def.name),
         }
@@ -90,6 +91,7 @@ impl FromIterator<u8> for Instructions {
 #[derive(Clone, Copy)]
 pub enum Opcode {
     OpConstant,
+    OpAdd,
 }
 
 impl Opcode {
@@ -98,6 +100,10 @@ impl Opcode {
             Opcode::OpConstant => Definition {
                 name: "OpConstant".to_string(),
                 operand_widths: vec![2],
+            },
+            Opcode::OpAdd => Definition {
+                name: "OpAdd".to_string(),
+                operand_widths: vec![],
             },
         }
     }
@@ -108,6 +114,18 @@ impl Opcode {
                 name: "OpConstant".to_string(),
                 operand_widths: vec![2],
             }),
+            1 => Some(Definition {
+                name: "OpAdd".to_string(),
+                operand_widths: vec![],
+            }),
+            _ => None,
+        }
+    }
+
+    pub fn from_byte(value: u8) -> Option<Opcode> {
+        match value {
+            0 => Some(Opcode::OpConstant),
+            1 => Some(Opcode::OpAdd),
             _ => None,
         }
     }
@@ -174,15 +192,18 @@ pub fn read_operands(def: &Definition, instruction: &[u8]) -> (Vec<i64>, i64) {
 
 #[cfg(test)]
 mod tests {
-    use crate::code::{Opcode, make};
+    use crate::code::{Instructions, Opcode, make};
 
     #[test]
     fn make_test() {
-        let tests: Vec<(Opcode, Vec<i64>, Vec<u8>)> = vec![(
-            Opcode::OpConstant,
-            vec![65534],
-            vec![Opcode::OpConstant as u8, 255, 254],
-        )];
+        let tests: Vec<(Opcode, Vec<i64>, Vec<u8>)> = vec![
+            (
+                Opcode::OpConstant,
+                vec![65534],
+                vec![Opcode::OpConstant as u8, 255, 254],
+            ),
+            (Opcode::OpAdd, vec![], vec![Opcode::OpAdd as u8]),
+        ];
 
         for test in tests {
             let instruction = make(test.0, &test.1);
@@ -203,5 +224,20 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn test_instructions_string() {
+        let instructions = vec![
+            make(Opcode::OpAdd, &vec![]),
+            make(Opcode::OpConstant, &vec![2]),
+            make(Opcode::OpConstant, &vec![65535]),
+        ];
+
+        let expected = "0000 OpAdd \n0001 OpConstant 2 \n0004 OpConstant 65535 \n";
+
+        let concated: Instructions = instructions.into_iter().flat_map(|i| i).collect();
+
+        assert_eq!(expected, concated.to_string());
     }
 }

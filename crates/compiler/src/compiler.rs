@@ -13,9 +13,9 @@ pub struct Compiler {
     constants: Vec<Object>,
 }
 
-struct Bytecode {
-    instructions: Instructions,
-    constants: Vec<Object>,
+pub struct Bytecode {
+    pub instructions: Instructions,
+    pub constants: Vec<Object>,
 }
 
 impl Compiler {
@@ -86,6 +86,11 @@ impl Compiler {
                     return right_result;
                 }
 
+                match infix.operator.as_str() {
+                    "+" => self.emit(Opcode::OpAdd, vec![]),
+                    _ => unreachable!(),
+                };
+
                 Ok(())
             }
             _ => todo!(),
@@ -136,8 +141,9 @@ mod tests {
             input: "1 + 2".to_string(),
             expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
             expected_instructions: vec![
-                Instructions(code::make(code::Opcode::OpConstant, &vec![0])),
-                Instructions(code::make(code::Opcode::OpConstant, &vec![1])),
+                Instructions(code::make(Opcode::OpConstant, &vec![0])),
+                Instructions(code::make(Opcode::OpConstant, &vec![1])),
+                Instructions(code::make(Opcode::OpAdd, &vec![])),
             ],
         }];
 
@@ -147,9 +153,9 @@ mod tests {
     #[test]
     fn test_instructions_string() {
         let instructions = vec![
-            make(code::Opcode::OpConstant, &vec![1]),
-            make(code::Opcode::OpConstant, &vec![2]),
-            make(code::Opcode::OpConstant, &vec![65535]),
+            make(Opcode::OpConstant, &vec![1]),
+            make(Opcode::OpConstant, &vec![2]),
+            make(Opcode::OpConstant, &vec![65535]),
         ];
 
         let expected = "0000 OpConstant 1 \n0003 OpConstant 2 \n0006 OpConstant 65535 \n";
