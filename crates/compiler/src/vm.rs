@@ -1,15 +1,13 @@
-use std::fmt::Error;
-
 use monke_core::object::{Integer, Null, Object};
 
 use crate::{
-    code::{self, Instructions, Opcode},
+    code::{Instructions, Opcode},
     compiler::Bytecode,
 };
 
 const STACK_SIZE: usize = 2048;
 
-struct Vm {
+pub struct Vm {
     constants: Vec<Object>,
     instructions: Instructions,
 
@@ -18,13 +16,13 @@ struct Vm {
 }
 
 #[derive(Debug)]
-enum VmError {
+pub enum VmError {
     StackOverflowError(StackOverflowError),
     InvalidType,
 }
 
 #[derive(Debug)]
-struct StackOverflowError;
+pub struct StackOverflowError;
 
 impl std::fmt::Display for StackOverflowError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -94,12 +92,12 @@ impl Vm {
         Ok(())
     }
 
-    fn stack_top(&self) -> Option<&Object> {
+    pub fn stack_top(&self) -> Option<Object> {
         if self.sp == 0 {
             return None;
         }
 
-        return self.stack.get((self.sp - 1) as usize);
+        return self.stack.get((self.sp - 1) as usize).cloned();
     }
 
     fn push(&mut self, object: Object) -> Result<(), StackOverflowError> {

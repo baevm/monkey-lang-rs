@@ -9,6 +9,9 @@ struct Cli {
 
     #[arg(short, long)]
     repl: bool,
+
+    #[arg(short, long)]
+    compile: bool,
 }
 
 fn main() {
@@ -25,6 +28,7 @@ fn main() {
     }
 
     if cli.repl {
-        Repl::start();
+        let repl = Repl::new(cli.compile);
+        repl.start();
     }
 }

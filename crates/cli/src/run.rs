@@ -4,6 +4,7 @@ use std::{
     path::Path,
 };
 
+use compiler::{compiler::Compiler, vm::Vm};
 use monke_core::{
     evaluator::Evaluator,
     lexer::Lexer,
@@ -11,35 +12,55 @@ use monke_core::{
     parser::{ParseErr, Parser},
 };
 
-pub struct Repl {}
+pub struct Repl {
+    is_compiler: bool,
+}
 
 impl Repl {
-    pub fn start() {
+    pub fn new(is_compiler: bool) -> Self {
+        Self { is_compiler }
+    }
+
+    pub fn start(&self) {
         println!("Welcome to Monke programming language!");
 
+        if self.is_compiler {
+            self.start_compiler();
+        } else {
+            self.start_interpreter();
+        }
+    }
+
+    fn start_compiler(&self) {
+        println!("Running in compiler mode.");
+
         loop {
-            let mut stdout = std::io::stdout().lock();
+            let buf = self.read_line();
 
-            if let Err(err) = write!(stdout, ">> ") {
-                println!("{err}");
-                break;
+            if let Err(err) = buf {
+                panic!("{}", err);
             }
 
-            if let Err(err) = stdout.flush() {
-                println!("{err}");
-                break;
+            let compiled = compile(buf.unwrap());
+
+            match compiled {
+                Ok(obj) => println!("{:?}", obj.inspect()),
+                Err(errors) => errors.iter().for_each(|err| println!("{}", err)),
+            }
+        }
+    }
+
+    fn start_interpreter(&self) {
+        println!("Running in interpreter mode.");
+
+        loop {
+            let buf = self.read_line();
+
+            if let Err(err) = buf {
+                panic!("{}", err);
             }
 
-            let stdin = io::stdin();
-            let mut buf = String::new();
-
-            let line = stdin.read_line(&mut buf);
-
-            if line.is_err() {
-                panic!("{:?}", line.err());
-            }
-
-            let evaluated = interpret(buf);
+            let evaluated = interpret(buf.unwrap());
 
             match evaluated {
                 Ok(obj) => println!("{:?}", obj.inspect()),
@@ -47,6 +68,54 @@ impl Repl {
             }
         }
     }
+
+    fn read_line(&self) -> Result<String, std::io::Error> {
+        let mut stdout = std::io::stdout().lock();
+
+        write!(stdout, ">> ")?;
+
+        stdout.flush()?;
+
+        let stdin = io::stdin();
+        let mut buf = String::new();
+
+        let line = stdin.read_line(&mut buf)?;
+
+        Ok(buf)
+    }
+}
+
+pub fn compile(buf: String) -> Result<Object, Vec<ParseErr>> {
+    let lexer = Lexer::new(buf);
+    let mut parser = Parser::new(lexer);
+
+    let program = parser.parse_program();
+
+    if parser.is_err() {
+        return Err(parser.errors());
+    }
+
+    let environment = Environment::new();
+
+    let mut compiler = Compiler::new();
+
+    if let Err(err) = compiler.compile(program) {
+        return Err(vec![]); // TODO error handling
+    }
+
+    let mut vm = Vm::new(compiler.bytecode());
+
+    if let Err(err) = vm.run() {
+        return Err(vec![]); // TODO error handling
+    };
+
+    let stack_top = vm.stack_top();
+
+    if let Some(stack_top) = stack_top {
+        return Ok(stack_top);
+    }
+
+    Err(vec![])
 }
 
 pub fn interpret(buf: String) -> Result<Object, Vec<ParseErr>> {

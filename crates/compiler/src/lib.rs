@@ -1,3 +1,3 @@
 mod code;
-mod compiler;
-mod vm;
+pub mod compiler;
+pub mod vm;
