@@ -13,6 +13,7 @@ pub struct Compiler {
     constants: Vec<Object>,
 }
 
+#[derive(Clone)]
 pub struct Bytecode {
     pub instructions: Instructions,
     pub constants: Vec<Object>,
@@ -105,7 +106,7 @@ impl Compiler {
                 };
                 Ok(())
             }
-            _ => todo!(),
+            value => todo!("{:?} not implemented", value),
         }
     }
 
