@@ -98,6 +98,13 @@ impl Compiler {
 
                 Ok(())
             }
+            Expression::Boolean(bool_expr) => {
+                match bool_expr.value {
+                    true => self.emit(Opcode::OpTrue, vec![]),
+                    false => self.emit(Opcode::OpFalse, vec![]),
+                };
+                Ok(())
+            }
             _ => todo!(),
         }
     }
@@ -132,6 +139,7 @@ mod tests {
 
     enum ExpectedConstant {
         I64(i64),
+        Bool(bool),
     }
 
     struct CompilerTestCase {
@@ -250,6 +258,30 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_boolean_expression() {
+        let tests = vec![
+            CompilerTestCase {
+                input: "true".to_string(),
+                expected_constants: vec![],
+                expected_instructions: vec![
+                    Instructions(code::make(Opcode::OpTrue, &vec![])),
+                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                ],
+            },
+            CompilerTestCase {
+                input: "false".to_string(),
+                expected_constants: vec![],
+                expected_instructions: vec![
+                    Instructions(code::make(Opcode::OpFalse, &vec![])),
+                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                ],
+            },
+        ];
+
+        run_compiler_tests(tests);
+    }
+
     fn run_compiler_tests(tests: Vec<CompilerTestCase>) {
         for test in tests {
             let program = parse(test.input);
@@ -279,8 +311,21 @@ mod tests {
         for (idx, constant) in expected.iter().enumerate() {
             match constant {
                 ExpectedConstant::I64(constant) => test_integer_object(constant, &actual[idx]),
+                ExpectedConstant::Bool(boolean) => test_boolean_object(boolean, &actual[idx]),
             }
         }
+    }
+
+    fn test_boolean_object(expected: &bool, actual: &Object) {
+        let Object::Boolean(bool_obj) = actual else {
+            panic!("object is not Integer. got: {}", actual);
+        };
+
+        assert_eq!(
+            bool_obj.value, *expected,
+            "object has wrong value. got: {}, want: {}",
+            bool_obj.value, expected
+        );
     }
 
     fn test_integer_object(expected: &i64, actual: &Object) {

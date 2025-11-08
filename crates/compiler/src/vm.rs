@@ -1,4 +1,4 @@
-use monke_core::object::{Integer, Null, Object};
+use monke_core::object::{Boolean, Integer, Null, Object};
 
 use crate::{
     code::{Instructions, Opcode},
@@ -91,10 +91,26 @@ impl Vm {
                         _ => unreachable!(),
                     };
 
-                    self.push(Object::Integer(Box::new(Integer { value: result })));
+                    if let Err(err) =
+                        self.push(Object::Integer(Box::new(Integer { value: result })))
+                    {
+                        return Err(VmError::StackOverflowError(err));
+                    }
                 }
                 Opcode::OpPop => {
                     self.pop();
+                }
+                Opcode::OpTrue => {
+                    if let Err(err) = self.push(Object::Boolean(Box::new(Boolean { value: true })))
+                    {
+                        return Err(VmError::StackOverflowError(err));
+                    }
+                }
+                Opcode::OpFalse => {
+                    if let Err(err) = self.push(Object::Boolean(Box::new(Boolean { value: false })))
+                    {
+                        return Err(VmError::StackOverflowError(err));
+                    }
                 }
             }
 
@@ -134,6 +150,7 @@ mod tests {
 
     enum Expected {
         Integer(i64),
+        Boolean(bool),
     }
 
     struct VmTestCase {
@@ -197,6 +214,22 @@ mod tests {
         run_vm_tests(tests);
     }
 
+    #[test]
+    fn test_boolean_expression() {
+        let tests = vec![
+            VmTestCase {
+                input: "true".to_string(),
+                expected: Expected::Boolean(true),
+            },
+            VmTestCase {
+                input: "false".to_string(),
+                expected: Expected::Boolean(false),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
     fn run_vm_tests(tests: Vec<VmTestCase>) {
         for test in tests {
             let program = parse(test.input);
@@ -227,7 +260,22 @@ mod tests {
             Expected::Integer(int) => {
                 test_integer_object(&int, actual);
             }
+            Expected::Boolean(boolean) => {
+                test_boolean_object(boolean, actual);
+            }
         }
+    }
+
+    fn test_boolean_object(expected: &bool, actual: &Object) {
+        let Object::Boolean(bool_obj) = actual else {
+            panic!("object is not Integer. got: {}", actual);
+        };
+
+        assert_eq!(
+            bool_obj.value, *expected,
+            "object has wrong value. got: {}, want: {}",
+            bool_obj.value, expected
+        );
     }
 
     fn test_integer_object(expected: &i64, actual: &Object) {

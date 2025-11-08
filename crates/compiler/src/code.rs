@@ -99,6 +99,8 @@ pub enum Opcode {
     OpSub = 3,
     OpMul = 4,
     OpDiv = 5,
+    OpTrue = 6,
+    OpFalse = 7,
 }
 
 impl Opcode {
@@ -128,6 +130,14 @@ impl Opcode {
                 name: "OpDiv".to_string(),
                 operand_widths: vec![],
             },
+            Opcode::OpTrue => Definition {
+                name: "OpTrue".to_string(),
+                operand_widths: vec![],
+            },
+            Opcode::OpFalse => Definition {
+                name: "OpFalse".to_string(),
+                operand_widths: vec![],
+            },
         }
     }
 
@@ -139,6 +149,8 @@ impl Opcode {
             3 => Some(Opcode::OpSub),
             4 => Some(Opcode::OpMul),
             5 => Some(Opcode::OpDiv),
+            6 => Some(Opcode::OpTrue),
+            7 => Some(Opcode::OpFalse),
             _ => None,
         }
     }
