@@ -38,12 +38,14 @@ impl std::fmt::Display for Instructions {
         let mut i = 0;
 
         while i < self.0.len() {
-            let definition = Opcode::get_definition_from_byte(self.0[i]);
+            let opcode = Opcode::from_byte(self.0[i]);
 
-            let Some(def) = definition else {
-                sb.push_str("ERROR: definition not found");
+            let Some(opcode) = opcode else {
+                sb.push_str("ERROR: opcode not found");
                 continue;
             };
+
+            let def = opcode.get_definition();
 
             let (operands, read_bytes) = read_operands(&def, &self.0[i + 1..]);
 
@@ -88,14 +90,15 @@ impl FromIterator<u8> for Instructions {
     }
 }
 
+#[repr(u8)]
 #[derive(Clone, Copy, Debug)]
 pub enum Opcode {
-    OpConstant,
-    OpPop,
-    OpAdd,
-    OpSub,
-    OpMul,
-    OpDiv,
+    OpConstant = 0,
+    OpPop = 1,
+    OpAdd = 2,
+    OpSub = 3,
+    OpMul = 4,
+    OpDiv = 5,
 }
 
 impl Opcode {
@@ -125,36 +128,6 @@ impl Opcode {
                 name: "OpDiv".to_string(),
                 operand_widths: vec![],
             },
-        }
-    }
-
-    pub fn get_definition_from_byte(value: u8) -> Option<Definition> {
-        match value {
-            0 => Some(Definition {
-                name: "OpConstant".to_string(),
-                operand_widths: vec![2],
-            }),
-            1 => Some(Definition {
-                name: "OpPop".to_string(),
-                operand_widths: vec![],
-            }),
-            2 => Some(Definition {
-                name: "OpAdd".to_string(),
-                operand_widths: vec![],
-            }),
-            3 => Some(Definition {
-                name: "OpSub".to_string(),
-                operand_widths: vec![],
-            }),
-            4 => Some(Definition {
-                name: "OpMul".to_string(),
-                operand_widths: vec![],
-            }),
-            5 => Some(Definition {
-                name: "OpDiv".to_string(),
-                operand_widths: vec![],
-            }),
-            _ => None,
         }
     }
 
