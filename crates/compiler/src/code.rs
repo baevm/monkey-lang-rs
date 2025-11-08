@@ -88,11 +88,14 @@ impl FromIterator<u8> for Instructions {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Opcode {
     OpConstant,
-    OpAdd,
     OpPop,
+    OpAdd,
+    OpSub,
+    OpMul,
+    OpDiv,
 }
 
 impl Opcode {
@@ -102,12 +105,24 @@ impl Opcode {
                 name: "OpConstant".to_string(),
                 operand_widths: vec![2],
             },
+            Opcode::OpPop => Definition {
+                name: "OpPop".to_string(),
+                operand_widths: vec![],
+            },
             Opcode::OpAdd => Definition {
                 name: "OpAdd".to_string(),
                 operand_widths: vec![],
             },
-            Opcode::OpPop => Definition {
-                name: "OpPop".to_string(),
+            Opcode::OpSub => Definition {
+                name: "OpSub".to_string(),
+                operand_widths: vec![],
+            },
+            Opcode::OpMul => Definition {
+                name: "OpMul".to_string(),
+                operand_widths: vec![],
+            },
+            Opcode::OpDiv => Definition {
+                name: "OpDiv".to_string(),
                 operand_widths: vec![],
             },
         }
@@ -120,11 +135,23 @@ impl Opcode {
                 operand_widths: vec![2],
             }),
             1 => Some(Definition {
-                name: "OpAdd".to_string(),
+                name: "OpPop".to_string(),
                 operand_widths: vec![],
             }),
             2 => Some(Definition {
-                name: "OpPop".to_string(),
+                name: "OpAdd".to_string(),
+                operand_widths: vec![],
+            }),
+            3 => Some(Definition {
+                name: "OpSub".to_string(),
+                operand_widths: vec![],
+            }),
+            4 => Some(Definition {
+                name: "OpMul".to_string(),
+                operand_widths: vec![],
+            }),
+            5 => Some(Definition {
+                name: "OpDiv".to_string(),
                 operand_widths: vec![],
             }),
             _ => None,
@@ -134,8 +161,11 @@ impl Opcode {
     pub fn from_byte(value: u8) -> Option<Opcode> {
         match value {
             0 => Some(Opcode::OpConstant),
-            1 => Some(Opcode::OpAdd),
-            2 => Some(Opcode::OpPop),
+            1 => Some(Opcode::OpPop),
+            2 => Some(Opcode::OpAdd),
+            3 => Some(Opcode::OpSub),
+            4 => Some(Opcode::OpMul),
+            5 => Some(Opcode::OpDiv),
             _ => None,
         }
     }

@@ -90,6 +90,9 @@ impl Compiler {
 
                 match infix.operator.as_str() {
                     "+" => self.emit(Opcode::OpAdd, vec![]),
+                    "-" => self.emit(Opcode::OpSub, vec![]),
+                    "*" => self.emit(Opcode::OpMul, vec![]),
+                    "/" => self.emit(Opcode::OpDiv, vec![]),
                     _ => unreachable!(),
                 };
 
@@ -141,6 +144,16 @@ mod tests {
     fn test_integer_arithmetic() {
         let tests = vec![
             CompilerTestCase {
+                input: "1; 2".to_string(),
+                expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
+                expected_instructions: vec![
+                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
+                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
+                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                ],
+            },
+            CompilerTestCase {
                 input: "1 + 2".to_string(),
                 expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
                 expected_instructions: vec![
@@ -151,12 +164,32 @@ mod tests {
                 ],
             },
             CompilerTestCase {
-                input: "1; 2".to_string(),
+                input: "1 - 2".to_string(),
                 expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
                 expected_instructions: vec![
                     Instructions(code::make(Opcode::OpConstant, &vec![0])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
                     Instructions(code::make(Opcode::OpConstant, &vec![1])),
+                    Instructions(code::make(Opcode::OpSub, &vec![])),
+                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                ],
+            },
+            CompilerTestCase {
+                input: "1 * 2".to_string(),
+                expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
+                expected_instructions: vec![
+                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
+                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
+                    Instructions(code::make(Opcode::OpMul, &vec![])),
+                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                ],
+            },
+            CompilerTestCase {
+                input: "2 / 1".to_string(),
+                expected_constants: vec![ExpectedConstant::I64(2), ExpectedConstant::I64(1)],
+                expected_instructions: vec![
+                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
+                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
+                    Instructions(code::make(Opcode::OpDiv, &vec![])),
                     Instructions(code::make(Opcode::OpPop, &vec![])),
                 ],
             },

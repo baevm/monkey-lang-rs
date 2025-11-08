@@ -67,7 +67,7 @@ impl Vm {
                         return Err(VmError::StackOverflowError(err));
                     };
                 }
-                Opcode::OpAdd => {
+                Opcode::OpAdd | Opcode::OpSub | Opcode::OpMul | Opcode::OpDiv => {
                     let right = self.pop();
 
                     let Object::Integer(right_int) = right else {
@@ -80,7 +80,16 @@ impl Vm {
                         return Err(VmError::InvalidType);
                     };
 
-                    let result = left_int.value + right_int.value;
+                    let left_value = left_int.value;
+                    let right_value = right_int.value;
+
+                    let result = match opcode {
+                        Opcode::OpAdd => left_value + right_value,
+                        Opcode::OpSub => left_value - right_value,
+                        Opcode::OpMul => left_value * right_value,
+                        Opcode::OpDiv => left_value / right_value,
+                        _ => unreachable!(),
+                    };
 
                     self.push(Object::Integer(Box::new(Integer { value: result })));
                 }
@@ -146,6 +155,42 @@ mod tests {
             VmTestCase {
                 input: "1 + 2".to_string(),
                 expected: Expected::Integer(3),
+            },
+            VmTestCase {
+                input: "1 - 2".to_string(),
+                expected: Expected::Integer(-1),
+            },
+            VmTestCase {
+                input: "1 * 2".to_string(),
+                expected: Expected::Integer(2),
+            },
+            VmTestCase {
+                input: "4 / 2".to_string(),
+                expected: Expected::Integer(2),
+            },
+            VmTestCase {
+                input: "50 / 2 * 2 + 10 - 5".to_string(),
+                expected: Expected::Integer(55),
+            },
+            VmTestCase {
+                input: "5 + 5 + 5 + 5 - 10".to_string(),
+                expected: Expected::Integer(10),
+            },
+            VmTestCase {
+                input: "2 * 2 * 2 * 2 * 2".to_string(),
+                expected: Expected::Integer(32),
+            },
+            VmTestCase {
+                input: "5 * 2 + 10".to_string(),
+                expected: Expected::Integer(20),
+            },
+            VmTestCase {
+                input: "5 + 2 * 10".to_string(),
+                expected: Expected::Integer(25),
+            },
+            VmTestCase {
+                input: "5 * (2 + 10)".to_string(),
+                expected: Expected::Integer(60),
             },
         ];
 
