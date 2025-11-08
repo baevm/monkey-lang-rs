@@ -109,7 +109,7 @@ pub fn compile(buf: String) -> Result<Object, Vec<ParseErr>> {
         return Err(vec![]); // TODO error handling
     };
 
-    let stack_top = vm.stack_top();
+    let stack_top = vm.last_popped_stack_element();
 
     if let Some(stack_top) = stack_top {
         return Ok(stack_top);

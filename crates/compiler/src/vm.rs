@@ -84,20 +84,15 @@ impl Vm {
 
                     self.push(Object::Integer(Box::new(Integer { value: result })));
                 }
+                Opcode::OpPop => {
+                    self.pop();
+                }
             }
 
             i += 1;
         }
 
         Ok(())
-    }
-
-    pub fn stack_top(&self) -> Option<Object> {
-        if self.sp == 0 {
-            return None;
-        }
-
-        return self.stack.get((self.sp - 1) as usize).cloned();
     }
 
     fn push(&mut self, object: Object) -> Result<(), StackOverflowError> {
@@ -115,6 +110,10 @@ impl Vm {
         let object = &self.stack[self.sp - 1];
         self.sp -= 1;
         object.clone()
+    }
+
+    pub fn last_popped_stack_element(&self) -> Option<Object> {
+        self.stack.get(self.sp).cloned()
     }
 }
 
@@ -168,7 +167,7 @@ mod tests {
                 panic!("vm error: {:?}", err);
             }
 
-            let stack_element = vm.stack_top();
+            let stack_element = vm.last_popped_stack_element();
 
             let Some(stack_element) = &stack_element else {
                 panic!("stack is empty");

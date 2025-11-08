@@ -92,6 +92,7 @@ impl FromIterator<u8> for Instructions {
 pub enum Opcode {
     OpConstant,
     OpAdd,
+    OpPop,
 }
 
 impl Opcode {
@@ -103,6 +104,10 @@ impl Opcode {
             },
             Opcode::OpAdd => Definition {
                 name: "OpAdd".to_string(),
+                operand_widths: vec![],
+            },
+            Opcode::OpPop => Definition {
+                name: "OpPop".to_string(),
                 operand_widths: vec![],
             },
         }
@@ -118,6 +123,10 @@ impl Opcode {
                 name: "OpAdd".to_string(),
                 operand_widths: vec![],
             }),
+            2 => Some(Definition {
+                name: "OpPop".to_string(),
+                operand_widths: vec![],
+            }),
             _ => None,
         }
     }
@@ -126,6 +135,7 @@ impl Opcode {
         match value {
             0 => Some(Opcode::OpConstant),
             1 => Some(Opcode::OpAdd),
+            2 => Some(Opcode::OpPop),
             _ => None,
         }
     }
