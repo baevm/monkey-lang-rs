@@ -77,23 +77,25 @@ impl Compiler {
                 Ok(())
             }
             Expression::InfixExpression(infix) => {
-                let left_result = self.compile_expression(&infix.left);
+                if infix.operator == "<" {
+                    let right_result = self.compile_expression(&infix.right)?;
+                    let left_result = self.compile_expression(&infix.left)?;
 
-                if left_result.is_err() {
-                    return left_result;
+                    self.emit(Opcode::OpGreaterThan, vec![]);
+                    return Ok(());
                 }
 
-                let right_result = self.compile_expression(&infix.right);
-
-                if right_result.is_err() {
-                    return right_result;
-                }
+                let left_result = self.compile_expression(&infix.left)?;
+                let right_result = self.compile_expression(&infix.right)?;
 
                 match infix.operator.as_str() {
                     "+" => self.emit(Opcode::OpAdd, vec![]),
                     "-" => self.emit(Opcode::OpSub, vec![]),
                     "*" => self.emit(Opcode::OpMul, vec![]),
                     "/" => self.emit(Opcode::OpDiv, vec![]),
+                    ">" => self.emit(Opcode::OpGreaterThan, vec![]),
+                    "==" => self.emit(Opcode::OpEqual, vec![]),
+                    "!=" => self.emit(Opcode::OpNotEqual, vec![]),
                     _ => unreachable!(),
                 };
 
@@ -275,6 +277,66 @@ mod tests {
                 expected_constants: vec![],
                 expected_instructions: vec![
                     Instructions(code::make(Opcode::OpFalse, &vec![])),
+                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                ],
+            },
+            CompilerTestCase {
+                input: "1 > 2".to_string(),
+                expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
+                expected_instructions: vec![
+                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
+                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
+                    Instructions(code::make(Opcode::OpGreaterThan, &vec![])),
+                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                ],
+            },
+            CompilerTestCase {
+                input: "1 < 2".to_string(),
+                expected_constants: vec![ExpectedConstant::I64(2), ExpectedConstant::I64(1)],
+                expected_instructions: vec![
+                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
+                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
+                    Instructions(code::make(Opcode::OpGreaterThan, &vec![])),
+                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                ],
+            },
+            CompilerTestCase {
+                input: "1 == 2".to_string(),
+                expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
+                expected_instructions: vec![
+                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
+                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
+                    Instructions(code::make(Opcode::OpEqual, &vec![])),
+                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                ],
+            },
+            CompilerTestCase {
+                input: "1 != 2".to_string(),
+                expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
+                expected_instructions: vec![
+                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
+                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
+                    Instructions(code::make(Opcode::OpNotEqual, &vec![])),
+                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                ],
+            },
+            CompilerTestCase {
+                input: "true == false".to_string(),
+                expected_constants: vec![],
+                expected_instructions: vec![
+                    Instructions(code::make(Opcode::OpTrue, &vec![])),
+                    Instructions(code::make(Opcode::OpFalse, &vec![])),
+                    Instructions(code::make(Opcode::OpEqual, &vec![])),
+                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                ],
+            },
+            CompilerTestCase {
+                input: "true != false".to_string(),
+                expected_constants: vec![],
+                expected_instructions: vec![
+                    Instructions(code::make(Opcode::OpTrue, &vec![])),
+                    Instructions(code::make(Opcode::OpFalse, &vec![])),
+                    Instructions(code::make(Opcode::OpNotEqual, &vec![])),
                     Instructions(code::make(Opcode::OpPop, &vec![])),
                 ],
             },

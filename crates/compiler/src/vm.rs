@@ -19,6 +19,7 @@ pub struct Vm {
 pub enum VmError {
     StackOverflowError(StackOverflowError),
     InvalidType,
+    UnknownOperator,
 }
 
 #[derive(Debug)]
@@ -63,9 +64,7 @@ impl Vm {
 
                     let constant = self.constants[const_index as usize].clone();
 
-                    if let Err(err) = self.push(constant) {
-                        return Err(VmError::StackOverflowError(err));
-                    };
+                    self.push(constant)?
                 }
                 Opcode::OpAdd | Opcode::OpSub | Opcode::OpMul | Opcode::OpDiv => {
                     let right = self.pop();
@@ -91,26 +90,17 @@ impl Vm {
                         _ => unreachable!(),
                     };
 
-                    if let Err(err) =
-                        self.push(Object::Integer(Box::new(Integer { value: result })))
-                    {
-                        return Err(VmError::StackOverflowError(err));
-                    }
+                    self.push(Object::Integer(Box::new(Integer { value: result })))?
                 }
                 Opcode::OpPop => {
                     self.pop();
                 }
-                Opcode::OpTrue => {
-                    if let Err(err) = self.push(Object::Boolean(Box::new(Boolean { value: true })))
-                    {
-                        return Err(VmError::StackOverflowError(err));
-                    }
-                }
+                Opcode::OpTrue => self.push(Object::Boolean(Box::new(Boolean { value: true })))?,
                 Opcode::OpFalse => {
-                    if let Err(err) = self.push(Object::Boolean(Box::new(Boolean { value: false })))
-                    {
-                        return Err(VmError::StackOverflowError(err));
-                    }
+                    self.push(Object::Boolean(Box::new(Boolean { value: false })))?
+                }
+                Opcode::OpEqual | Opcode::OpNotEqual | Opcode::OpGreaterThan => {
+                    self.execute_comparison(&opcode)?
                 }
             }
 
@@ -120,9 +110,9 @@ impl Vm {
         Ok(())
     }
 
-    fn push(&mut self, object: Object) -> Result<(), StackOverflowError> {
+    fn push(&mut self, object: Object) -> Result<(), VmError> {
         if self.sp >= STACK_SIZE {
-            return Err(StackOverflowError);
+            return Err(VmError::StackOverflowError(StackOverflowError {}));
         }
 
         self.stack[self.sp] = object;
@@ -139,6 +129,73 @@ impl Vm {
 
     pub fn last_popped_stack_element(&self) -> Option<Object> {
         self.stack.get(self.sp).cloned()
+    }
+
+    fn execute_comparison(&mut self, opcode: &Opcode) -> Result<(), VmError> {
+        let right = self.pop();
+        let left = self.pop();
+
+        if let Object::Integer(right_int) = &right
+            && let Object::Integer(left_int) = &left
+        {
+            return self.execute_integer_comparison(&opcode, left_int, right_int);
+        }
+
+        if let Object::Boolean(right_bool) = right
+            && let Object::Boolean(left_bool) = left
+        {
+            match opcode {
+                Opcode::OpEqual => {
+                    self.push(self.native_bool_to_boolean_obj(right_bool.value == left_bool.value))?
+                }
+                Opcode::OpNotEqual => {
+                    self.push(self.native_bool_to_boolean_obj(right_bool.value != left_bool.value))?
+                }
+                Opcode::OpGreaterThan => {
+                    self.push(self.native_bool_to_boolean_obj(right_bool.value > left_bool.value))?
+                }
+                _ => Err(VmError::UnknownOperator)?,
+            }
+
+            return Ok(());
+        }
+
+        // TODO: add comparsion between diff objects
+        // match opcode {
+        //     Opcode::OpEqual => self.push(self.native_bool_to_boolean_obj(right == left))?,
+        //     Opcode::OpNotEqual => self.push(self.native_bool_to_boolean_obj(right != left))?,
+        //     _ => return Err(VmError::UnknownOperator),
+        // }
+
+        Err(VmError::InvalidType)
+    }
+
+    fn execute_integer_comparison(
+        &mut self,
+        opcode: &Opcode,
+        left_int: &Box<Integer>,
+        right_int: &Box<Integer>,
+    ) -> Result<(), VmError> {
+        match opcode {
+            Opcode::OpEqual => {
+                self.push(self.native_bool_to_boolean_obj(right_int.value == left_int.value))
+            }
+            Opcode::OpNotEqual => {
+                self.push(self.native_bool_to_boolean_obj(right_int.value != left_int.value))
+            }
+            Opcode::OpGreaterThan => {
+                self.push(self.native_bool_to_boolean_obj(left_int.value > right_int.value))
+            }
+            _ => Err(VmError::UnknownOperator),
+        }
+    }
+
+    fn native_bool_to_boolean_obj(&self, val: bool) -> Object {
+        if val {
+            return Object::Boolean(Box::new(Boolean { value: true }));
+        }
+
+        return Object::Boolean(Box::new(Boolean { value: false }));
     }
 }
 
@@ -224,6 +281,74 @@ mod tests {
             VmTestCase {
                 input: "false".to_string(),
                 expected: Expected::Boolean(false),
+            },
+            VmTestCase {
+                input: "1 < 2".to_string(),
+                expected: Expected::Boolean(true),
+            },
+            VmTestCase {
+                input: "1 > 2".to_string(),
+                expected: Expected::Boolean(false),
+            },
+            VmTestCase {
+                input: "1 < 1".to_string(),
+                expected: Expected::Boolean(false),
+            },
+            VmTestCase {
+                input: "1 > 1".to_string(),
+                expected: Expected::Boolean(false),
+            },
+            VmTestCase {
+                input: "1 == 1".to_string(),
+                expected: Expected::Boolean(true),
+            },
+            VmTestCase {
+                input: "1 != 1".to_string(),
+                expected: Expected::Boolean(false),
+            },
+            VmTestCase {
+                input: "1 == 2".to_string(),
+                expected: Expected::Boolean(false),
+            },
+            VmTestCase {
+                input: "1 != 2".to_string(),
+                expected: Expected::Boolean(true),
+            },
+            VmTestCase {
+                input: "true == true".to_string(),
+                expected: Expected::Boolean(true),
+            },
+            VmTestCase {
+                input: "false == false".to_string(),
+                expected: Expected::Boolean(true),
+            },
+            VmTestCase {
+                input: "true == false".to_string(),
+                expected: Expected::Boolean(false),
+            },
+            VmTestCase {
+                input: "true != false".to_string(),
+                expected: Expected::Boolean(true),
+            },
+            VmTestCase {
+                input: "false != true".to_string(),
+                expected: Expected::Boolean(true),
+            },
+            VmTestCase {
+                input: "(1 < 2) == true".to_string(),
+                expected: Expected::Boolean(true),
+            },
+            VmTestCase {
+                input: "(1 < 2) == false".to_string(),
+                expected: Expected::Boolean(false),
+            },
+            VmTestCase {
+                input: "(1 > 2) == true".to_string(),
+                expected: Expected::Boolean(false),
+            },
+            VmTestCase {
+                input: "(1 > 2) == false".to_string(),
+                expected: Expected::Boolean(true),
             },
         ];
 
