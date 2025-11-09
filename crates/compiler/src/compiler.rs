@@ -1,6 +1,7 @@
 use monke_core::{
     ast::{Expression, Program, Statement},
     object::{Integer, Object},
+    token::TokenType,
 };
 
 use crate::code::{Instructions, Opcode, make};
@@ -77,7 +78,7 @@ impl Compiler {
                 Ok(())
             }
             Expression::InfixExpression(infix) => {
-                if infix.operator == "<" {
+                if infix.operator == TokenType::Lt {
                     let right_result = self.compile_expression(&infix.right)?;
                     let left_result = self.compile_expression(&infix.left)?;
 
@@ -88,14 +89,14 @@ impl Compiler {
                 let left_result = self.compile_expression(&infix.left)?;
                 let right_result = self.compile_expression(&infix.right)?;
 
-                match infix.operator.as_str() {
-                    "+" => self.emit(Opcode::OpAdd, vec![]),
-                    "-" => self.emit(Opcode::OpSub, vec![]),
-                    "*" => self.emit(Opcode::OpMul, vec![]),
-                    "/" => self.emit(Opcode::OpDiv, vec![]),
-                    ">" => self.emit(Opcode::OpGreaterThan, vec![]),
-                    "==" => self.emit(Opcode::OpEqual, vec![]),
-                    "!=" => self.emit(Opcode::OpNotEqual, vec![]),
+                match infix.operator {
+                    TokenType::Plus => self.emit(Opcode::OpAdd, vec![]),
+                    TokenType::Minus => self.emit(Opcode::OpSub, vec![]),
+                    TokenType::Asterisk => self.emit(Opcode::OpMul, vec![]),
+                    TokenType::Slash => self.emit(Opcode::OpDiv, vec![]),
+                    TokenType::Gt => self.emit(Opcode::OpGreaterThan, vec![]),
+                    TokenType::Eq => self.emit(Opcode::OpEqual, vec![]),
+                    TokenType::NotEq => self.emit(Opcode::OpNotEqual, vec![]),
                     _ => unreachable!("unknown operator"),
                 };
 

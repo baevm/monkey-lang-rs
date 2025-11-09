@@ -1,3 +1,5 @@
+use crate::token::TokenType;
+
 pub struct Program {
     pub body: Vec<Statement>,
 }
@@ -203,14 +205,17 @@ impl std::fmt::Display for PrefixExpression {
 #[derive(Debug, Clone)]
 pub struct InfixExpression {
     pub left: Expression,
-    pub operator: String,
+    pub operator: TokenType,
     pub right: Expression,
 }
 
 impl InfixExpression {
     pub fn is_compound_assign(&self) -> bool {
-        match self.operator.as_str() {
-            "+=" | "-=" | "*=" | "/=" => true,
+        match self.operator {
+            TokenType::AssignAdd
+            | TokenType::AssignSub
+            | TokenType::AssignMul
+            | TokenType::AssignDiv => true,
             _ => false,
         }
     }
