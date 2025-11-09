@@ -669,7 +669,7 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::{
-        ast::{Expression, ExpressionStatement, Statement, Stringer},
+        ast::{Expression, ExpressionStatement, Statement},
         lexer::Lexer,
         parser::Parser,
     };

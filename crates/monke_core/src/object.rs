@@ -8,7 +8,7 @@ use std::{
 use fnv::FnvHasher;
 use strum_macros::{Display, VariantNames};
 
-use crate::ast::{BlockStatement, Identifier, Stringer};
+use crate::ast::{BlockStatement, Identifier};
 
 pub trait ObjectTrait {
     fn inspect(&self) -> String;

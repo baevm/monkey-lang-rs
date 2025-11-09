@@ -671,7 +671,6 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::{
-        ast::Stringer,
         evaluator::Evaluator,
         lexer::Lexer,
         object::{Boolean, Environment, HashKey, Integer, Object, StringObj},

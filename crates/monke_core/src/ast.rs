@@ -1,7 +1,3 @@
-pub trait Stringer {
-    fn to_string(&self) -> String;
-}
-
 pub struct Program {
     pub body: Vec<Statement>,
 }
@@ -16,9 +12,9 @@ pub enum Statement {
     ForStatement(Box<ForStatement>),
 }
 
-impl Stringer for Statement {
-    fn to_string(&self) -> String {
-        match self {
+impl std::fmt::Display for Statement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let display_msg = match self {
             Statement::LetStatement(let_statement) => let_statement.to_string(),
             Statement::ReturnStatement(return_statement) => return_statement.to_string(),
             Statement::ExpressionStatement(expression_statement) => {
@@ -26,7 +22,9 @@ impl Stringer for Statement {
             }
             Statement::BlockStatement(block_stmt) => block_stmt.to_string(),
             Statement::ForStatement(for_statement) => for_statement.to_string(),
-        }
+        };
+
+        write!(f, "{}", display_msg)
     }
 }
 
@@ -48,8 +46,8 @@ pub struct LetStatement {
     pub value: Option<Expression>,
 }
 
-impl Stringer for LetStatement {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for LetStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut sb = String::new();
 
         sb.push_str(&format!("let {} = ", self.name.to_string(),));
@@ -60,7 +58,7 @@ impl Stringer for LetStatement {
 
         sb.push(';');
 
-        sb
+        write!(f, "{}", sb)
     }
 }
 
@@ -69,8 +67,8 @@ pub struct ReturnStatement {
     pub return_value: Option<Expression>,
 }
 
-impl Stringer for ReturnStatement {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for ReturnStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut sb = String::new();
 
         sb.push_str("return");
@@ -81,7 +79,7 @@ impl Stringer for ReturnStatement {
 
         sb.push(';');
 
-        sb
+        write!(f, "{}", sb)
     }
 }
 
@@ -90,15 +88,15 @@ pub struct ExpressionStatement {
     pub expression: Option<Expression>,
 }
 
-impl Stringer for ExpressionStatement {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for ExpressionStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut sb = String::new();
 
         if let Some(expr_stmt) = &self.expression {
             sb.push_str(&expr_stmt.to_string())
         }
 
-        sb
+        write!(f, "{}", sb)
     }
 }
 
@@ -110,8 +108,8 @@ pub struct ForStatement {
     pub body: BlockStatement,
 }
 
-impl Stringer for ForStatement {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for ForStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut sb = String::new();
 
         sb.push_str(&format!(
@@ -122,7 +120,7 @@ impl Stringer for ForStatement {
             self.body.to_string(),
         ));
 
-        sb
+        write!(f, "{}", sb)
     }
 }
 
@@ -143,9 +141,9 @@ pub enum Expression {
     HashLiteral(Box<HashLiteral>),
 }
 
-impl Stringer for Expression {
-    fn to_string(&self) -> String {
-        match self {
+impl std::fmt::Display for Expression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let display_msg = match self {
             Expression::Identifier(identifier) => identifier.to_string(),
             Expression::IntegerLiteral(int_literal) => int_literal.to_string(),
             Expression::PrefixExpression(prefix_expression) => prefix_expression.to_string(),
@@ -158,7 +156,9 @@ impl Stringer for Expression {
             Expression::ArrayLiteral(array_literal) => array_literal.to_string(),
             Expression::IndexExpression(index_expression) => index_expression.to_string(),
             Expression::HashLiteral(hash_literal) => hash_literal.to_string(),
-        }
+        };
+
+        write!(f, "{}", display_msg)
     }
 }
 
@@ -167,9 +167,9 @@ pub struct Identifier {
     pub value: String,
 }
 
-impl Stringer for Identifier {
-    fn to_string(&self) -> String {
-        self.value.clone()
+impl std::fmt::Display for Identifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.value)
     }
 }
 
@@ -178,9 +178,9 @@ pub struct IntegerLiteral {
     pub value: i64,
 }
 
-impl Stringer for IntegerLiteral {
-    fn to_string(&self) -> String {
-        self.value.to_string()
+impl std::fmt::Display for IntegerLiteral {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.value)
     }
 }
 
@@ -190,9 +190,13 @@ pub struct PrefixExpression {
     pub right: Expression,
 }
 
-impl Stringer for PrefixExpression {
-    fn to_string(&self) -> String {
-        format!("({}{})", self.operator, self.right.to_string())
+impl std::fmt::Display for PrefixExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            format!("({}{})", self.operator, self.right.to_string())
+        )
     }
 }
 
@@ -212,13 +216,17 @@ impl InfixExpression {
     }
 }
 
-impl Stringer for InfixExpression {
-    fn to_string(&self) -> String {
-        format!(
-            "({} {} {})",
-            self.left.to_string(),
-            self.operator,
-            self.right.to_string()
+impl std::fmt::Display for InfixExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            format!(
+                "({} {} {})",
+                self.left.to_string(),
+                self.operator,
+                self.right.to_string()
+            )
         )
     }
 }
@@ -228,9 +236,9 @@ pub struct Boolean {
     pub value: bool,
 }
 
-impl Stringer for Boolean {
-    fn to_string(&self) -> String {
-        self.value.to_string()
+impl std::fmt::Display for Boolean {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.value)
     }
 }
 
@@ -241,8 +249,8 @@ pub struct IfExpression {
     pub alternative: Option<BlockStatement>, // optional else body
 }
 
-impl Stringer for IfExpression {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for IfExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut sb = String::new();
 
         sb.push_str(&format!(
@@ -255,7 +263,7 @@ impl Stringer for IfExpression {
             sb.push_str(&format!("else {}", alternative.to_string()));
         }
 
-        sb
+        write!(f, "{}", sb)
     }
 }
 
@@ -264,9 +272,11 @@ pub struct BlockStatement {
     pub statements: Vec<Statement>,
 }
 
-impl Stringer for BlockStatement {
-    fn to_string(&self) -> String {
-        self.statements.iter().map(|st| st.to_string()).collect()
+impl std::fmt::Display for BlockStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str: String = self.statements.iter().map(|st| st.to_string()).collect();
+
+        write!(f, "{}", str)
     }
 }
 
@@ -276,8 +286,8 @@ pub struct FunctionLiteral {
     pub body: BlockStatement,
 }
 
-impl Stringer for FunctionLiteral {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for FunctionLiteral {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let params = self
             .parameters
             .iter()
@@ -285,7 +295,11 @@ impl Stringer for FunctionLiteral {
             .collect::<Vec<String>>()
             .join(", ");
 
-        format!("function({}){}", params, self.body.to_string())
+        write!(
+            f,
+            "{}",
+            format!("function({}){}", params, self.body.to_string())
+        )
     }
 }
 
@@ -295,8 +309,8 @@ pub struct CallExpression {
     pub arguments: Vec<Expression>,
 }
 
-impl Stringer for CallExpression {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for CallExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let args = self
             .arguments
             .iter()
@@ -304,7 +318,7 @@ impl Stringer for CallExpression {
             .collect::<Vec<String>>()
             .join(", ");
 
-        format!("{}({})", self.function.to_string(), args)
+        write!(f, "{}", format!("{}({})", self.function.to_string(), args))
     }
 }
 
@@ -313,9 +327,9 @@ pub struct StringLiteral {
     pub value: String,
 }
 
-impl Stringer for StringLiteral {
-    fn to_string(&self) -> String {
-        self.value.clone()
+impl std::fmt::Display for StringLiteral {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.value)
     }
 }
 
@@ -324,11 +338,11 @@ pub struct ArrayLiteral {
     pub elements: Vec<Expression>,
 }
 
-impl Stringer for ArrayLiteral {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for ArrayLiteral {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let elements: Vec<String> = self.elements.iter().map(|e| e.to_string()).collect();
 
-        format!("[{}]", elements.join(", "))
+        write!(f, "{}", format!("[{}]", elements.join(", ")))
     }
 }
 
@@ -338,9 +352,13 @@ pub struct IndexExpression {
     pub index: Expression,
 }
 
-impl Stringer for IndexExpression {
-    fn to_string(&self) -> String {
-        format!("({}[{}])", self.left.to_string(), self.index.to_string())
+impl std::fmt::Display for IndexExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            format!("({}[{}])", self.left.to_string(), self.index.to_string())
+        )
     }
 }
 
@@ -349,15 +367,15 @@ pub struct HashLiteral {
     pub pairs: Vec<(Expression, Expression)>,
 }
 
-impl Stringer for HashLiteral {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for HashLiteral {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let elements: Vec<String> = self
             .pairs
             .iter()
             .map(|(k, v)| format!("{}:{}", k.to_string(), v.to_string()))
             .collect();
 
-        format!("{{{}}}", elements.join(", "))
+        write!(f, "{}", format!("{{{}}}", elements.join(", ")))
     }
 }
 
