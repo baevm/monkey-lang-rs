@@ -24,7 +24,7 @@ impl Instructions {
         }
 
         match operand_count {
-            0 => def.name.clone(),
+            0 => def.name.to_string(),
             1 => format!("{} {}", def.name, operands[0]),
             _ => format!("ERROR: unhandled operandCount for {}", def.name),
         }
@@ -112,55 +112,55 @@ impl Opcode {
     pub fn get_definition(&self) -> Definition {
         match self {
             Opcode::OpConstant => Definition {
-                name: "OpConstant".to_string(),
+                name: "OpConstant",
                 operand_widths: vec![2],
             },
             Opcode::OpPop => Definition {
-                name: "OpPop".to_string(),
+                name: "OpPop",
                 operand_widths: vec![],
             },
             Opcode::OpAdd => Definition {
-                name: "OpAdd".to_string(),
+                name: "OpAdd",
                 operand_widths: vec![],
             },
             Opcode::OpSub => Definition {
-                name: "OpSub".to_string(),
+                name: "OpSub",
                 operand_widths: vec![],
             },
             Opcode::OpMul => Definition {
-                name: "OpMul".to_string(),
+                name: "OpMul",
                 operand_widths: vec![],
             },
             Opcode::OpDiv => Definition {
-                name: "OpDiv".to_string(),
+                name: "OpDiv",
                 operand_widths: vec![],
             },
             Opcode::OpTrue => Definition {
-                name: "OpTrue".to_string(),
+                name: "OpTrue",
                 operand_widths: vec![],
             },
             Opcode::OpFalse => Definition {
-                name: "OpFalse".to_string(),
+                name: "OpFalse",
                 operand_widths: vec![],
             },
             Opcode::OpEqual => Definition {
-                name: "OpEqual".to_string(),
+                name: "OpEqual",
                 operand_widths: vec![],
             },
             Opcode::OpNotEqual => Definition {
-                name: "OpNotEqual".to_string(),
+                name: "OpNotEqual",
                 operand_widths: vec![],
             },
             Opcode::OpGreaterThan => Definition {
-                name: "OpGreaterThan".to_string(),
+                name: "OpGreaterThan",
                 operand_widths: vec![],
             },
             Opcode::OpMinus => Definition {
-                name: "OpMinus".to_string(),
+                name: "OpMinus",
                 operand_widths: vec![],
             },
             Opcode::OpBang => Definition {
-                name: "OpBang".to_string(),
+                name: "OpBang",
                 operand_widths: vec![],
             },
         }
@@ -187,7 +187,7 @@ impl Opcode {
 }
 
 pub struct Definition {
-    pub name: String,
+    pub name: &'static str,
     /// Number of bytes each operand takes
     pub operand_widths: Vec<i64>,
 }
