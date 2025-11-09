@@ -96,7 +96,18 @@ impl Compiler {
                     ">" => self.emit(Opcode::OpGreaterThan, vec![]),
                     "==" => self.emit(Opcode::OpEqual, vec![]),
                     "!=" => self.emit(Opcode::OpNotEqual, vec![]),
-                    _ => unreachable!(),
+                    _ => unreachable!("unknown operator"),
+                };
+
+                Ok(())
+            }
+            Expression::PrefixExpression(prefix_expr) => {
+                let right_result = self.compile_expression(&prefix_expr.right)?;
+
+                match prefix_expr.operator.as_str() {
+                    "!" => self.emit(Opcode::OpBang, vec![]),
+                    "-" => self.emit(Opcode::OpMinus, vec![]),
+                    _ => unreachable!("unknown operator"),
                 };
 
                 Ok(())
@@ -201,6 +212,15 @@ mod tests {
                     Instructions(code::make(Opcode::OpConstant, &vec![0])),
                     Instructions(code::make(Opcode::OpConstant, &vec![1])),
                     Instructions(code::make(Opcode::OpDiv, &vec![])),
+                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                ],
+            },
+            CompilerTestCase {
+                input: "-1".to_string(),
+                expected_constants: vec![ExpectedConstant::I64(1)],
+                expected_instructions: vec![
+                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
+                    Instructions(code::make(Opcode::OpMinus, &vec![])),
                     Instructions(code::make(Opcode::OpPop, &vec![])),
                 ],
             },
@@ -337,6 +357,15 @@ mod tests {
                     Instructions(code::make(Opcode::OpTrue, &vec![])),
                     Instructions(code::make(Opcode::OpFalse, &vec![])),
                     Instructions(code::make(Opcode::OpNotEqual, &vec![])),
+                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                ],
+            },
+            CompilerTestCase {
+                input: "!true".to_string(),
+                expected_constants: vec![],
+                expected_instructions: vec![
+                    Instructions(code::make(Opcode::OpTrue, &vec![])),
+                    Instructions(code::make(Opcode::OpBang, &vec![])),
                     Instructions(code::make(Opcode::OpPop, &vec![])),
                 ],
             },

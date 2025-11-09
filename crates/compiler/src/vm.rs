@@ -102,6 +102,8 @@ impl Vm {
                 Opcode::OpEqual | Opcode::OpNotEqual | Opcode::OpGreaterThan => {
                     self.execute_comparison(&opcode)?
                 }
+                Opcode::OpMinus => self.execute_minus_operator()?,
+                Opcode::OpBang => self.execute_bang_operator()?,
             }
 
             i += 1;
@@ -197,6 +199,33 @@ impl Vm {
 
         return Object::Boolean(Box::new(Boolean { value: false }));
     }
+
+    fn execute_bang_operator(&mut self) -> Result<(), VmError> {
+        let operand = self.pop();
+
+        match operand {
+            Object::Boolean(bool_obj) => {
+                if bool_obj.value == true {
+                    self.push(Object::Boolean(Box::new(Boolean { value: false })))
+                } else {
+                    self.push(Object::Boolean(Box::new(Boolean { value: true })))
+                }
+            }
+            _ => self.push(Object::Boolean(Box::new(Boolean { value: false }))),
+        }
+    }
+
+    fn execute_minus_operator(&mut self) -> Result<(), VmError> {
+        let operand = self.pop();
+
+        let Object::Integer(int_obj) = operand else {
+            return Err(VmError::InvalidType);
+        };
+
+        self.push(Object::Integer(Box::new(Integer {
+            value: -int_obj.value,
+        })))
+    }
 }
 
 #[cfg(test)]
@@ -265,6 +294,22 @@ mod tests {
             VmTestCase {
                 input: "5 * (2 + 10)".to_string(),
                 expected: Expected::Integer(60),
+            },
+            VmTestCase {
+                input: "-5".to_string(),
+                expected: Expected::Integer(-5),
+            },
+            VmTestCase {
+                input: "-10".to_string(),
+                expected: Expected::Integer(-10),
+            },
+            VmTestCase {
+                input: "-50 + 100 + -50".to_string(),
+                expected: Expected::Integer(0),
+            },
+            VmTestCase {
+                input: "(5 + 10 * 2 + 15 / 3) * 2 + -10".to_string(),
+                expected: Expected::Integer(50),
             },
         ];
 
@@ -348,6 +393,30 @@ mod tests {
             },
             VmTestCase {
                 input: "(1 > 2) == false".to_string(),
+                expected: Expected::Boolean(true),
+            },
+            VmTestCase {
+                input: "!true".to_string(),
+                expected: Expected::Boolean(false),
+            },
+            VmTestCase {
+                input: "!false".to_string(),
+                expected: Expected::Boolean(true),
+            },
+            VmTestCase {
+                input: "!5".to_string(),
+                expected: Expected::Boolean(false),
+            },
+            VmTestCase {
+                input: "!!true".to_string(),
+                expected: Expected::Boolean(true),
+            },
+            VmTestCase {
+                input: "!!false".to_string(),
+                expected: Expected::Boolean(false),
+            },
+            VmTestCase {
+                input: "!!5".to_string(),
                 expected: Expected::Boolean(true),
             },
         ];

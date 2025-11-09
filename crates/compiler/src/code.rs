@@ -104,6 +104,8 @@ pub enum Opcode {
     OpEqual = 8,
     OpNotEqual = 9,
     OpGreaterThan = 10,
+    OpMinus = 11,
+    OpBang = 12,
 }
 
 impl Opcode {
@@ -153,6 +155,14 @@ impl Opcode {
                 name: "OpGreaterThan".to_string(),
                 operand_widths: vec![],
             },
+            Opcode::OpMinus => Definition {
+                name: "OpMinus".to_string(),
+                operand_widths: vec![],
+            },
+            Opcode::OpBang => Definition {
+                name: "OpBang".to_string(),
+                operand_widths: vec![],
+            },
         }
     }
 
@@ -169,6 +179,8 @@ impl Opcode {
             8 => Some(Opcode::OpEqual),
             9 => Some(Opcode::OpNotEqual),
             10 => Some(Opcode::OpGreaterThan),
+            11 => Some(Opcode::OpMinus),
+            12 => Some(Opcode::OpBang),
             _ => None,
         }
     }
