@@ -113,55 +113,55 @@ impl Opcode {
         match self {
             Opcode::OpConstant => Definition {
                 name: "OpConstant",
-                operand_widths: vec![2],
+                operand_widths: &[2],
             },
             Opcode::OpPop => Definition {
                 name: "OpPop",
-                operand_widths: vec![],
+                operand_widths: &[],
             },
             Opcode::OpAdd => Definition {
                 name: "OpAdd",
-                operand_widths: vec![],
+                operand_widths: &[],
             },
             Opcode::OpSub => Definition {
                 name: "OpSub",
-                operand_widths: vec![],
+                operand_widths: &[],
             },
             Opcode::OpMul => Definition {
                 name: "OpMul",
-                operand_widths: vec![],
+                operand_widths: &[],
             },
             Opcode::OpDiv => Definition {
                 name: "OpDiv",
-                operand_widths: vec![],
+                operand_widths: &[],
             },
             Opcode::OpTrue => Definition {
                 name: "OpTrue",
-                operand_widths: vec![],
+                operand_widths: &[],
             },
             Opcode::OpFalse => Definition {
                 name: "OpFalse",
-                operand_widths: vec![],
+                operand_widths: &[],
             },
             Opcode::OpEqual => Definition {
                 name: "OpEqual",
-                operand_widths: vec![],
+                operand_widths: &[],
             },
             Opcode::OpNotEqual => Definition {
                 name: "OpNotEqual",
-                operand_widths: vec![],
+                operand_widths: &[],
             },
             Opcode::OpGreaterThan => Definition {
                 name: "OpGreaterThan",
-                operand_widths: vec![],
+                operand_widths: &[],
             },
             Opcode::OpMinus => Definition {
                 name: "OpMinus",
-                operand_widths: vec![],
+                operand_widths: &[],
             },
             Opcode::OpBang => Definition {
                 name: "OpBang",
-                operand_widths: vec![],
+                operand_widths: &[],
             },
         }
     }
@@ -189,7 +189,7 @@ impl Opcode {
 pub struct Definition {
     pub name: &'static str,
     /// Number of bytes each operand takes
-    pub operand_widths: Vec<i64>,
+    pub operand_widths: &'static [i64],
 }
 
 pub fn make(opcode: Opcode, operands: &Vec<i64>) -> Vec<u8> {
