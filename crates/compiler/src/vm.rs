@@ -104,6 +104,8 @@ impl Vm {
                 }
                 Opcode::OpMinus => self.execute_minus_operator()?,
                 Opcode::OpBang => self.execute_bang_operator()?,
+                Opcode::OpJumpNotTruthy => todo!(),
+                Opcode::OpJump => todo!(),
             }
 
             i += 1;

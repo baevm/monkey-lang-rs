@@ -91,7 +91,7 @@ impl FromIterator<u8> for Instructions {
 }
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Opcode {
     OpConstant = 0,
     OpPop = 1,
@@ -106,6 +106,8 @@ pub enum Opcode {
     OpGreaterThan = 10,
     OpMinus = 11,
     OpBang = 12,
+    OpJumpNotTruthy = 13, // jump if value on top of stack is not truthy
+    OpJump = 14,          // jump at offset
 }
 
 impl Opcode {
@@ -163,6 +165,14 @@ impl Opcode {
                 name: "OpBang",
                 operand_widths: &[],
             },
+            Opcode::OpJumpNotTruthy => Definition {
+                name: "OpJumpNotTruthy",
+                operand_widths: &[2],
+            },
+            Opcode::OpJump => Definition {
+                name: "OpJump",
+                operand_widths: &[2],
+            },
         }
     }
 
@@ -181,6 +191,8 @@ impl Opcode {
             10 => Some(Opcode::OpGreaterThan),
             11 => Some(Opcode::OpMinus),
             12 => Some(Opcode::OpBang),
+            13 => Some(Opcode::OpJumpNotTruthy),
+            14 => Some(Opcode::OpJump),
             _ => None,
         }
     }
