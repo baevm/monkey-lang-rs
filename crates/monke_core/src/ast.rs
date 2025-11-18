@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::token::TokenType;
 
 pub struct Program {
@@ -166,7 +168,7 @@ impl std::fmt::Display for Expression {
 
 #[derive(Debug, Clone)]
 pub struct Identifier {
-    pub value: String,
+    pub value: Rc<str>,
 }
 
 impl std::fmt::Display for Identifier {
@@ -329,7 +331,7 @@ impl std::fmt::Display for CallExpression {
 
 #[derive(Debug, Clone)]
 pub struct StringLiteral {
-    pub value: String,
+    pub value: Rc<str>,
 }
 
 impl std::fmt::Display for StringLiteral {
@@ -386,6 +388,8 @@ impl std::fmt::Display for HashLiteral {
 
 #[cfg(test)]
 mod tests {
+    use std::rc::Rc;
+
     use crate::ast::{Expression, Identifier, LetStatement, Program, Statement};
 
     #[test]
@@ -394,10 +398,10 @@ mod tests {
         let program = Program {
             body: vec![Statement::LetStatement(Box::new(LetStatement {
                 name: Identifier {
-                    value: "myVar".to_string(),
+                    value: Rc::from("myVar"),
                 },
                 value: Some(Expression::Identifier(Box::new(Identifier {
-                    value: "anotherVar".to_string(),
+                    value: Rc::from("anotherVar"),
                 }))),
             }))],
         };

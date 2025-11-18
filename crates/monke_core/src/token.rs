@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 #[derive(PartialEq, Debug, Clone)]
 pub enum TokenType {
     Illegal, // unknown token
@@ -101,14 +103,14 @@ impl std::fmt::Display for TokenType {
 #[derive(Debug, Clone)]
 pub struct Token {
     pub token_type: TokenType,
-    pub literal: String,
+    pub literal: Rc<str>,
 }
 
 impl Token {
     pub fn new() -> Self {
         Token {
             token_type: TokenType::Eof,
-            literal: String::new(),
+            literal: Rc::from(""),
         }
     }
 

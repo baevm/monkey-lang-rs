@@ -145,7 +145,7 @@ impl Evaluator {
                 value: integer_literal.value,
             })),
             Expression::StringLiteral(str_literal) => Object::String(Box::new(StringObj {
-                value: str_literal.value.clone(),
+                value: str_literal.value.to_string(),
             })),
             Expression::Boolean(boolean_literal) => Object::Boolean(Box::new(Boolean {
                 value: boolean_literal.value,
@@ -435,7 +435,7 @@ impl Evaluator {
         }
 
         Object::InternalError(Box::new(InternalError {
-            message: EvaluateErr::UnknownIdentifier(ident.value.clone()),
+            message: EvaluateErr::UnknownIdentifier(ident.value.to_string()),
         }))
     }
 
@@ -612,7 +612,7 @@ impl Evaluator {
                 // if identifier doesnt exist
                 if env.get(&ident.value).is_none() {
                     return Object::InternalError(Box::new(InternalError {
-                        message: EvaluateErr::UnknownIdentifier(ident.value.clone()),
+                        message: EvaluateErr::UnknownIdentifier(ident.value.to_string()),
                     }));
                 }
 

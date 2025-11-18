@@ -303,7 +303,7 @@ impl Parser {
 
         if value.is_err() {
             self.errors.push(ParseErr::CouldNotParseInteger(
-                self.curr_token.literal.clone(),
+                self.curr_token.literal.to_string(),
             ));
             return None;
         }
@@ -361,7 +361,7 @@ impl Parser {
     }
 
     fn parse_prefix_expression(&mut self) -> Option<Expression> {
-        let operator = match self.curr_token.literal.as_str() {
+        let operator = match self.curr_token.literal.as_ref() {
             "-" => TokenType::Minus,
             "!" => TokenType::Bang,
             _ => return None,
@@ -378,7 +378,7 @@ impl Parser {
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Option<Expression> {
-        let operator = match self.curr_token.literal.as_str() {
+        let operator = match self.curr_token.literal.as_ref() {
             "+=" => TokenType::AssignAdd,
             "-=" => TokenType::AssignSub,
             "*=" => TokenType::AssignMul,
@@ -753,9 +753,11 @@ mod tests {
             };
 
             assert_eq!(
-                let_stmt.name.value, test.expected_identifier,
+                let_stmt.name.value.as_ref(),
+                test.expected_identifier.as_str(),
                 "let statement name is not {}. got: {}",
-                test.expected_identifier, let_stmt.name.value
+                test.expected_identifier,
+                let_stmt.name.value
             );
 
             let value_expr = let_stmt.value.as_ref().expect("let statement has no value");
@@ -777,9 +779,11 @@ mod tests {
                 }
                 (ExpectedValue::String(expected), Expression::Identifier(actual)) => {
                     assert_eq!(
-                        actual.value, *expected,
+                        actual.value.as_ref(),
+                        expected.as_str(),
                         "let statement value is not {}. got: {}",
-                        expected, actual.value
+                        expected,
+                        actual.value
                     );
                 }
                 (expected_type, actual_expr) => {
@@ -858,9 +862,11 @@ mod tests {
                 }
                 (ExpectedValue::String(expected), Expression::Identifier(actual)) => {
                     assert_eq!(
-                        actual.value, *expected,
+                        actual.value.as_ref(),
+                        expected.as_str(),
                         "return statement value is not {}. got: {}",
-                        expected, actual.value
+                        expected,
+                        actual.value
                     );
                 }
                 (expected_type, actual_expr) => {
@@ -941,7 +947,7 @@ mod tests {
 
         if let Statement::ExpressionStatement(expr_stmt) = program.body.first().unwrap() {
             if let Expression::Identifier(identifier) = expr_stmt.expression.as_ref().unwrap() {
-                assert_eq!(identifier.value, "variableName");
+                assert_eq!(identifier.value.as_ref(), "variableName");
             } else {
                 panic!("expression statement is not Identifier");
             }
@@ -1219,9 +1225,11 @@ mod tests {
             };
 
             assert_eq!(
-                left_ident.value, test.left_val,
+                left_ident.value.as_ref(),
+                test.left_val,
                 "Expected InfixExpression left value: {}. Got: {}",
-                test.left_val, left_ident.value
+                test.left_val,
+                left_ident.value
             );
 
             let right_literal = match &infix_expr.right {
@@ -1390,7 +1398,8 @@ mod tests {
             };
 
             assert_eq!(
-                left_ident.value, "x",
+                left_ident.value.as_ref(),
+                "x",
                 "left identifier value is not 'x'. got: {}",
                 left_ident.value
             );
@@ -1401,7 +1410,8 @@ mod tests {
             };
 
             assert_eq!(
-                right_ident.value, "y",
+                right_ident.value.as_ref(),
+                "y",
                 "right identifier value is not 'y'. got: {}",
                 right_ident.value
             );
@@ -1490,13 +1500,15 @@ mod tests {
         );
 
         assert_eq!(
-            function_literal.parameters[0].value, "x",
+            function_literal.parameters[0].value.as_ref(),
+            "x",
             "first parameter should be x. got: {}",
             function_literal.parameters[0].value
         );
 
         assert_eq!(
-            function_literal.parameters[1].value, "y",
+            function_literal.parameters[1].value.as_ref(),
+            "y",
             "second parameter should be y. got: {}",
             function_literal.parameters[1].value
         );
@@ -1537,7 +1549,8 @@ mod tests {
         };
 
         assert_eq!(
-            left_literal.value, "x",
+            left_literal.value.as_ref(),
+            "x",
             "Expected InfixExpression left value: 'x'. Got: {}",
             left_literal.value
         );
@@ -1551,7 +1564,8 @@ mod tests {
         };
 
         assert_eq!(
-            right_literal.value, "y",
+            right_literal.value.as_ref(),
+            "y",
             "Expected InfixExpression right value: 'y'. Got: {}",
             right_literal.value
         );
@@ -1606,9 +1620,11 @@ mod tests {
 
             for (i, ident) in test.1.into_iter().enumerate() {
                 assert_eq!(
-                    function_literal.parameters[i].value, ident,
+                    function_literal.parameters[i].value.as_ref(),
+                    ident,
                     "first parameter should be {}. got: {}",
-                    ident, function_literal.parameters[i].value
+                    ident,
+                    function_literal.parameters[i].value
                 );
             }
         }
@@ -1731,7 +1747,7 @@ mod tests {
             panic!("expression is not StringLiteral, got: {:?}", stmt);
         };
 
-        assert_eq!(str_literal.value, "hello world");
+        assert_eq!(str_literal.value.as_ref(), "hello world");
     }
 
     #[test]
@@ -1838,7 +1854,7 @@ mod tests {
             };
 
             let expected_val = expected
-                .get(&key.value)
+                .get(&key.value.to_string())
                 .expect("Key not found in expected HashMap");
 
             let Expression::IntegerLiteral(int_lit) = value else {
@@ -1869,7 +1885,7 @@ mod tests {
                 panic!("key is not StringLiteral, got: {:?}", key);
             };
 
-            match key.value.as_str() {
+            match key.value.as_ref() {
                 "one" => test_infix_expression(value, 0, "+", 1),
                 "two" => test_infix_expression(value, 10, "-", 8),
                 "three" => test_infix_expression(value, 15, "/", 5),
@@ -2003,7 +2019,7 @@ mod tests {
 
     fn test_let_statement(stmt: &Statement, expected: &str) {
         if let Statement::LetStatement(let_stmt) = stmt {
-            assert_eq!(let_stmt.name.value, expected);
+            assert_eq!(let_stmt.name.value.as_ref(), expected);
         } else {
             panic!("stmt is not LetStatement");
         };
@@ -2016,9 +2032,11 @@ mod tests {
         };
 
         assert_eq!(
-            identifier.value, value,
+            identifier.value.as_ref(),
+            value,
             "identifier value is not {}. got: {}",
-            value, identifier.value
+            value,
+            identifier.value
         );
     }
 }
