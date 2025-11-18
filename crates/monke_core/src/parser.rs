@@ -361,7 +361,11 @@ impl Parser {
     }
 
     fn parse_prefix_expression(&mut self) -> Option<Expression> {
-        let operator = self.curr_token.literal.clone();
+        let operator = match self.curr_token.literal.as_str() {
+            "-" => TokenType::Minus,
+            "!" => TokenType::Bang,
+            _ => return None,
+        };
 
         self.next_token();
 
@@ -689,6 +693,7 @@ mod tests {
         ast::{Expression, ExpressionStatement, Statement},
         lexer::Lexer,
         parser::Parser,
+        token::TokenType,
     };
 
     #[test]
@@ -979,19 +984,19 @@ mod tests {
     fn test_parsing_prefix_expressions() {
         struct TestCase {
             input: String,
-            operator: String,
+            operator: TokenType,
             int_value: i64,
         }
 
         let tests: Vec<TestCase> = vec![
             TestCase {
                 input: "!5".to_string(),
-                operator: "!".to_string(),
+                operator: TokenType::Bang,
                 int_value: 5,
             },
             TestCase {
                 input: "-15".to_string(),
-                operator: "-".to_string(),
+                operator: TokenType::Minus,
                 int_value: 15,
             },
         ];

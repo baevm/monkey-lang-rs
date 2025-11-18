@@ -126,9 +126,9 @@ impl Compiler {
             Expression::PrefixExpression(prefix_expr) => {
                 let right_result = self.compile_expression(&prefix_expr.right)?;
 
-                match prefix_expr.operator.as_str() {
-                    "!" => self.emit(Opcode::OpBang, vec![]),
-                    "-" => self.emit(Opcode::OpMinus, vec![]),
+                match prefix_expr.operator {
+                    TokenType::Bang => self.emit(Opcode::OpBang, vec![]),
+                    TokenType::Minus => self.emit(Opcode::OpMinus, vec![]),
                     _ => unreachable!("unknown operator"),
                 };
 

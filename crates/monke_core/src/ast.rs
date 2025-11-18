@@ -188,7 +188,7 @@ impl std::fmt::Display for IntegerLiteral {
 
 #[derive(Debug, Clone)]
 pub struct PrefixExpression {
-    pub operator: String,
+    pub operator: TokenType,
     pub right: Expression,
 }
 

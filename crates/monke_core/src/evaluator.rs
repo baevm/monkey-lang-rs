@@ -244,10 +244,10 @@ impl Evaluator {
         result
     }
 
-    fn eval_prefix_expression(&self, operator: &str, right: Object) -> Object {
+    fn eval_prefix_expression(&self, operator: &TokenType, right: Object) -> Object {
         match operator {
-            "!" => self.eval_bang_operator_expression(right),
-            "-" => self.eval_minus_prefix_operator_expression(right),
+            &TokenType::Bang => self.eval_bang_operator_expression(right),
+            &TokenType::Minus => self.eval_minus_prefix_operator_expression(right),
             _ => Object::InternalError(Box::new(InternalError {
                 message: EvaluateErr::UnknownOperator(format!("{operator}{right}")),
             })),
