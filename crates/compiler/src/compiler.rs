@@ -152,6 +152,8 @@ impl Compiler {
                     self.remove_last_pop();
                 }
 
+                let jump_pos = self.emit(Opcode::OpJump, vec![9999]);
+
                 let after_conseq_position = self.instructions.len();
                 self.change_operand(
                     jump_not_truthy_pos,
@@ -159,28 +161,17 @@ impl Compiler {
                 );
 
                 if let Some(alt) = &if_expr.alternative {
-                    let jump_pos = self.emit(Opcode::OpJump, vec![9999]);
-                    let after_conseq_position = self.instructions.len();
-                    self.change_operand(
-                        jump_not_truthy_pos,
-                        after_conseq_position.try_into().unwrap(),
-                    );
-
                     self.compile_block_statement(&alt)?;
 
                     if self.is_last_ins_pop() {
                         self.remove_last_pop();
                     }
-
-                    let after_alt_position = self.instructions.len();
-                    self.change_operand(jump_pos, after_alt_position.try_into().unwrap());
                 } else {
-                    let after_conseq_position = self.instructions.len();
-                    self.change_operand(
-                        jump_not_truthy_pos,
-                        after_conseq_position.try_into().unwrap(),
-                    );
+                    self.emit(Opcode::OpNull, vec![]);
                 }
+
+                let after_alt_position = self.instructions.len();
+                self.change_operand(jump_pos, after_alt_position.try_into().unwrap());
 
                 Ok(())
             }
@@ -479,18 +470,6 @@ mod tests {
     fn test_conditionals() {
         let tests = vec![
             CompilerTestCase {
-                input: "if (true) { 10 }; 3333;".to_string(),
-                expected_constants: vec![ExpectedConstant::I64(10), ExpectedConstant::I64(3333)],
-                expected_instructions: vec![
-                    Instructions(make(Opcode::OpTrue, &vec![])),
-                    Instructions(make(Opcode::OpJumpNotTruthy, &vec![7])),
-                    Instructions(make(Opcode::OpConstant, &vec![0])),
-                    Instructions(make(Opcode::OpPop, &vec![])),
-                    Instructions(make(Opcode::OpConstant, &vec![1])),
-                    Instructions(make(Opcode::OpPop, &vec![])),
-                ],
-            },
-            CompilerTestCase {
                 input: "if (true) { 10 } else { 20 }; 3333;".to_string(),
                 expected_constants: vec![
                     ExpectedConstant::I64(10),
@@ -505,6 +484,20 @@ mod tests {
                     Instructions(make(Opcode::OpConstant, &vec![1])),
                     Instructions(make(Opcode::OpPop, &vec![])),
                     Instructions(make(Opcode::OpConstant, &vec![2])),
+                    Instructions(make(Opcode::OpPop, &vec![])),
+                ],
+            },
+            CompilerTestCase {
+                input: "if (true) { 10 }; 3333;".to_string(),
+                expected_constants: vec![ExpectedConstant::I64(10), ExpectedConstant::I64(3333)],
+                expected_instructions: vec![
+                    Instructions(make(Opcode::OpTrue, &vec![])),
+                    Instructions(make(Opcode::OpJumpNotTruthy, &vec![10])),
+                    Instructions(make(Opcode::OpConstant, &vec![0])),
+                    Instructions(make(Opcode::OpJump, &vec![11])),
+                    Instructions(make(Opcode::OpNull, &vec![])),
+                    Instructions(make(Opcode::OpPop, &vec![])),
+                    Instructions(make(Opcode::OpConstant, &vec![1])),
                     Instructions(make(Opcode::OpPop, &vec![])),
                 ],
             },

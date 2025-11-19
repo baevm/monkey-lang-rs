@@ -129,6 +129,7 @@ impl Vm {
                     );
                     i = pos.sub(1) as usize;
                 }
+                Opcode::OpNull => self.push(Object::Null(Box::new(Null {})))?,
             }
 
             i += 1;
@@ -138,11 +139,11 @@ impl Vm {
     }
 
     fn is_truthy(&self, object: &Object) -> bool {
-        if let Object::Boolean(bool_obj) = &object {
-            return bool_obj.value;
+        match object {
+            Object::Boolean(bool_obj) => bool_obj.value,
+            Object::Null(_) => false,
+            _ => true,
         }
-
-        true
     }
 
     fn push(&mut self, object: Object) -> Result<(), VmError> {
@@ -244,6 +245,7 @@ impl Vm {
                     self.push(Object::Boolean(Box::new(Boolean { value: true })))
                 }
             }
+            Object::Null(_) => self.push(Object::Boolean(Box::new(Boolean { value: true }))),
             _ => self.push(Object::Boolean(Box::new(Boolean { value: false }))),
         }
     }
@@ -263,13 +265,19 @@ impl Vm {
 
 #[cfg(test)]
 mod tests {
-    use monke_core::{ast, lexer::Lexer, object::Object, parser::Parser};
+    use monke_core::{
+        ast,
+        lexer::Lexer,
+        object::{Null, Object},
+        parser::Parser,
+    };
 
     use crate::{compiler::Compiler, vm::Vm};
 
     enum Expected {
         Integer(i64),
         Boolean(bool),
+        Null(Null),
     }
 
     struct VmTestCase {
@@ -452,6 +460,10 @@ mod tests {
                 input: "!!5".to_string(),
                 expected: Expected::Boolean(true),
             },
+            VmTestCase {
+                input: "!(if (false) { 5; })".to_string(),
+                expected: Expected::Boolean(true),
+            },
         ];
 
         run_vm_tests(tests);
@@ -492,6 +504,18 @@ mod tests {
                 input: "if (1 > 2) { 10 } else { 20 }".to_string(),
                 expected: Expected::Integer(20),
             },
+            VmTestCase {
+                input: "if (1 > 2) { 10 }".to_string(),
+                expected: Expected::Null(Null {}),
+            },
+            VmTestCase {
+                input: "if (false) { 10 }".to_string(),
+                expected: Expected::Null(Null {}),
+            },
+            VmTestCase {
+                input: "if ((if (false) { 10 })) { 10 } else { 20 }".to_string(),
+                expected: Expected::Integer(20),
+            },
         ];
 
         run_vm_tests(tests);
@@ -529,6 +553,11 @@ mod tests {
             }
             Expected::Boolean(boolean) => {
                 test_boolean_object(boolean, actual);
+            }
+            Expected::Null(_) => {
+                let Object::Null(_) = actual else {
+                    panic!("object is not Null. got: {}", actual)
+                };
             }
         }
     }

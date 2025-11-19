@@ -108,6 +108,7 @@ pub enum Opcode {
     OpBang = 12,
     OpJumpNotTruthy = 13, // jump if value on top of stack is not truthy
     OpJump = 14,          // jump at offset
+    OpNull = 15,
 }
 
 impl Opcode {
@@ -173,6 +174,10 @@ impl Opcode {
                 name: "OpJump",
                 operand_widths: &[2],
             },
+            Opcode::OpNull => Definition {
+                name: "OpNull",
+                operand_widths: &[],
+            },
         }
     }
 
@@ -193,6 +198,7 @@ impl Opcode {
             12 => Some(Opcode::OpBang),
             13 => Some(Opcode::OpJumpNotTruthy),
             14 => Some(Opcode::OpJump),
+            15 => Some(Opcode::OpNull),
             _ => None,
         }
     }
@@ -204,7 +210,7 @@ pub struct Definition {
     pub operand_widths: &'static [i64],
 }
 
-pub fn make(opcode: Opcode, operands: &Vec<i64>) -> Vec<u8> {
+pub fn make(opcode: Opcode, operands: &[i64]) -> Vec<u8> {
     let definition = opcode.get_definition();
 
     let instruction_len: usize = definition
