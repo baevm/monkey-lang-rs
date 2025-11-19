@@ -47,7 +47,7 @@ impl Compiler {
                 return result;
             }
 
-            self.emit(Opcode::OpPop, vec![]);
+            self.emit(Opcode::OpPop, &[]);
         }
 
         Ok(())
@@ -94,7 +94,7 @@ impl Compiler {
                 }));
 
                 let index = self.add_constant(integer);
-                self.emit(Opcode::OpConstant, vec![index]);
+                self.emit(Opcode::OpConstant, &[index]);
 
                 Ok(())
             }
@@ -103,7 +103,7 @@ impl Compiler {
                     let right_result = self.compile_expression(&infix.right)?;
                     let left_result = self.compile_expression(&infix.left)?;
 
-                    self.emit(Opcode::OpGreaterThan, vec![]);
+                    self.emit(Opcode::OpGreaterThan, &[]);
                     return Ok(());
                 }
 
@@ -111,13 +111,13 @@ impl Compiler {
                 let right_result = self.compile_expression(&infix.right)?;
 
                 match infix.operator {
-                    TokenType::Plus => self.emit(Opcode::OpAdd, vec![]),
-                    TokenType::Minus => self.emit(Opcode::OpSub, vec![]),
-                    TokenType::Asterisk => self.emit(Opcode::OpMul, vec![]),
-                    TokenType::Slash => self.emit(Opcode::OpDiv, vec![]),
-                    TokenType::Gt => self.emit(Opcode::OpGreaterThan, vec![]),
-                    TokenType::Eq => self.emit(Opcode::OpEqual, vec![]),
-                    TokenType::NotEq => self.emit(Opcode::OpNotEqual, vec![]),
+                    TokenType::Plus => self.emit(Opcode::OpAdd, &[]),
+                    TokenType::Minus => self.emit(Opcode::OpSub, &[]),
+                    TokenType::Asterisk => self.emit(Opcode::OpMul, &[]),
+                    TokenType::Slash => self.emit(Opcode::OpDiv, &[]),
+                    TokenType::Gt => self.emit(Opcode::OpGreaterThan, &[]),
+                    TokenType::Eq => self.emit(Opcode::OpEqual, &[]),
+                    TokenType::NotEq => self.emit(Opcode::OpNotEqual, &[]),
                     _ => unreachable!("unknown operator"),
                 };
 
@@ -127,8 +127,8 @@ impl Compiler {
                 let right_result = self.compile_expression(&prefix_expr.right)?;
 
                 match prefix_expr.operator {
-                    TokenType::Bang => self.emit(Opcode::OpBang, vec![]),
-                    TokenType::Minus => self.emit(Opcode::OpMinus, vec![]),
+                    TokenType::Bang => self.emit(Opcode::OpBang, &[]),
+                    TokenType::Minus => self.emit(Opcode::OpMinus, &[]),
                     _ => unreachable!("unknown operator"),
                 };
 
@@ -136,15 +136,15 @@ impl Compiler {
             }
             Expression::Boolean(bool_expr) => {
                 match bool_expr.value {
-                    true => self.emit(Opcode::OpTrue, vec![]),
-                    false => self.emit(Opcode::OpFalse, vec![]),
+                    true => self.emit(Opcode::OpTrue, &[]),
+                    false => self.emit(Opcode::OpFalse, &[]),
                 };
                 Ok(())
             }
             Expression::IfExpression(if_expr) => {
                 self.compile_expression(&if_expr.condition)?;
 
-                let jump_not_truthy_pos = self.emit(Opcode::OpJumpNotTruthy, vec![9999]);
+                let jump_not_truthy_pos = self.emit(Opcode::OpJumpNotTruthy, &[9999]);
 
                 self.compile_block_statement(&if_expr.consequence)?;
 
@@ -152,7 +152,7 @@ impl Compiler {
                     self.remove_last_pop();
                 }
 
-                let jump_pos = self.emit(Opcode::OpJump, vec![9999]);
+                let jump_pos = self.emit(Opcode::OpJump, &[9999]);
 
                 let after_conseq_position = self.instructions.len();
                 self.change_operand(
@@ -167,7 +167,7 @@ impl Compiler {
                         self.remove_last_pop();
                     }
                 } else {
-                    self.emit(Opcode::OpNull, vec![]);
+                    self.emit(Opcode::OpNull, &[]);
                 }
 
                 let after_alt_position = self.instructions.len();
@@ -185,7 +185,7 @@ impl Compiler {
         (self.constants.len() - 1).try_into().unwrap()
     }
 
-    fn emit(&mut self, opcode: Opcode, operands: Vec<i64>) -> i64 {
+    fn emit(&mut self, opcode: Opcode, operands: &[i64]) -> i64 {
         let instruction = make(opcode, &operands);
         let position = self.add_instruction(&instruction);
         self.set_last_instruction(opcode, position);
@@ -229,7 +229,7 @@ impl Compiler {
             return;
         };
 
-        let new_instruction = make(opcode, &vec![operand]);
+        let new_instruction = make(opcode, &[operand]);
         self.replace_instruction(op_position, new_instruction);
     }
 }
@@ -261,59 +261,59 @@ mod tests {
                 input: "1; 2".to_string(),
                 expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
-                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpConstant, &[0])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
+                    Instructions(code::make(Opcode::OpConstant, &[1])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
             CompilerTestCase {
                 input: "1 + 2".to_string(),
                 expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
-                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
-                    Instructions(code::make(Opcode::OpAdd, &vec![])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpConstant, &[0])),
+                    Instructions(code::make(Opcode::OpConstant, &[1])),
+                    Instructions(code::make(Opcode::OpAdd, &[])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
             CompilerTestCase {
                 input: "1 - 2".to_string(),
                 expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
-                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
-                    Instructions(code::make(Opcode::OpSub, &vec![])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpConstant, &[0])),
+                    Instructions(code::make(Opcode::OpConstant, &[1])),
+                    Instructions(code::make(Opcode::OpSub, &[])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
             CompilerTestCase {
                 input: "1 * 2".to_string(),
                 expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
-                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
-                    Instructions(code::make(Opcode::OpMul, &vec![])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpConstant, &[0])),
+                    Instructions(code::make(Opcode::OpConstant, &[1])),
+                    Instructions(code::make(Opcode::OpMul, &[])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
             CompilerTestCase {
                 input: "2 / 1".to_string(),
                 expected_constants: vec![ExpectedConstant::I64(2), ExpectedConstant::I64(1)],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
-                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
-                    Instructions(code::make(Opcode::OpDiv, &vec![])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpConstant, &[0])),
+                    Instructions(code::make(Opcode::OpConstant, &[1])),
+                    Instructions(code::make(Opcode::OpDiv, &[])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
             CompilerTestCase {
                 input: "-1".to_string(),
                 expected_constants: vec![ExpectedConstant::I64(1)],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
-                    Instructions(code::make(Opcode::OpMinus, &vec![])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpConstant, &[0])),
+                    Instructions(code::make(Opcode::OpMinus, &[])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
         ];
@@ -324,9 +324,9 @@ mod tests {
     #[test]
     fn test_instructions_string() {
         let instructions = vec![
-            make(Opcode::OpConstant, &vec![1]),
-            make(Opcode::OpConstant, &vec![2]),
-            make(Opcode::OpConstant, &vec![65535]),
+            make(Opcode::OpConstant, &[1]),
+            make(Opcode::OpConstant, &[2]),
+            make(Opcode::OpConstant, &[65535]),
         ];
 
         let expected = "0000 OpConstant 1 \n0003 OpConstant 2 \n0006 OpConstant 65535 \n";
@@ -380,85 +380,85 @@ mod tests {
                 input: "true".to_string(),
                 expected_constants: vec![],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpTrue, &vec![])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpTrue, &[])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
             CompilerTestCase {
                 input: "false".to_string(),
                 expected_constants: vec![],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpFalse, &vec![])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpFalse, &[])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
             CompilerTestCase {
                 input: "1 > 2".to_string(),
                 expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
-                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
-                    Instructions(code::make(Opcode::OpGreaterThan, &vec![])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpConstant, &[0])),
+                    Instructions(code::make(Opcode::OpConstant, &[1])),
+                    Instructions(code::make(Opcode::OpGreaterThan, &[])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
             CompilerTestCase {
                 input: "1 < 2".to_string(),
                 expected_constants: vec![ExpectedConstant::I64(2), ExpectedConstant::I64(1)],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
-                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
-                    Instructions(code::make(Opcode::OpGreaterThan, &vec![])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpConstant, &[0])),
+                    Instructions(code::make(Opcode::OpConstant, &[1])),
+                    Instructions(code::make(Opcode::OpGreaterThan, &[])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
             CompilerTestCase {
                 input: "1 == 2".to_string(),
                 expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
-                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
-                    Instructions(code::make(Opcode::OpEqual, &vec![])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpConstant, &[0])),
+                    Instructions(code::make(Opcode::OpConstant, &[1])),
+                    Instructions(code::make(Opcode::OpEqual, &[])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
             CompilerTestCase {
                 input: "1 != 2".to_string(),
                 expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpConstant, &vec![0])),
-                    Instructions(code::make(Opcode::OpConstant, &vec![1])),
-                    Instructions(code::make(Opcode::OpNotEqual, &vec![])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpConstant, &[0])),
+                    Instructions(code::make(Opcode::OpConstant, &[1])),
+                    Instructions(code::make(Opcode::OpNotEqual, &[])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
             CompilerTestCase {
                 input: "true == false".to_string(),
                 expected_constants: vec![],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpTrue, &vec![])),
-                    Instructions(code::make(Opcode::OpFalse, &vec![])),
-                    Instructions(code::make(Opcode::OpEqual, &vec![])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpTrue, &[])),
+                    Instructions(code::make(Opcode::OpFalse, &[])),
+                    Instructions(code::make(Opcode::OpEqual, &[])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
             CompilerTestCase {
                 input: "true != false".to_string(),
                 expected_constants: vec![],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpTrue, &vec![])),
-                    Instructions(code::make(Opcode::OpFalse, &vec![])),
-                    Instructions(code::make(Opcode::OpNotEqual, &vec![])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpTrue, &[])),
+                    Instructions(code::make(Opcode::OpFalse, &[])),
+                    Instructions(code::make(Opcode::OpNotEqual, &[])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
             CompilerTestCase {
                 input: "!true".to_string(),
                 expected_constants: vec![],
                 expected_instructions: vec![
-                    Instructions(code::make(Opcode::OpTrue, &vec![])),
-                    Instructions(code::make(Opcode::OpBang, &vec![])),
-                    Instructions(code::make(Opcode::OpPop, &vec![])),
+                    Instructions(code::make(Opcode::OpTrue, &[])),
+                    Instructions(code::make(Opcode::OpBang, &[])),
+                    Instructions(code::make(Opcode::OpPop, &[])),
                 ],
             },
         ];
@@ -477,28 +477,28 @@ mod tests {
                     ExpectedConstant::I64(3333),
                 ],
                 expected_instructions: vec![
-                    Instructions(make(Opcode::OpTrue, &vec![])),
-                    Instructions(make(Opcode::OpJumpNotTruthy, &vec![10])),
-                    Instructions(make(Opcode::OpConstant, &vec![0])),
-                    Instructions(make(Opcode::OpJump, &vec![13])),
-                    Instructions(make(Opcode::OpConstant, &vec![1])),
-                    Instructions(make(Opcode::OpPop, &vec![])),
-                    Instructions(make(Opcode::OpConstant, &vec![2])),
-                    Instructions(make(Opcode::OpPop, &vec![])),
+                    Instructions(make(Opcode::OpTrue, &[])),
+                    Instructions(make(Opcode::OpJumpNotTruthy, &[10])),
+                    Instructions(make(Opcode::OpConstant, &[0])),
+                    Instructions(make(Opcode::OpJump, &[13])),
+                    Instructions(make(Opcode::OpConstant, &[1])),
+                    Instructions(make(Opcode::OpPop, &[])),
+                    Instructions(make(Opcode::OpConstant, &[2])),
+                    Instructions(make(Opcode::OpPop, &[])),
                 ],
             },
             CompilerTestCase {
                 input: "if (true) { 10 }; 3333;".to_string(),
                 expected_constants: vec![ExpectedConstant::I64(10), ExpectedConstant::I64(3333)],
                 expected_instructions: vec![
-                    Instructions(make(Opcode::OpTrue, &vec![])),
-                    Instructions(make(Opcode::OpJumpNotTruthy, &vec![10])),
-                    Instructions(make(Opcode::OpConstant, &vec![0])),
-                    Instructions(make(Opcode::OpJump, &vec![11])),
-                    Instructions(make(Opcode::OpNull, &vec![])),
-                    Instructions(make(Opcode::OpPop, &vec![])),
-                    Instructions(make(Opcode::OpConstant, &vec![1])),
-                    Instructions(make(Opcode::OpPop, &vec![])),
+                    Instructions(make(Opcode::OpTrue, &[])),
+                    Instructions(make(Opcode::OpJumpNotTruthy, &[10])),
+                    Instructions(make(Opcode::OpConstant, &[0])),
+                    Instructions(make(Opcode::OpJump, &[11])),
+                    Instructions(make(Opcode::OpNull, &[])),
+                    Instructions(make(Opcode::OpPop, &[])),
+                    Instructions(make(Opcode::OpConstant, &[1])),
+                    Instructions(make(Opcode::OpPop, &[])),
                 ],
             },
         ];
