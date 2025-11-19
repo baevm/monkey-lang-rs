@@ -1,3 +1,5 @@
+use std::ops::Sub;
+
 use monke_core::object::{Boolean, Integer, Null, Object};
 
 use crate::{
@@ -104,14 +106,43 @@ impl Vm {
                 }
                 Opcode::OpMinus => self.execute_minus_operator()?,
                 Opcode::OpBang => self.execute_bang_operator()?,
-                Opcode::OpJumpNotTruthy => todo!(),
-                Opcode::OpJump => todo!(),
+                Opcode::OpJumpNotTruthy => {
+                    let pos = u16::from_be_bytes(
+                        self.instructions[(i as usize + 1)..(i as usize + 3)]
+                            .try_into()
+                            .expect("failed to convert instruction to u16"),
+                    );
+
+                    i += 2;
+
+                    let condition = self.pop();
+
+                    if !self.is_truthy(&condition) {
+                        i = pos.sub(1) as usize
+                    }
+                }
+                Opcode::OpJump => {
+                    let pos = u16::from_be_bytes(
+                        self.instructions[(i as usize + 1)..(i as usize + 3)]
+                            .try_into()
+                            .expect("failed to convert instruction to u16"),
+                    );
+                    i = pos.sub(1) as usize;
+                }
             }
 
             i += 1;
         }
 
         Ok(())
+    }
+
+    fn is_truthy(&self, object: &Object) -> bool {
+        if let Object::Boolean(bool_obj) = &object {
+            return bool_obj.value;
+        }
+
+        true
     }
 
     fn push(&mut self, object: Object) -> Result<(), VmError> {
@@ -420,6 +451,46 @@ mod tests {
             VmTestCase {
                 input: "!!5".to_string(),
                 expected: Expected::Boolean(true),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_conditionals() {
+        let tests = vec![
+            VmTestCase {
+                input: "if (true) { 10 }".to_string(),
+                expected: Expected::Integer(10),
+            },
+            VmTestCase {
+                input: "if (true) { 10 }".to_string(),
+                expected: Expected::Integer(10),
+            },
+            VmTestCase {
+                input: "if (true) { 10 } else { 20 }".to_string(),
+                expected: Expected::Integer(10),
+            },
+            VmTestCase {
+                input: "if (false) { 10 } else { 20 }".to_string(),
+                expected: Expected::Integer(20),
+            },
+            VmTestCase {
+                input: "if (1) { 10 }".to_string(),
+                expected: Expected::Integer(10),
+            },
+            VmTestCase {
+                input: "if (1 < 2) { 10 }".to_string(),
+                expected: Expected::Integer(10),
+            },
+            VmTestCase {
+                input: "if (1 < 2) { 10 } else { 20 }".to_string(),
+                expected: Expected::Integer(10),
+            },
+            VmTestCase {
+                input: "if (1 > 2) { 10 } else { 20 }".to_string(),
+                expected: Expected::Integer(20),
             },
         ];
 
