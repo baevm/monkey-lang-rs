@@ -4,7 +4,10 @@ use monke_core::{
     token::TokenType,
 };
 
-use crate::code::{Instructions, Opcode, make};
+use crate::{
+    code::{Instructions, Opcode, make},
+    symbol_table::SymbolTable,
+};
 
 #[derive(Copy, Clone)]
 pub struct EmittedInstruction {
@@ -21,12 +24,22 @@ pub struct Compiler {
 
     last_instruction: Option<EmittedInstruction>,
     prev_instruction: Option<EmittedInstruction>,
+
+    symbol_table: SymbolTable,
 }
 
 #[derive(Clone)]
 pub struct Bytecode {
     pub instructions: Instructions,
     pub constants: Vec<Object>,
+}
+
+#[derive(Debug)]
+pub enum CompilerError {
+    // todo: remove later
+    Unknown,
+
+    UndefinedVariable,
 }
 
 impl Compiler {
@@ -36,33 +49,44 @@ impl Compiler {
             constants: vec![],
             last_instruction: None,
             prev_instruction: None,
+            symbol_table: SymbolTable::new(),
         }
     }
 
-    pub fn compile(&mut self, program: Program) -> Result<(), ()> {
+    pub fn compile(&mut self, program: Program) -> Result<(), CompilerError> {
         for stmt in program.body {
             let result = self.compile_statement(&stmt);
 
             if result.is_err() {
                 return result;
             }
-
-            self.emit(Opcode::OpPop, &[]);
         }
 
         Ok(())
     }
 
-    fn compile_statement(&mut self, statement: &Statement) -> Result<(), ()> {
+    fn compile_statement(&mut self, statement: &Statement) -> Result<(), CompilerError> {
         match statement {
             Statement::ExpressionStatement(expression_statement) => {
                 if let Some(expression) = &expression_statement.expression {
-                    return self.compile_expression(&expression);
+                    self.compile_expression(&expression)?;
+                    self.emit(Opcode::OpPop, &[]);
+                    return Ok(());
                 }
 
-                Err(())
+                Err(CompilerError::Unknown)
             }
-            Statement::LetStatement(let_statement) => todo!(),
+            Statement::LetStatement(let_statement) => {
+                let Some(let_val) = &let_statement.value else {
+                    return Err(CompilerError::Unknown);
+                };
+
+                self.compile_expression(&let_val)?;
+                let symbol = self.symbol_table.define(&let_statement.name.value);
+                self.emit(Opcode::OpSetGlobal, &[symbol.index]);
+
+                Ok(())
+            }
             Statement::ReturnStatement(return_statement) => todo!(),
             Statement::BlockStatement(block_statement) => {
                 self.compile_block_statement(block_statement)
@@ -78,7 +102,10 @@ impl Compiler {
         }
     }
 
-    fn compile_block_statement(&mut self, block_statement: &BlockStatement) -> Result<(), ()> {
+    fn compile_block_statement(
+        &mut self,
+        block_statement: &BlockStatement,
+    ) -> Result<(), CompilerError> {
         for stmt in &block_statement.statements {
             self.compile_statement(&stmt)?;
         }
@@ -86,7 +113,7 @@ impl Compiler {
         Ok(())
     }
 
-    fn compile_expression(&mut self, expression: &Expression) -> Result<(), ()> {
+    fn compile_expression(&mut self, expression: &Expression) -> Result<(), CompilerError> {
         match expression {
             Expression::IntegerLiteral(integer_literal) => {
                 let integer = Object::Integer(Box::new(Integer {
@@ -172,6 +199,17 @@ impl Compiler {
 
                 let after_alt_position = self.instructions.len();
                 self.change_operand(jump_pos, after_alt_position.try_into().unwrap());
+
+                Ok(())
+            }
+            Expression::Identifier(ident) => {
+                let symbol = self.symbol_table.resolve(&ident.value);
+
+                let Some(symbol) = symbol else {
+                    return Err(CompilerError::UndefinedVariable);
+                };
+
+                self.emit(Opcode::OpGetGlobal, &[symbol.index]);
 
                 Ok(())
             }
@@ -498,6 +536,59 @@ mod tests {
                     Instructions(make(Opcode::OpNull, &[])),
                     Instructions(make(Opcode::OpPop, &[])),
                     Instructions(make(Opcode::OpConstant, &[1])),
+                    Instructions(make(Opcode::OpPop, &[])),
+                ],
+            },
+        ];
+
+        run_compiler_tests(tests);
+    }
+
+    #[test]
+    fn test_global_let_statements() {
+        let tests = vec![
+            CompilerTestCase {
+                input: "
+                let one = 1;
+                let two = 2;
+                "
+                .to_string(),
+                expected_constants: vec![ExpectedConstant::I64(1), ExpectedConstant::I64(2)],
+                expected_instructions: vec![
+                    Instructions(make(Opcode::OpConstant, &[0])),
+                    Instructions(make(Opcode::OpSetGlobal, &[0])),
+                    Instructions(make(Opcode::OpConstant, &[1])),
+                    Instructions(make(Opcode::OpSetGlobal, &[1])),
+                ],
+            },
+            CompilerTestCase {
+                input: "
+                let one = 1;
+                one;
+                "
+                .to_string(),
+                expected_constants: vec![ExpectedConstant::I64(1)],
+                expected_instructions: vec![
+                    Instructions(make(Opcode::OpConstant, &[0])),
+                    Instructions(make(Opcode::OpSetGlobal, &[0])),
+                    Instructions(make(Opcode::OpGetGlobal, &[0])),
+                    Instructions(make(Opcode::OpPop, &[])),
+                ],
+            },
+            CompilerTestCase {
+                input: "
+                let one = 1;
+                let two = one;
+                two;
+                "
+                .to_string(),
+                expected_constants: vec![ExpectedConstant::I64(1)],
+                expected_instructions: vec![
+                    Instructions(make(Opcode::OpConstant, &[0])),
+                    Instructions(make(Opcode::OpSetGlobal, &[0])),
+                    Instructions(make(Opcode::OpGetGlobal, &[0])),
+                    Instructions(make(Opcode::OpSetGlobal, &[1])),
+                    Instructions(make(Opcode::OpGetGlobal, &[1])),
                     Instructions(make(Opcode::OpPop, &[])),
                 ],
             },

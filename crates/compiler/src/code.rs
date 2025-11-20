@@ -109,6 +109,8 @@ pub enum Opcode {
     OpJumpNotTruthy = 13, // jump if value on top of stack is not truthy
     OpJump = 14,          // jump at offset
     OpNull = 15,
+    OpGetGlobal = 16,
+    OpSetGlobal = 17,
 }
 
 impl Opcode {
@@ -178,6 +180,14 @@ impl Opcode {
                 name: "OpNull",
                 operand_widths: &[],
             },
+            Opcode::OpSetGlobal => Definition {
+                name: "OpSetGlobal",
+                operand_widths: &[2],
+            },
+            Opcode::OpGetGlobal => Definition {
+                name: "OpGetGlobal",
+                operand_widths: &[2],
+            },
         }
     }
 
@@ -199,6 +209,8 @@ impl Opcode {
             13 => Some(Opcode::OpJumpNotTruthy),
             14 => Some(Opcode::OpJump),
             15 => Some(Opcode::OpNull),
+            16 => Some(Opcode::OpGetGlobal),
+            17 => Some(Opcode::OpSetGlobal),
             _ => None,
         }
     }

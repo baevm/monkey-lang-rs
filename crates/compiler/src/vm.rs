@@ -130,6 +130,8 @@ impl Vm {
                     i = pos.sub(1) as usize;
                 }
                 Opcode::OpNull => self.push(Object::Null(Box::new(Null {})))?,
+                Opcode::OpGetGlobal => todo!(),
+                Opcode::OpSetGlobal => todo!(),
             }
 
             i += 1;
