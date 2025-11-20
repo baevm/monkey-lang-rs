@@ -1,7 +1,7 @@
 use clap::Parser;
 
-use crate::run::{Repl, run_file};
-mod run;
+use crate::repl::{Repl, run_file};
+mod repl;
 
 #[derive(Parser)]
 struct Cli {

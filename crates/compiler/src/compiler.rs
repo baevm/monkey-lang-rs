@@ -53,6 +53,14 @@ impl Compiler {
         }
     }
 
+    pub fn new_with_state(symbol_table: SymbolTable, constants: Vec<Object>) -> Self {
+        let mut compiler = Compiler::new();
+        compiler.symbol_table = symbol_table;
+        compiler.constants = constants;
+
+        compiler
+    }
+
     pub fn compile(&mut self, program: Program) -> Result<(), CompilerError> {
         for stmt in program.body {
             let result = self.compile_statement(&stmt);

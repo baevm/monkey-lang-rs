@@ -16,6 +16,7 @@ pub struct Symbol {
     pub index: i64,
 }
 
+#[derive(Debug, Clone)]
 pub struct SymbolTable {
     store: HashMap<String, Symbol>,
     num_definitions: i64,

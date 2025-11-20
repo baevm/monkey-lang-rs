@@ -8,6 +8,7 @@ use crate::{
 };
 
 const STACK_SIZE: usize = 2048;
+pub const GLOBALS_SIZE: usize = 65536;
 
 pub struct Vm {
     constants: Vec<Object>,
@@ -15,6 +16,8 @@ pub struct Vm {
 
     stack: Vec<Object>,
     sp: usize, // stack pointer - always points to the next value.
+
+    pub globals: Vec<Object>,
 }
 
 #[derive(Debug)]
@@ -40,7 +43,15 @@ impl Vm {
             instructions: bytecode.instructions,
             stack: vec![Object::Null(Box::new(Null {})); STACK_SIZE as usize],
             sp: 0,
+            globals: vec![Object::Null(Box::new(Null {})); GLOBALS_SIZE],
         }
+    }
+
+    pub fn new_with_state(bytecode: Bytecode, globals: Vec<Object>) -> Self {
+        let mut vm = Vm::new(bytecode);
+        vm.globals = globals;
+
+        vm
     }
 
     pub fn run(&mut self) -> Result<(), VmError> {
@@ -130,8 +141,33 @@ impl Vm {
                     i = pos.sub(1) as usize;
                 }
                 Opcode::OpNull => self.push(Object::Null(Box::new(Null {})))?,
-                Opcode::OpGetGlobal => todo!(),
-                Opcode::OpSetGlobal => todo!(),
+                Opcode::OpSetGlobal => {
+                    let global_idx: usize = u16::from_be_bytes(
+                        self.instructions[(i as usize + 1)..(i as usize + 3)]
+                            .try_into()
+                            .expect("failed to convert instruction to u16"),
+                    )
+                    .try_into()
+                    .unwrap();
+
+                    i += 2;
+
+                    self.globals[global_idx] = self.pop();
+                }
+                Opcode::OpGetGlobal => {
+                    let global_idx: usize = u16::from_be_bytes(
+                        self.instructions[(i as usize + 1)..(i as usize + 3)]
+                            .try_into()
+                            .expect("failed to convert instruction to u16"),
+                    )
+                    .try_into()
+                    .unwrap();
+
+                    i += 2;
+
+                    let obj = self.globals[global_idx].clone();
+                    self.push(obj)?;
+                }
             }
 
             i += 1;
@@ -517,6 +553,26 @@ mod tests {
             VmTestCase {
                 input: "if ((if (false) { 10 })) { 10 } else { 20 }".to_string(),
                 expected: Expected::Integer(20),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_global_let_statements() {
+        let tests = vec![
+            VmTestCase {
+                input: "let one = 1; one".to_string(),
+                expected: Expected::Integer(1),
+            },
+            VmTestCase {
+                input: "let one = 1; let two = 2; one + two".to_string(),
+                expected: Expected::Integer(3),
+            },
+            VmTestCase {
+                input: "let one = 1; let two = one + one; one + two".to_string(),
+                expected: Expected::Integer(3),
             },
         ];
 

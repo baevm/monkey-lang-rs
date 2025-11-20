@@ -4,11 +4,16 @@ use std::{
     path::Path,
 };
 
-use compiler::{compiler::Compiler, vm::Vm};
+use ::compiler::symbol_table::SymbolTable;
+
+use compiler::{
+    compiler::Compiler,
+    vm::{self, Vm},
+};
 use monke_core::{
     evaluator::Evaluator,
     lexer::Lexer,
-    object::{Environment, Object, ObjectTrait},
+    object::{Environment, Null, Object, ObjectTrait},
     parser::{ParseErr, Parser},
 };
 
@@ -34,18 +39,26 @@ impl Repl {
     fn start_compiler(&self) {
         println!("Running in compiler mode.");
 
+        let mut compiler = Compiler::new();
+        let mut globals = vec![Object::Null(Box::new(Null {})); vm::GLOBALS_SIZE];
+
         loop {
-            let buf = self.read_line();
+            let buf = match self.read_line() {
+                Ok(b) => b,
+                Err(e) => {
+                    eprintln!("IO error: {e}");
+                    continue;
+                }
+            };
 
-            if let Err(err) = buf {
-                panic!("{}", err);
-            }
-
-            let compiled = compile(buf.unwrap());
-
-            match compiled {
-                Ok(obj) => println!("{:?}", obj.inspect()),
-                Err(errors) => errors.iter().for_each(|err| println!("{}", err)),
+            match compile_line(&buf, &mut compiler, &mut globals) {
+                Ok(Some(obj)) => println!("{}", obj.inspect()),
+                Ok(None) => {} // e.g. pure let statement
+                Err(parse_errs) => {
+                    for e in parse_errs {
+                        eprintln!("{e}");
+                    }
+                }
             }
         }
     }
@@ -85,40 +98,39 @@ impl Repl {
     }
 }
 
-pub fn compile(buf: String) -> Result<Object, Vec<ParseErr>> {
-    let lexer = Lexer::new(buf);
+fn compile_line(
+    buf: &str,
+    compiler: &mut Compiler,
+    globals: &mut [Object],
+) -> Result<Option<Object>, Vec<ParseErr>> {
+    let lexer = Lexer::new(buf.to_string());
     let mut parser = Parser::new(lexer);
-
     let program = parser.parse_program();
 
     if parser.is_err() {
         return Err(parser.errors());
     }
 
-    let environment = Environment::new();
-
-    let mut compiler = Compiler::new();
-
-    if let Err(err) = compiler.compile(program) {
-        return Err(vec![]); // TODO error handling
+    if let Err(_e) = compiler.compile(program) {
+        return Err(vec![]);
     }
 
-    let mut vm = Vm::new(compiler.bytecode());
+    let bytecode = compiler.bytecode();
 
-    if let Err(err) = vm.run() {
-        return Err(vec![]); // TODO error handling
-    };
+    let mut vm = Vm::new_with_state(bytecode, globals.to_vec());
 
-    let stack_top = vm.last_popped_stack_element();
-
-    if let Some(stack_top) = stack_top {
-        return Ok(stack_top);
+    if let Err(_e) = vm.run() {
+        return Err(vec![]);
     }
 
-    Err(vec![])
+    for (dst, src) in globals.iter_mut().zip(vm.globals.iter()) {
+        *dst = src.clone();
+    }
+
+    Ok(vm.last_popped_stack_element())
 }
 
-pub fn interpret(buf: String) -> Result<Object, Vec<ParseErr>> {
+fn interpret(buf: String) -> Result<Object, Vec<ParseErr>> {
     let lexer = Lexer::new(buf);
     let mut parser = Parser::new(lexer);
 
