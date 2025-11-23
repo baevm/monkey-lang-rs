@@ -1,6 +1,6 @@
 use std::ops::Sub;
 
-use monke_core::object::{Boolean, Integer, Null, Object, StringObj};
+use monke_core::object::{Array, Boolean, Integer, Null, Object, StringObj};
 
 use crate::{
     code::{Instructions, Opcode},
@@ -172,6 +172,23 @@ impl Vm {
                     let obj = self.globals[global_idx].clone();
                     self.push(obj)?;
                 }
+                Opcode::OpArray => {
+                    let num_elements: usize = u16::from_be_bytes(
+                        self.instructions[(i as usize + 1)..(i as usize + 3)]
+                            .try_into()
+                            .expect("failed to convert instruction to u16"),
+                    )
+                    .try_into()
+                    .unwrap();
+
+                    i += 2;
+
+                    let array = self.build_array(self.sp - num_elements, self.sp);
+
+                    self.sp = self.sp - num_elements;
+
+                    self.push(array)?
+                }
             }
 
             i += 1;
@@ -303,6 +320,17 @@ impl Vm {
             value: -int_obj.value,
         })))
     }
+
+    fn build_array(&self, start_idx: usize, end_idx: usize) -> Object {
+        let mut elements = vec![Object::Null(Box::new(Null {})); end_idx - start_idx];
+
+        // todo: avoid cloning
+        for i in start_idx..end_idx {
+            elements[i - start_idx] = self.stack[i].clone();
+        }
+
+        Object::Array(Box::new(Array { elements }))
+    }
 }
 
 #[cfg(test)]
@@ -321,6 +349,7 @@ mod tests {
         Boolean(bool),
         Null(Null),
         String(String),
+        Array(Vec<Expected>),
     }
 
     struct VmTestCase {
@@ -604,6 +633,34 @@ mod tests {
         run_vm_tests(tests);
     }
 
+    #[test]
+    fn test_array_literals() {
+        let tests = vec![
+            VmTestCase {
+                input: "[]".to_string(),
+                expected: Expected::Array(vec![]),
+            },
+            VmTestCase {
+                input: "[1,2,3]".to_string(),
+                expected: Expected::Array(vec![
+                    Expected::Integer(1),
+                    Expected::Integer(2),
+                    Expected::Integer(3),
+                ]),
+            },
+            VmTestCase {
+                input: "[1 + 2, 3 * 4, 5 + 6]".to_string(),
+                expected: Expected::Array(vec![
+                    Expected::Integer(3),
+                    Expected::Integer(12),
+                    Expected::Integer(11),
+                ]),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
     fn run_vm_tests(tests: Vec<VmTestCase>) {
         for test in tests {
             let program = parse(test.input);
@@ -643,6 +700,25 @@ mod tests {
                 };
             }
             Expected::String(str_val) => test_string_object(&str_val, actual),
+            Expected::Array(arr) => test_array_object(arr, actual),
+        }
+    }
+
+    fn test_array_object(expected: &[Expected], actual: &Object) {
+        let Object::Array(actual_arr) = actual else {
+            panic!("object is not Array. got: {}", actual);
+        };
+
+        assert_eq!(
+            actual_arr.elements.len(),
+            expected.len(),
+            "wrong num of elements, want: {}, got: {}",
+            expected.len(),
+            actual_arr.elements.len()
+        );
+
+        for (expected, actual) in expected.iter().zip(actual_arr.elements.iter()) {
+            test_expected_object(expected, actual);
         }
     }
 

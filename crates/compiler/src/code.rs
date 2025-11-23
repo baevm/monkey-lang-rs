@@ -111,6 +111,7 @@ pub enum Opcode {
     OpNull = 15,
     OpGetGlobal = 16,
     OpSetGlobal = 17,
+    OpArray = 18,
 }
 
 impl Opcode {
@@ -188,6 +189,10 @@ impl Opcode {
                 name: "OpGetGlobal",
                 operand_widths: &[2],
             },
+            Opcode::OpArray => Definition {
+                name: "OpArray",
+                operand_widths: &[2],
+            },
         }
     }
 
@@ -211,6 +216,7 @@ impl Opcode {
             15 => Some(Opcode::OpNull),
             16 => Some(Opcode::OpGetGlobal),
             17 => Some(Opcode::OpSetGlobal),
+            18 => Some(Opcode::OpArray),
             _ => None,
         }
     }

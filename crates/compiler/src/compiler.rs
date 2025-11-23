@@ -231,6 +231,15 @@ impl Compiler {
 
                 Ok(())
             }
+            Expression::ArrayLiteral(arr_lit) => {
+                for elem in &arr_lit.elements {
+                    self.compile_expression(elem)?;
+                }
+
+                self.emit(Opcode::OpArray, &[arr_lit.elements.len() as i64]);
+
+                Ok(())
+            }
             value => todo!("{:?} not implemented", value),
         }
     }
@@ -637,6 +646,61 @@ mod tests {
                     Instructions(make(Opcode::OpConstant, &[0])),
                     Instructions(make(Opcode::OpConstant, &[1])),
                     Instructions(make(Opcode::OpAdd, &[])),
+                    Instructions(make(Opcode::OpPop, &[])),
+                ],
+            },
+        ];
+
+        run_compiler_tests(tests);
+    }
+
+    #[test]
+    fn test_array_literals() {
+        let tests = vec![
+            CompilerTestCase {
+                input: "[]".to_string(),
+                expected_constants: vec![],
+                expected_instructions: vec![
+                    Instructions(make(Opcode::OpArray, &[0])),
+                    Instructions(make(Opcode::OpPop, &[])),
+                ],
+            },
+            CompilerTestCase {
+                input: "[1,2,3]".to_string(),
+                expected_constants: vec![
+                    ExpectedConstant::I64(1),
+                    ExpectedConstant::I64(2),
+                    ExpectedConstant::I64(3),
+                ],
+                expected_instructions: vec![
+                    Instructions(make(Opcode::OpConstant, &[0])),
+                    Instructions(make(Opcode::OpConstant, &[1])),
+                    Instructions(make(Opcode::OpConstant, &[2])),
+                    Instructions(make(Opcode::OpArray, &[3])),
+                    Instructions(make(Opcode::OpPop, &[])),
+                ],
+            },
+            CompilerTestCase {
+                input: "[1 + 2, 3 - 4, 5 * 6]".to_string(),
+                expected_constants: vec![
+                    ExpectedConstant::I64(1),
+                    ExpectedConstant::I64(2),
+                    ExpectedConstant::I64(3),
+                    ExpectedConstant::I64(4),
+                    ExpectedConstant::I64(5),
+                    ExpectedConstant::I64(6),
+                ],
+                expected_instructions: vec![
+                    Instructions(make(Opcode::OpConstant, &[0])),
+                    Instructions(make(Opcode::OpConstant, &[1])),
+                    Instructions(make(Opcode::OpAdd, &[])),
+                    Instructions(make(Opcode::OpConstant, &[2])),
+                    Instructions(make(Opcode::OpConstant, &[3])),
+                    Instructions(make(Opcode::OpSub, &[])),
+                    Instructions(make(Opcode::OpConstant, &[4])),
+                    Instructions(make(Opcode::OpConstant, &[5])),
+                    Instructions(make(Opcode::OpMul, &[])),
+                    Instructions(make(Opcode::OpArray, &[3])),
                     Instructions(make(Opcode::OpPop, &[])),
                 ],
             },
