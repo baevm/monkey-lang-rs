@@ -1,6 +1,6 @@
 use std::ops::Sub;
 
-use monke_core::object::{Boolean, Integer, Null, Object};
+use monke_core::object::{Boolean, Integer, Null, Object, StringObj};
 
 use crate::{
     code::{Instructions, Opcode},
@@ -81,29 +81,33 @@ impl Vm {
                 }
                 Opcode::OpAdd | Opcode::OpSub | Opcode::OpMul | Opcode::OpDiv => {
                     let right = self.pop();
-
-                    let Object::Integer(right_int) = right else {
-                        return Err(VmError::InvalidType);
-                    };
-
                     let left = self.pop();
 
-                    let Object::Integer(left_int) = left else {
-                        return Err(VmError::InvalidType);
-                    };
+                    match (left, right) {
+                        (Object::Integer(left_int), Object::Integer(right_int)) => {
+                            let left_value = left_int.value;
+                            let right_value = right_int.value;
 
-                    let left_value = left_int.value;
-                    let right_value = right_int.value;
+                            let result = match opcode {
+                                Opcode::OpAdd => left_value + right_value,
+                                Opcode::OpSub => left_value - right_value,
+                                Opcode::OpMul => left_value * right_value,
+                                Opcode::OpDiv => left_value / right_value,
+                                _ => unreachable!(),
+                            };
 
-                    let result = match opcode {
-                        Opcode::OpAdd => left_value + right_value,
-                        Opcode::OpSub => left_value - right_value,
-                        Opcode::OpMul => left_value * right_value,
-                        Opcode::OpDiv => left_value / right_value,
-                        _ => unreachable!(),
-                    };
+                            self.push(Object::Integer(Box::new(Integer { value: result })))?
+                        }
+                        (Object::String(left_str), Object::String(right_str)) => {
+                            let mut left_value = left_str.value;
+                            let right_value = right_str.value;
+                            left_value.push_str(&right_value);
 
-                    self.push(Object::Integer(Box::new(Integer { value: result })))?
+                            let result = Object::String(Box::new(StringObj { value: left_value }));
+                            self.push(result)?
+                        }
+                        _ => return Err(VmError::InvalidType),
+                    }
                 }
                 Opcode::OpPop => {
                     self.pop();
@@ -316,6 +320,7 @@ mod tests {
         Integer(i64),
         Boolean(bool),
         Null(Null),
+        String(String),
     }
 
     struct VmTestCase {
@@ -579,6 +584,26 @@ mod tests {
         run_vm_tests(tests);
     }
 
+    #[test]
+    fn test_string_expressions() {
+        let tests = vec![
+            VmTestCase {
+                input: r#""monkey""#.to_string(),
+                expected: Expected::String("monkey".to_string()),
+            },
+            VmTestCase {
+                input: r#""mon" + "key""#.to_string(),
+                expected: Expected::String("monkey".to_string()),
+            },
+            VmTestCase {
+                input: r#""mon" + "key" + "banana""#.to_string(),
+                expected: Expected::String("monkeybanana".to_string()),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
     fn run_vm_tests(tests: Vec<VmTestCase>) {
         for test in tests {
             let program = parse(test.input);
@@ -617,6 +642,7 @@ mod tests {
                     panic!("object is not Null. got: {}", actual)
                 };
             }
+            Expected::String(str_val) => test_string_object(&str_val, actual),
         }
     }
 
@@ -641,6 +667,18 @@ mod tests {
             int_obj.value, *expected,
             "object has wrong value. got: {}, want: {}",
             int_obj.value, expected
+        );
+    }
+
+    fn test_string_object(expected: &str, actual: &Object) {
+        let Object::String(str_obj) = actual else {
+            panic!("object is not String. got: {}", actual);
+        };
+
+        assert_eq!(
+            str_obj.value, *expected,
+            "object has wrong value. got: {}, want: {}",
+            str_obj.value, expected
         );
     }
 

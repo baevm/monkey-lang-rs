@@ -1,6 +1,6 @@
 use monke_core::{
     ast::{BlockStatement, Expression, Program, Statement},
-    object::{Integer, Object},
+    object::{Integer, Object, StringObj},
     token::TokenType,
 };
 
@@ -221,6 +221,16 @@ impl Compiler {
 
                 Ok(())
             }
+            Expression::StringLiteral(str_lit) => {
+                let str_obj = Object::String(Box::new(StringObj {
+                    value: str_lit.value.to_string(),
+                }));
+
+                let constant = self.add_constant(str_obj);
+                self.emit(Opcode::OpConstant, &[constant]);
+
+                Ok(())
+            }
             value => todo!("{:?} not implemented", value),
         }
     }
@@ -292,6 +302,7 @@ mod tests {
     enum ExpectedConstant {
         I64(i64),
         Bool(bool),
+        String(String),
     }
 
     struct CompilerTestCase {
@@ -605,6 +616,35 @@ mod tests {
         run_compiler_tests(tests);
     }
 
+    #[test]
+    fn test_string_expressions() {
+        let tests = vec![
+            CompilerTestCase {
+                input: r#""monkey""#.to_string(),
+                expected_constants: vec![ExpectedConstant::String("monkey".to_string())],
+                expected_instructions: vec![
+                    Instructions(make(Opcode::OpConstant, &[0])),
+                    Instructions(make(Opcode::OpPop, &[])),
+                ],
+            },
+            CompilerTestCase {
+                input: r#""mon" + "key""#.to_string(),
+                expected_constants: vec![
+                    ExpectedConstant::String("mon".to_string()),
+                    ExpectedConstant::String("key".to_string()),
+                ],
+                expected_instructions: vec![
+                    Instructions(make(Opcode::OpConstant, &[0])),
+                    Instructions(make(Opcode::OpConstant, &[1])),
+                    Instructions(make(Opcode::OpAdd, &[])),
+                    Instructions(make(Opcode::OpPop, &[])),
+                ],
+            },
+        ];
+
+        run_compiler_tests(tests);
+    }
+
     fn run_compiler_tests(tests: Vec<CompilerTestCase>) {
         for test in tests {
             let program = parse(test.input);
@@ -635,6 +675,7 @@ mod tests {
             match constant {
                 ExpectedConstant::I64(constant) => test_integer_object(constant, &actual[idx]),
                 ExpectedConstant::Bool(boolean) => test_boolean_object(boolean, &actual[idx]),
+                ExpectedConstant::String(string) => test_string_object(string, &actual[idx]),
             }
         }
     }
@@ -660,6 +701,18 @@ mod tests {
             int_obj.value, *expected,
             "object has wrong value. got: {}, want: {}",
             int_obj.value, expected
+        );
+    }
+
+    fn test_string_object(expected: &str, actual: &Object) {
+        let Object::String(str_obj) = actual else {
+            panic!("object is not String. got: {}", actual);
+        };
+
+        assert_eq!(
+            str_obj.value, *expected,
+            "object has wrong value. got: {}, want: {}",
+            str_obj.value, expected
         );
     }
 
