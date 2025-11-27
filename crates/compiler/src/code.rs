@@ -1,5 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
+// TODO: refactor from pub vector to getter of this vector
 #[derive(Clone)]
 pub struct Instructions(pub Vec<u8>);
 
@@ -112,6 +113,7 @@ pub enum Opcode {
     OpGetGlobal = 16,
     OpSetGlobal = 17,
     OpArray = 18,
+    OpHash = 19,
 }
 
 impl Opcode {
@@ -193,6 +195,10 @@ impl Opcode {
                 name: "OpArray",
                 operand_widths: &[2],
             },
+            Opcode::OpHash => Definition {
+                name: "OpHash",
+                operand_widths: &[2],
+            },
         }
     }
 
@@ -217,6 +223,7 @@ impl Opcode {
             16 => Some(Opcode::OpGetGlobal),
             17 => Some(Opcode::OpSetGlobal),
             18 => Some(Opcode::OpArray),
+            19 => Some(Opcode::OpHash),
             _ => None,
         }
     }

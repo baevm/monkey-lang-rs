@@ -45,6 +45,17 @@ impl ObjectTrait for Object {
     }
 }
 
+impl Object {
+    pub fn get_hash(&self) -> Option<HashKey> {
+        match self {
+            Object::Integer(integer) => Some(integer.hash_key()),
+            Object::Boolean(boolean) => Some(boolean.hash_key()),
+            Object::String(string_obj) => Some(string_obj.hash_key()),
+            _ => None,
+        }
+    }
+}
+
 /// Stores bindings of variables
 #[derive(Debug, Clone)]
 pub struct Environment {
@@ -98,6 +109,7 @@ impl ObjectTrait for Integer {
 }
 
 impl Integer {
+    // TODO: add hasher trait
     pub fn hash_key(&self) -> HashKey {
         HashKey {
             value: self.value.try_into().unwrap_or(0),

@@ -1,6 +1,8 @@
-use std::ops::Sub;
+use std::{collections::HashMap, ops::Sub};
 
-use monke_core::object::{Array, Boolean, Integer, Null, Object, StringObj};
+use monke_core::object::{
+    Array, Boolean, HashKey, HashObj, HashPair, Integer, Null, Object, StringObj,
+};
 
 use crate::{
     code::{Instructions, Opcode},
@@ -25,6 +27,7 @@ pub enum VmError {
     StackOverflowError(StackOverflowError),
     InvalidType,
     UnknownOperator,
+    UnusableAsHashKey,
 }
 
 #[derive(Debug)]
@@ -189,6 +192,23 @@ impl Vm {
 
                     self.push(array)?
                 }
+                Opcode::OpHash => {
+                    let num_elements: usize = u16::from_be_bytes(
+                        self.instructions[(i as usize + 1)..(i as usize + 3)]
+                            .try_into()
+                            .expect("failed to convert instruction to u16"),
+                    )
+                    .try_into()
+                    .unwrap();
+
+                    i += 2;
+
+                    let hash = self.build_hash(self.sp - num_elements, self.sp)?;
+
+                    self.sp = self.sp - num_elements;
+
+                    self.push(hash)?
+                }
             }
 
             i += 1;
@@ -331,14 +351,40 @@ impl Vm {
 
         Object::Array(Box::new(Array { elements }))
     }
+
+    fn build_hash(&self, start_idx: usize, end_idx: usize) -> Result<Object, VmError> {
+        let mut hashed_pairs: HashMap<HashKey, HashPair> = HashMap::new();
+
+        for i in (start_idx..end_idx).step_by(2) {
+            let key = &self.stack[i];
+            let value = &self.stack[i + 1];
+
+            let pair = HashPair {
+                key: key.clone(),
+                value: value.clone(),
+            };
+
+            let Some(hash_key) = key.get_hash() else {
+                return Err(VmError::UnusableAsHashKey);
+            };
+
+            hashed_pairs.insert(hash_key, pair);
+        }
+
+        Ok(Object::HashObj(Box::new(HashObj {
+            pairs: hashed_pairs,
+        })))
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use monke_core::{
         ast,
         lexer::Lexer,
-        object::{Null, Object},
+        object::{HashKey, Integer, Null, Object},
         parser::Parser,
     };
 
@@ -350,6 +396,7 @@ mod tests {
         Null(Null),
         String(String),
         Array(Vec<Expected>),
+        Hash(HashMap<HashKey, Expected>),
     }
 
     struct VmTestCase {
@@ -661,6 +708,37 @@ mod tests {
         run_vm_tests(tests);
     }
 
+    #[test]
+    fn test_hash_literals() {
+        let tests = vec![
+            VmTestCase {
+                input: "{}".to_string(),
+                expected: Expected::Hash(HashMap::new()),
+            },
+            VmTestCase {
+                input: "{1: 2, 2: 3}".to_string(),
+                expected: Expected::Hash(HashMap::from([
+                    (create_hash_key(1), Expected::Integer(2)),
+                    (create_hash_key(2), Expected::Integer(3)),
+                ])),
+            },
+            VmTestCase {
+                input: "{1 + 1: 2 * 2, 3 + 3: 4 * 4}".to_string(),
+                expected: Expected::Hash(HashMap::from([
+                    (create_hash_key(2), Expected::Integer(4)),
+                    (create_hash_key(6), Expected::Integer(16)),
+                ])),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    fn create_hash_key(value: i64) -> HashKey {
+        let val = Integer { value };
+        val.hash_key()
+    }
+
     fn run_vm_tests(tests: Vec<VmTestCase>) {
         for test in tests {
             let program = parse(test.input);
@@ -701,6 +779,31 @@ mod tests {
             }
             Expected::String(str_val) => test_string_object(&str_val, actual),
             Expected::Array(arr) => test_array_object(arr, actual),
+            Expected::Hash(hash_map) => test_hash_object(hash_map, actual),
+        }
+    }
+
+    fn test_hash_object(expected: &HashMap<HashKey, Expected>, actual: &Object) {
+        let Object::HashObj(actual_hash_obj) = actual else {
+            panic!("object is not HashObj. got: {}", actual);
+        };
+
+        assert_eq!(
+            expected.len(),
+            actual_hash_obj.pairs.len(),
+            "hash has wrong number of pairs. want: {}, got:{}",
+            expected.len(),
+            actual_hash_obj.pairs.len()
+        );
+
+        for (expected_key, expected_val) in expected {
+            let pair = actual_hash_obj
+                .pairs
+                .iter()
+                .find(|p| p.0.value == expected_key.value)
+                .expect("no pair for given key in pairs");
+
+            test_expected_object(expected_val, &pair.1.value);
         }
     }
 
