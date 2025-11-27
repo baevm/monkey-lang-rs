@@ -114,6 +114,7 @@ pub enum Opcode {
     OpSetGlobal = 17,
     OpArray = 18,
     OpHash = 19,
+    OpIndex = 20,
 }
 
 impl Opcode {
@@ -199,6 +200,10 @@ impl Opcode {
                 name: "OpHash",
                 operand_widths: &[2],
             },
+            Opcode::OpIndex => Definition {
+                name: "OpIndex",
+                operand_widths: &[],
+            },
         }
     }
 
@@ -224,6 +229,7 @@ impl Opcode {
             17 => Some(Opcode::OpSetGlobal),
             18 => Some(Opcode::OpArray),
             19 => Some(Opcode::OpHash),
+            20 => Some(Opcode::OpIndex),
             _ => None,
         }
     }

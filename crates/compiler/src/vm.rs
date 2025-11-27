@@ -28,6 +28,7 @@ pub enum VmError {
     InvalidType,
     UnknownOperator,
     UnusableAsHashKey,
+    UnsupportedIndexOperator,
 }
 
 #[derive(Debug)]
@@ -209,6 +210,12 @@ impl Vm {
 
                     self.push(hash)?
                 }
+                Opcode::OpIndex => {
+                    let index = self.pop();
+                    let left = self.pop();
+
+                    self.execute_index_expression(left, index)?
+                }
             }
 
             i += 1;
@@ -374,6 +381,52 @@ impl Vm {
         Ok(Object::HashObj(Box::new(HashObj {
             pairs: hashed_pairs,
         })))
+    }
+
+    fn execute_index_expression(&mut self, left: Object, index: Object) -> Result<(), VmError> {
+        match (left, &index) {
+            (Object::Array(arr_obj), Object::Integer(int_index)) => {
+                self.execute_array_index(arr_obj, int_index.as_ref())
+            }
+            (Object::HashObj(hash_obj), _) => self.execute_hash_index(hash_obj, &index),
+            _ => Err(VmError::UnsupportedIndexOperator),
+        }
+    }
+
+    fn execute_array_index(
+        &mut self,
+        arr_obj: Box<Array>,
+        int_index: &Integer,
+    ) -> Result<(), VmError> {
+        let i = int_index.value;
+
+        if arr_obj.elements.len() < 1 {
+            return self.push(Object::Null(Box::new(Null {})));
+        }
+
+        let max: i64 = (arr_obj.elements.len() - 1).try_into().unwrap();
+
+        if i < 0 || i > max {
+            return self.push(Object::Null(Box::new(Null {})));
+        }
+
+        self.push(arr_obj.elements[i as usize].clone())
+    }
+
+    fn execute_hash_index(
+        &mut self,
+        hash_obj: Box<HashObj>,
+        index: &Object,
+    ) -> Result<(), VmError> {
+        let Some(index_hash) = index.get_hash() else {
+            return Err(VmError::UnusableAsHashKey);
+        };
+
+        let Some(pair) = hash_obj.pairs.get(&index_hash) else {
+            return self.push(Object::Null(Box::new(Null {})));
+        };
+
+        self.push(pair.value.clone())
     }
 }
 
@@ -728,6 +781,54 @@ mod tests {
                     (create_hash_key(2), Expected::Integer(4)),
                     (create_hash_key(6), Expected::Integer(16)),
                 ])),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_index_expressions() {
+        let tests = vec![
+            VmTestCase {
+                input: "[1, 2, 3][1]".to_string(),
+                expected: Expected::Integer(2),
+            },
+            VmTestCase {
+                input: "[1, 2, 3][0 + 2]".to_string(),
+                expected: Expected::Integer(3),
+            },
+            VmTestCase {
+                input: "[[1, 1, 1]][0][0]".to_string(),
+                expected: Expected::Integer(1),
+            },
+            VmTestCase {
+                input: "[][0]".to_string(),
+                expected: Expected::Null(Null {}),
+            },
+            VmTestCase {
+                input: "[1, 2, 3][99]".to_string(),
+                expected: Expected::Null(Null {}),
+            },
+            VmTestCase {
+                input: "[1][-1]".to_string(),
+                expected: Expected::Null(Null {}),
+            },
+            VmTestCase {
+                input: "{1: 1, 2: 2}[1]".to_string(),
+                expected: Expected::Integer(1),
+            },
+            VmTestCase {
+                input: "{1: 1, 2: 2}[2]".to_string(),
+                expected: Expected::Integer(2),
+            },
+            VmTestCase {
+                input: "{1: 1}[0]".to_string(),
+                expected: Expected::Null(Null {}),
+            },
+            VmTestCase {
+                input: "{}[0]".to_string(),
+                expected: Expected::Null(Null {}),
             },
         ];
 

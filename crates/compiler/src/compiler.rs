@@ -241,10 +241,7 @@ impl Compiler {
                 Ok(())
             }
             Expression::HashLiteral(hash_lit) => {
-                let mut keys: Vec<Expression> =
-                    hash_lit.pairs.iter().map(|(k, _)| k.clone()).collect();
-
-                keys.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+                let keys: Vec<Expression> = hash_lit.pairs.iter().map(|(k, _)| k.clone()).collect();
 
                 for (i, key) in keys.iter().enumerate() {
                     self.compile_expression(key)?;
@@ -256,6 +253,13 @@ impl Compiler {
                     Opcode::OpHash,
                     &[(hash_lit.pairs.len() * 2).try_into().unwrap()],
                 );
+
+                Ok(())
+            }
+            Expression::IndexExpression(index_expr) => {
+                self.compile_expression(&index_expr.left)?;
+                self.compile_expression(&index_expr.index)?;
+                self.emit(Opcode::OpIndex, &[]);
 
                 Ok(())
             }
@@ -780,6 +784,54 @@ mod tests {
                     Instructions(make(Opcode::OpConstant, &[5])),
                     Instructions(make(Opcode::OpMul, &[])),
                     Instructions(make(Opcode::OpHash, &[4])),
+                    Instructions(make(Opcode::OpPop, &[])),
+                ],
+            },
+        ];
+
+        run_compiler_tests(tests);
+    }
+
+    #[test]
+    fn test_index_expressions() {
+        let tests = vec![
+            CompilerTestCase {
+                input: "[1, 2, 3][1 + 1]".to_string(),
+                expected_constants: vec![
+                    ExpectedConstant::I64(1),
+                    ExpectedConstant::I64(2),
+                    ExpectedConstant::I64(3),
+                    ExpectedConstant::I64(1),
+                    ExpectedConstant::I64(1),
+                ],
+                expected_instructions: vec![
+                    Instructions(make(Opcode::OpConstant, &[0])),
+                    Instructions(make(Opcode::OpConstant, &[1])),
+                    Instructions(make(Opcode::OpConstant, &[2])),
+                    Instructions(make(Opcode::OpArray, &[3])),
+                    Instructions(make(Opcode::OpConstant, &[3])),
+                    Instructions(make(Opcode::OpConstant, &[4])),
+                    Instructions(make(Opcode::OpAdd, &[])),
+                    Instructions(make(Opcode::OpIndex, &[])),
+                    Instructions(make(Opcode::OpPop, &[])),
+                ],
+            },
+            CompilerTestCase {
+                input: "{1: 2}[2 - 1]".to_string(),
+                expected_constants: vec![
+                    ExpectedConstant::I64(1),
+                    ExpectedConstant::I64(2),
+                    ExpectedConstant::I64(2),
+                    ExpectedConstant::I64(1),
+                ],
+                expected_instructions: vec![
+                    Instructions(make(Opcode::OpConstant, &[0])),
+                    Instructions(make(Opcode::OpConstant, &[1])),
+                    Instructions(make(Opcode::OpHash, &[2])),
+                    Instructions(make(Opcode::OpConstant, &[2])),
+                    Instructions(make(Opcode::OpConstant, &[3])),
+                    Instructions(make(Opcode::OpSub, &[])),
+                    Instructions(make(Opcode::OpIndex, &[])),
                     Instructions(make(Opcode::OpPop, &[])),
                 ],
             },
