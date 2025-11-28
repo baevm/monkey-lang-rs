@@ -4,11 +4,11 @@ use crate::token::{Token, TokenType};
 
 pub struct Lexer {
     input: String,
-    position: u64,      // current position in input (points to current char)
-    read_position: u64, // current reading position in input (after current char)
-    ch: char,           // current char
-    pub line: usize,    // current line
-    pub col: usize,     // current column
+    position: usize,      // current position in input (points to current char)
+    read_position: usize, // current reading position in input (after current char)
+    ch: char,             // current char
+    pub line: usize,      // current line
+    pub col: usize,       // current column
 }
 
 impl Lexer {
@@ -241,11 +241,11 @@ impl Lexer {
 
     /// Reads next character in input
     fn read_char(&mut self) {
-        if self.read_position >= self.input.len() as u64 {
+        if self.read_position >= self.input.len() {
             self.ch = Self::ASCII_NULL
         } else {
             // TODO: avoid O(N) lookup of char in input
-            self.ch = self.input.chars().nth(self.read_position as usize).unwrap();
+            self.ch = self.input.chars().nth(self.read_position).unwrap();
         }
 
         self.position = self.read_position;
@@ -268,7 +268,7 @@ impl Lexer {
             self.read_char();
         }
 
-        Rc::from(self.input[position as usize..self.position as usize].to_string())
+        Rc::from(self.input[position..self.position].to_string())
     }
 
     fn read_number(&mut self) -> Rc<str> {
@@ -278,7 +278,7 @@ impl Lexer {
             self.read_char();
         }
 
-        Rc::from(self.input[position as usize..self.position as usize].to_string())
+        Rc::from(self.input[position..self.position].to_string())
     }
 
     fn skip_whitespace(&mut self) {
@@ -293,10 +293,10 @@ impl Lexer {
     }
 
     fn peek_char(&self) -> char {
-        if self.read_position >= self.input.len() as u64 {
+        if self.read_position >= self.input.len() {
             Self::ASCII_NULL
         } else {
-            self.input.chars().nth(self.read_position as usize).unwrap()
+            self.input.chars().nth(self.read_position).unwrap()
         }
     }
 
@@ -311,7 +311,7 @@ impl Lexer {
             }
         }
 
-        Rc::from(self.input[position as usize..self.position as usize].to_string())
+        Rc::from(self.input[position..self.position].to_string())
     }
 }
 
