@@ -1,8 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
-// TODO: refactor from pub vector to getter of this vector
 #[derive(Clone)]
-pub struct Instructions(pub Vec<u8>);
+pub struct Instructions(Vec<u8>);
 
 impl Instructions {
     pub fn new() -> Self {
