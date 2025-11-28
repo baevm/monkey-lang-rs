@@ -10,8 +10,12 @@ use strum_macros::{Display, VariantNames};
 
 use crate::ast::{BlockStatement, Identifier};
 
-pub trait ObjectTrait {
+pub trait Inspect {
     fn inspect(&self) -> String;
+}
+
+pub trait HashableKey {
+    fn hash_key(&self) -> HashKey;
 }
 
 #[derive(Debug, Display, VariantNames, Clone)]
@@ -29,7 +33,7 @@ pub enum Object {
     CompiledFunction(Box<CompiledFunction>),
 }
 
-impl ObjectTrait for Object {
+impl Inspect for Object {
     fn inspect(&self) -> String {
         match self {
             Object::Integer(integer_object) => integer_object.inspect(),
@@ -104,15 +108,14 @@ pub struct Integer {
     pub value: i64,
 }
 
-impl ObjectTrait for Integer {
+impl Inspect for Integer {
     fn inspect(&self) -> String {
         self.value.to_string()
     }
 }
 
-impl Integer {
-    // TODO: add hasher trait
-    pub fn hash_key(&self) -> HashKey {
+impl HashableKey for Integer {
+    fn hash_key(&self) -> HashKey {
         HashKey {
             value: self.value.try_into().unwrap_or(0),
         }
@@ -124,14 +127,14 @@ pub struct Boolean {
     pub value: bool,
 }
 
-impl ObjectTrait for Boolean {
+impl Inspect for Boolean {
     fn inspect(&self) -> String {
         self.value.to_string()
     }
 }
 
-impl Boolean {
-    pub fn hash_key(&self) -> HashKey {
+impl HashableKey for Boolean {
+    fn hash_key(&self) -> HashKey {
         let value = if self.value { 1 } else { 0 };
         HashKey { value }
     }
@@ -140,7 +143,7 @@ impl Boolean {
 #[derive(Debug, Clone)]
 pub struct Null {}
 
-impl ObjectTrait for Null {
+impl Inspect for Null {
     fn inspect(&self) -> String {
         "null".to_string()
     }
@@ -151,7 +154,7 @@ pub struct Return {
     pub value: Object,
 }
 
-impl ObjectTrait for Return {
+impl Inspect for Return {
     fn inspect(&self) -> String {
         self.value.inspect()
     }
@@ -185,7 +188,7 @@ pub struct InternalError {
     pub message: EvaluateErr,
 }
 
-impl ObjectTrait for InternalError {
+impl Inspect for InternalError {
     fn inspect(&self) -> String {
         format!("ERROR: {}", self.message)
     }
@@ -198,7 +201,7 @@ pub struct Function {
     pub env: Environment,
 }
 
-impl ObjectTrait for Function {
+impl Inspect for Function {
     fn inspect(&self) -> String {
         let params: Vec<String> = self.parameters.iter().map(|p| p.to_string()).collect();
         let mut sb = String::new();
@@ -218,14 +221,14 @@ pub struct StringObj {
     pub value: String,
 }
 
-impl ObjectTrait for StringObj {
+impl Inspect for StringObj {
     fn inspect(&self) -> String {
         self.value.clone()
     }
 }
 
-impl StringObj {
-    pub fn hash_key(&self) -> HashKey {
+impl HashableKey for StringObj {
+    fn hash_key(&self) -> HashKey {
         let mut hasher = FnvHasher::default();
         self.value.hash(&mut hasher);
 
@@ -242,7 +245,7 @@ pub struct Builtin {
     pub func: BuiltinFunc,
 }
 
-impl ObjectTrait for Builtin {
+impl Inspect for Builtin {
     fn inspect(&self) -> String {
         "builtin function".to_string()
     }
@@ -360,7 +363,7 @@ pub struct Array {
     pub elements: Vec<Object>,
 }
 
-impl ObjectTrait for Array {
+impl Inspect for Array {
     fn inspect(&self) -> String {
         let elements: Vec<String> = self.elements.iter().map(|el| el.inspect()).collect();
         format!("[{}]", elements.join(", "))
@@ -383,7 +386,7 @@ pub struct HashObj {
     pub pairs: HashMap<HashKey, HashPair>,
 }
 
-impl ObjectTrait for HashObj {
+impl Inspect for HashObj {
     fn inspect(&self) -> String {
         let elements: Vec<String> = self
             .pairs
@@ -400,7 +403,7 @@ pub struct CompiledFunction {
     pub instructions: Vec<u8>,
 }
 
-impl ObjectTrait for CompiledFunction {
+impl Inspect for CompiledFunction {
     fn inspect(&self) -> String {
         format!("CompiledFunction")
     }
@@ -433,7 +436,7 @@ impl_display_name! {
 
 #[cfg(test)]
 mod tests {
-    use crate::object::StringObj;
+    use crate::object::{HashableKey, StringObj};
 
     #[test]
     fn test_string_hash_key() {

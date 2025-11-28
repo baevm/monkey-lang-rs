@@ -1,7 +1,7 @@
 use crate::ast::{self, HashLiteral, Identifier, IfExpression, InfixExpression};
 use crate::object::{
-    Array, Builtin, Environment, EvaluateErr, Function, HashKey, HashObj, HashPair, InternalError,
-    Return, StringObj,
+    Array, Builtin, Environment, EvaluateErr, Function, HashKey, HashObj, HashPair, HashableKey,
+    InternalError, Return, StringObj,
 };
 use crate::token::TokenType;
 use crate::{
@@ -674,7 +674,7 @@ mod tests {
     use crate::{
         evaluator::Evaluator,
         lexer::Lexer,
-        object::{Boolean, Environment, HashKey, Integer, Object, StringObj},
+        object::{Boolean, Environment, HashKey, HashableKey, Integer, Object, StringObj},
         parser::Parser,
     };
 

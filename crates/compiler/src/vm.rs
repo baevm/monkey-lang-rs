@@ -440,7 +440,7 @@ mod tests {
     use monke_core::{
         ast,
         lexer::Lexer,
-        object::{HashKey, Integer, Null, Object},
+        object::{HashKey, HashableKey, Integer, Null, Object},
         parser::Parser,
     };
 

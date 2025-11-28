@@ -11,7 +11,7 @@ use compiler::{
 use monke_core::{
     evaluator::Evaluator,
     lexer::Lexer,
-    object::{Environment, Null, Object, ObjectTrait},
+    object::{Environment, Inspect, Null, Object},
     parser::{ParseErr, Parser},
 };
 
