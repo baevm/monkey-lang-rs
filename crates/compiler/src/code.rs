@@ -115,6 +115,9 @@ pub enum Opcode {
     OpArray = 18,
     OpHash = 19,
     OpIndex = 20,
+    OpCall = 21,
+    OpReturnValue = 22, // function return with value
+    OpReturn = 23,      // function return with no value (null)
 }
 
 impl Opcode {
@@ -204,6 +207,18 @@ impl Opcode {
                 name: "OpIndex",
                 operand_widths: &[],
             },
+            Opcode::OpCall => Definition {
+                name: "OpCall",
+                operand_widths: &[],
+            },
+            Opcode::OpReturnValue => Definition {
+                name: "OpReturnValue",
+                operand_widths: &[],
+            },
+            Opcode::OpReturn => Definition {
+                name: "OpReturn",
+                operand_widths: &[],
+            },
         }
     }
 
@@ -230,6 +245,9 @@ impl Opcode {
             18 => Some(Opcode::OpArray),
             19 => Some(Opcode::OpHash),
             20 => Some(Opcode::OpIndex),
+            21 => Some(Opcode::OpCall),
+            22 => Some(Opcode::OpReturnValue),
+            23 => Some(Opcode::OpReturn),
             _ => None,
         }
     }

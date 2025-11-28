@@ -216,6 +216,9 @@ impl Vm {
 
                     self.execute_index_expression(left, index)?
                 }
+                Opcode::OpCall => todo!(),
+                Opcode::OpReturnValue => todo!(),
+                Opcode::OpReturn => todo!(),
             }
 
             i += 1;

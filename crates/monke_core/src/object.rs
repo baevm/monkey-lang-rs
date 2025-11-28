@@ -26,6 +26,7 @@ pub enum Object {
     Builtin(Box<Builtin>),
     Array(Box<Array>),
     HashObj(Box<HashObj>),
+    CompiledFunction(Box<CompiledFunction>),
 }
 
 impl ObjectTrait for Object {
@@ -41,6 +42,7 @@ impl ObjectTrait for Object {
             Object::Builtin(builtin) => builtin.inspect(),
             Object::Array(array) => array.inspect(),
             Object::HashObj(hash_obj) => hash_obj.inspect(),
+            Object::CompiledFunction(compiled_fn) => compiled_fn.inspect(),
         }
     }
 }
@@ -390,6 +392,17 @@ impl ObjectTrait for HashObj {
             .collect();
 
         format!("{{{}}}", elements.join(", "))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CompiledFunction {
+    pub instructions: Vec<u8>,
+}
+
+impl ObjectTrait for CompiledFunction {
+    fn inspect(&self) -> String {
+        format!("CompiledFunction")
     }
 }
 
