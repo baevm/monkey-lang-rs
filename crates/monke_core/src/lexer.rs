@@ -242,14 +242,25 @@ impl Lexer {
     /// Reads next character in input
     fn read_char(&mut self) {
         if self.read_position >= self.input.len() {
-            self.ch = Self::ASCII_NULL
+            self.ch = Self::ASCII_NULL;
+            self.position = self.read_position;
         } else {
-            // TODO: avoid O(N) lookup of char in input
-            self.ch = self.input.chars().nth(self.read_position).unwrap();
+            let current_byte = self.input.as_bytes()[self.read_position];
+
+            // fast path
+            if current_byte.is_ascii() {
+                self.ch = current_byte as char;
+                self.position = self.read_position;
+                self.read_position += 1;
+            } else {
+                let remainder = &self.input[self.read_position..];
+                let char_decoded = remainder.chars().next().unwrap();
+                self.ch = char_decoded;
+                self.position = self.read_position;
+                self.read_position += char_decoded.len_utf8();
+            }
         }
 
-        self.position = self.read_position;
-        self.read_position += 1;
         self.col += 1;
     }
 
@@ -296,7 +307,15 @@ impl Lexer {
         if self.read_position >= self.input.len() {
             Self::ASCII_NULL
         } else {
-            self.input.chars().nth(self.read_position).unwrap()
+            let current_byte = self.input.as_bytes()[self.read_position];
+
+            if current_byte.is_ascii() {
+                current_byte as char
+            } else {
+                // decode next UTF-8 char from byte index
+                let remainder = &self.input[self.read_position..];
+                remainder.chars().next().unwrap()
+            }
         }
     }
 
