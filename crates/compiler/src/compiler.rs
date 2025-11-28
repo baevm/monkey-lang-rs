@@ -177,15 +177,15 @@ impl Compiler {
             }
             Expression::InfixExpression(infix) => {
                 if infix.operator == TokenType::Lt {
-                    let right_result = self.compile_expression(&infix.right)?;
-                    let left_result = self.compile_expression(&infix.left)?;
+                    self.compile_expression(&infix.right)?;
+                    self.compile_expression(&infix.left)?;
 
                     self.emit(Opcode::OpGreaterThan, &[]);
                     return Ok(());
                 }
 
-                let left_result = self.compile_expression(&infix.left)?;
-                let right_result = self.compile_expression(&infix.right)?;
+                self.compile_expression(&infix.left)?;
+                self.compile_expression(&infix.right)?;
 
                 match infix.operator {
                     TokenType::Plus => self.emit(Opcode::OpAdd, &[]),
@@ -201,7 +201,7 @@ impl Compiler {
                 Ok(())
             }
             Expression::PrefixExpression(prefix_expr) => {
-                let right_result = self.compile_expression(&prefix_expr.right)?;
+                self.compile_expression(&prefix_expr.right)?;
 
                 match prefix_expr.operator {
                     TokenType::Bang => self.emit(Opcode::OpBang, &[]),

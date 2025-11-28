@@ -4,8 +4,6 @@ use std::{
     path::Path,
 };
 
-use ::compiler::symbol_table::SymbolTable;
-
 use compiler::{
     compiler::Compiler,
     vm::{self, Vm},
@@ -92,7 +90,7 @@ impl Repl {
         let stdin = io::stdin();
         let mut buf = String::new();
 
-        let line = stdin.read_line(&mut buf)?;
+        stdin.read_line(&mut buf)?;
 
         Ok(buf)
     }
