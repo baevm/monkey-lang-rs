@@ -121,7 +121,7 @@ fn compile_line(
         return Err(vec![]);
     }
 
-    for (dst, src) in globals.iter_mut().zip(vm.globals.iter()) {
+    for (dst, src) in globals.iter_mut().zip(vm.globals().iter()) {
         *dst = src.clone();
     }
 

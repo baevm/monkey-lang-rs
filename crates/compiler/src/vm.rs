@@ -1,25 +1,32 @@
-use std::{collections::HashMap, ops::Sub};
+use std::{
+    collections::HashMap,
+    ops::{Deref, Sub},
+};
 
 use monke_core::object::{
-    Array, Boolean, HashKey, HashObj, HashPair, Integer, Null, Object, StringObj,
+    self, Array, Boolean, HashKey, HashObj, HashPair, Integer, Null, Object, StringObj,
 };
 
 use crate::{
     code::{Instructions, Opcode},
     compiler::Bytecode,
+    frame::Frame,
 };
 
 const STACK_SIZE: usize = 2048;
 pub const GLOBALS_SIZE: usize = 65536;
+const MAX_FRAMES: usize = 1024;
 
 pub struct Vm {
     constants: Vec<Object>,
-    instructions: Instructions,
 
     stack: Vec<Object>,
     sp: usize, // stack pointer - always points to the next value.
 
-    pub globals: Vec<Object>,
+    globals: Vec<Object>,
+
+    frames: Vec<Frame>,
+    frame_index: usize,
 }
 
 #[derive(Debug)]
@@ -29,6 +36,7 @@ pub enum VmError {
     UnknownOperator,
     UnusableAsHashKey,
     UnsupportedIndexOperator,
+    CallingNonFunction,
 }
 
 #[derive(Debug)]
@@ -42,12 +50,21 @@ impl std::fmt::Display for StackOverflowError {
 
 impl Vm {
     pub fn new(bytecode: Bytecode) -> Self {
+        let main_func = object::CompiledFunction {
+            instructions: bytecode.instructions.to_vec(),
+        };
+        let main_frame = Frame::new(main_func);
+
+        let mut frames: Vec<Frame> = Vec::with_capacity(MAX_FRAMES);
+        frames.push(main_frame);
+
         Self {
             constants: bytecode.constants,
-            instructions: bytecode.instructions,
             stack: vec![Object::Null(Box::new(Null {})); STACK_SIZE as usize],
             sp: 0,
             globals: vec![Object::Null(Box::new(Null {})); GLOBALS_SIZE],
+            frame_index: 1,
+            frames,
         }
     }
 
@@ -60,10 +77,18 @@ impl Vm {
 
     pub fn run(&mut self) -> Result<(), VmError> {
         let mut i = 0;
+        let mut ins: Instructions = Instructions::new();
+        let mut opcode: Option<Opcode> = None;
 
-        while i < self.instructions.len() {
-            let instruction = self.instructions[i];
-            let opcode = Opcode::from_byte(instruction);
+        while self.current_frame().ip < ((self.current_frame().instructions().len() - 1) as i64) {
+            self.update_frame_pointer(1);
+
+            i = self.current_frame().ip;
+            ins = self.current_frame().instructions();
+            opcode = Opcode::from_byte(ins[i as usize]);
+
+            // let instruction = self.instructions[i];
+            // let opcode = Opcode::from_byte(instruction);
 
             let Some(opcode) = opcode else {
                 continue;
@@ -73,11 +98,11 @@ impl Vm {
                 Opcode::OpConstant => {
                     // first byte is opcode, read 2 bytes from i+1..i+3
                     let const_index = u16::from_be_bytes(
-                        self.instructions[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i as usize + 1)..(i as usize + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     );
-                    i += 2;
+                    self.update_frame_pointer(2);
 
                     let constant = self.constants[const_index as usize].clone();
 
@@ -127,65 +152,65 @@ impl Vm {
                 Opcode::OpBang => self.execute_bang_operator()?,
                 Opcode::OpJumpNotTruthy => {
                     let pos = u16::from_be_bytes(
-                        self.instructions[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i as usize + 1)..(i as usize + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     );
 
-                    i += 2;
+                    self.update_frame_pointer(2);
 
                     let condition = self.pop();
 
                     if !self.is_truthy(&condition) {
-                        i = pos.sub(1) as usize
+                        self.set_frame_pointer(pos as i64 - 1);
                     }
                 }
                 Opcode::OpJump => {
                     let pos = u16::from_be_bytes(
-                        self.instructions[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i as usize + 1)..(i as usize + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     );
-                    i = pos.sub(1) as usize;
+                    self.set_frame_pointer(pos as i64 - 1);
                 }
                 Opcode::OpNull => self.push(Object::Null(Box::new(Null {})))?,
                 Opcode::OpSetGlobal => {
                     let global_idx: usize = u16::from_be_bytes(
-                        self.instructions[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i as usize + 1)..(i as usize + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     )
                     .try_into()
                     .unwrap();
 
-                    i += 2;
+                    self.update_frame_pointer(2);
 
                     self.globals[global_idx] = self.pop();
                 }
                 Opcode::OpGetGlobal => {
                     let global_idx: usize = u16::from_be_bytes(
-                        self.instructions[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i as usize + 1)..(i as usize + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     )
                     .try_into()
                     .unwrap();
 
-                    i += 2;
+                    self.update_frame_pointer(2);
 
                     let obj = self.globals[global_idx].clone();
                     self.push(obj)?;
                 }
                 Opcode::OpArray => {
                     let num_elements: usize = u16::from_be_bytes(
-                        self.instructions[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i as usize + 1)..(i as usize + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     )
                     .try_into()
                     .unwrap();
 
-                    i += 2;
+                    self.update_frame_pointer(2);
 
                     let array = self.build_array(self.sp - num_elements, self.sp);
 
@@ -195,14 +220,14 @@ impl Vm {
                 }
                 Opcode::OpHash => {
                     let num_elements: usize = u16::from_be_bytes(
-                        self.instructions[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i as usize + 1)..(i as usize + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     )
                     .try_into()
                     .unwrap();
 
-                    i += 2;
+                    self.update_frame_pointer(2);
 
                     let hash = self.build_hash(self.sp - num_elements, self.sp)?;
 
@@ -216,15 +241,73 @@ impl Vm {
 
                     self.execute_index_expression(left, index)?
                 }
-                Opcode::OpCall => todo!(),
-                Opcode::OpReturnValue => todo!(),
-                Opcode::OpReturn => todo!(),
+                Opcode::OpCall => {
+                    let Object::CompiledFunction(func) = &self.stack[self.sp - 1] else {
+                        return Err(VmError::CallingNonFunction);
+                    };
+
+                    let frame = Frame::new(*func.clone());
+                    self.push_frame(frame);
+                }
+                Opcode::OpReturnValue => {
+                    let return_value = self.pop();
+                    self.pop_frame();
+                    self.pop();
+
+                    self.push(return_value)?
+                }
+                Opcode::OpReturn => {
+                    self.pop_frame();
+                    self.pop();
+
+                    self.push(Object::Null(Box::new(Null {})))?
+                }
             }
 
             i += 1;
         }
 
         Ok(())
+    }
+
+    pub fn globals(&self) -> Vec<Object> {
+        self.globals.clone()
+    }
+
+    fn current_frame(&self) -> &Frame {
+        &self.frames[self.frame_index - 1]
+    }
+
+    fn update_frame_pointer(&mut self, to_add: i64) {
+        self.frames[self.frame_index - 1].ip += to_add
+    }
+
+    fn set_frame_pointer(&mut self, offset: i64) {
+        self.frames[self.frame_index - 1].ip = offset;
+    }
+
+    fn push_frame(&mut self, frame: Frame) {
+        if self.frames.len() == self.frame_index {
+            self.frames.push(frame);
+        } else {
+            self.frames[self.frame_index] = frame;
+        }
+
+        self.frame_index += 1;
+    }
+
+    fn pop_frame(&mut self) -> Option<&Frame> {
+        if self.frame_index == 0 {
+            return None;
+        }
+
+        self.frame_index -= 1;
+
+        if self.frame_index == 0 {
+            None
+        } else {
+            self.frames.get(self.frame_index - 1)
+        }
     }
 
     fn is_truthy(&self, object: &Object) -> bool {
@@ -834,6 +917,106 @@ mod tests {
                 expected: Expected::Null(Null {}),
             },
         ];
+
+        run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_calling_function_no_arguments() {
+        let tests = vec![
+            VmTestCase {
+                input: "
+                let fivePlusTen = function() {5 + 10;};
+                fivePlusTen();
+            "
+                .to_string(),
+                expected: Expected::Integer(15),
+            },
+            VmTestCase {
+                input: "
+                let one = function() { 1; };
+                let two = function() { 2; };
+                one() + two()
+            "
+                .to_string(),
+                expected: Expected::Integer(3),
+            },
+            VmTestCase {
+                input: "
+                let a = function() { 1 };
+                let b = function() { a() + 1 };
+                let c = function() { b() + 1 };
+                c()
+            "
+                .to_string(),
+                expected: Expected::Integer(3),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_function_with_return_statement() {
+        let tests = vec![
+            VmTestCase {
+                input: "
+                let earlyExit = function() { return 99; 100; };
+                earlyExit();
+            "
+                .to_string(),
+                expected: Expected::Integer(99),
+            },
+            VmTestCase {
+                input: "
+                let earlyExit = function() { return 99; return 100; };
+                earlyExit();
+            "
+                .to_string(),
+                expected: Expected::Integer(99),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_function_without_return_value() {
+        let tests = vec![
+            VmTestCase {
+                input: "
+               let noReturn = function() { };
+                noReturn();
+            "
+                .to_string(),
+                expected: Expected::Null(Null {}),
+            },
+            VmTestCase {
+                input: "
+                let noReturn = fn() { };
+                let noReturnTwo = fn() { noReturn(); };
+                noReturn();
+                noReturnTwo();
+            "
+                .to_string(),
+                expected: Expected::Null(Null {}),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_first_class_functions() {
+        let tests = vec![VmTestCase {
+            input: "
+                let returnsOne = function() { 1; };
+                let returnsOneReturner = function() { returnsOne; };
+                returnsOneReturner()();
+            "
+            .to_string(),
+            expected: Expected::Integer(1),
+        }];
 
         run_vm_tests(tests);
     }

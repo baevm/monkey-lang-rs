@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Instructions(Vec<u8>);
 
 impl Instructions {
