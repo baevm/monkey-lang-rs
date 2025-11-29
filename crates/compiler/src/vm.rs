@@ -993,8 +993,8 @@ mod tests {
             },
             VmTestCase {
                 input: "
-                let noReturn = fn() { };
-                let noReturnTwo = fn() { noReturn(); };
+                let noReturn = function() { };
+                let noReturnTwo = function() { noReturn(); };
                 noReturn();
                 noReturnTwo();
             "
