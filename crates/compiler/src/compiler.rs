@@ -329,6 +329,12 @@ impl Compiler {
 
                 Ok(())
             }
+            Expression::CallExpression(call_expr) => {
+                self.compile_expression(&call_expr.function)?;
+                self.emit(Opcode::OpCall, &[]);
+
+                Ok(())
+            }
             value => todo!("{:?} not implemented", value),
         }
     }
@@ -1042,6 +1048,46 @@ mod tests {
         assert_eq!(prev.opcode, Opcode::OpMul);
     }
 
+    #[test]
+    fn test_function_calls() {
+        let tests = vec![
+            CompilerTestCase {
+                input: "function() { 24 }();".to_string(),
+                expected_constants: vec![
+                    ExpectedConstant::I64(24),
+                    ExpectedConstant::Instructions(vec![
+                        Instructions::from(make(Opcode::OpConstant, &[0])),
+                        Instructions::from(make(Opcode::OpReturnValue, &[])),
+                    ]),
+                ],
+                expected_instructions: vec![
+                    Instructions::from(make(Opcode::OpConstant, &[1])),
+                    Instructions::from(make(Opcode::OpCall, &[])),
+                    Instructions::from(make(Opcode::OpPop, &[])),
+                ],
+            },
+            CompilerTestCase {
+                input: "let noArg = function() { 24 }; noArg();".to_string(),
+                expected_constants: vec![
+                    ExpectedConstant::I64(24),
+                    ExpectedConstant::Instructions(vec![
+                        Instructions::from(make(Opcode::OpConstant, &[0])),
+                        Instructions::from(make(Opcode::OpReturnValue, &[])),
+                    ]),
+                ],
+                expected_instructions: vec![
+                    Instructions::from(make(Opcode::OpConstant, &[1])),
+                    Instructions::from(make(Opcode::OpSetGlobal, &[0])),
+                    Instructions::from(make(Opcode::OpGetGlobal, &[0])),
+                    Instructions::from(make(Opcode::OpCall, &[])),
+                    Instructions::from(make(Opcode::OpPop, &[])),
+                ],
+            },
+        ];
+
+        run_compiler_tests(tests);
+    }
+
     fn run_compiler_tests(tests: Vec<CompilerTestCase>) {
         for test in tests {
             let program = parse(test.input);
@@ -1136,9 +1182,12 @@ mod tests {
 
         for (idx, ins) in concated.iter().enumerate() {
             assert_eq!(
-                actual[idx], *ins,
-                "wrong instruction at {}, want: {}, got: {}",
-                idx, ins, actual[idx]
+                actual[idx],
+                *ins,
+                "wrong instruction at {}, want: {:?}, got: {:?}",
+                idx,
+                Opcode::from_byte(*ins),
+                Opcode::from_byte(actual[idx])
             )
         }
     }
