@@ -349,7 +349,6 @@ impl Compiler {
 
                 Ok(())
             }
-            value => todo!("{:?} not implemented", value),
         }
     }
 
@@ -444,7 +443,7 @@ mod tests {
     use monke_core::{ast, lexer::Lexer, object::Object, parser::Parser};
 
     use crate::{
-        code::{self, Instructions, Opcode, make, read_operands},
+        code::{self, Instructions, Opcode, make},
         compiler::Compiler,
     };
 

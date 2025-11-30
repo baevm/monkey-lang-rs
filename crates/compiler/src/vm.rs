@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    ops::{Deref, Sub},
-};
+use std::collections::HashMap;
 
 use monke_core::object::{
     self, Array, Boolean, HashKey, HashObj, HashPair, Integer, Null, Object, StringObj,
@@ -86,9 +83,6 @@ impl Vm {
             i = self.current_frame().ip;
             ins = self.current_frame().instructions();
             opcode = Opcode::from_byte(ins[i as usize]);
-
-            // let instruction = self.instructions[i];
-            // let opcode = Opcode::from_byte(instruction);
 
             let Some(opcode) = opcode else {
                 continue;

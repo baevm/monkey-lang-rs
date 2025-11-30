@@ -16,7 +16,7 @@ fn compile_and_run(input: &str) -> i64 {
     let bytecode = compiler.bytecode();
     let mut vm = Vm::new(bytecode);
 
-    let result = vm.run().unwrap();
+    vm.run().unwrap();
 
     if let Some(obj) = vm.last_popped_stack_element() {
         if let monke_core::object::Object::Integer(val) = obj {
