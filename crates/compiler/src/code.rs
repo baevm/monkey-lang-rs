@@ -117,6 +117,8 @@ pub enum Opcode {
     OpCall = 21,
     OpReturnValue = 22, // function return with value
     OpReturn = 23,      // function return with no value (null)
+    OpGetLocal = 24,
+    OpSetLocal = 25,
 }
 
 impl Opcode {
@@ -218,6 +220,14 @@ impl Opcode {
                 name: "OpReturn",
                 operand_widths: &[],
             },
+            Opcode::OpGetLocal => Definition {
+                name: "OpGetLocal",
+                operand_widths: &[1],
+            },
+            Opcode::OpSetLocal => Definition {
+                name: "OpSetLocal",
+                operand_widths: &[1],
+            },
         }
     }
 
@@ -247,6 +257,8 @@ impl Opcode {
             21 => Some(Opcode::OpCall),
             22 => Some(Opcode::OpReturnValue),
             23 => Some(Opcode::OpReturn),
+            24 => Some(Opcode::OpGetLocal),
+            25 => Some(Opcode::OpSetLocal),
             _ => None,
         }
     }
@@ -275,6 +287,10 @@ pub fn make(opcode: Opcode, operands: &[i64]) -> Vec<u8> {
         let width = definition.operand_widths[idx] as usize;
 
         match width {
+            1 => {
+                let bytes = operand.to_be_bytes();
+                instruction[offset] = *bytes.last().unwrap();
+            }
             2 => {
                 let bytes = (*operand as u16).to_be_bytes();
                 instruction[offset..offset + 2].copy_from_slice(&bytes);
@@ -292,8 +308,12 @@ pub fn read_operands(def: &Definition, instruction: &[u8]) -> (Vec<i64>, i64) {
     let mut operands: Vec<i64> = vec![0; def.operand_widths.len()];
     let mut offset: i64 = 0;
 
-    for (idx, width) in def.operand_widths.iter().enumerate() {
-        match width {
+    for (idx, byte_width) in def.operand_widths.iter().enumerate() {
+        match byte_width {
+            1 => {
+                let u8num = u8::from_be_bytes([instruction[offset as usize]]);
+                operands[idx] = u8num.try_into().unwrap()
+            }
             2 => {
                 let u16num = u16::from_be_bytes(
                     instruction[(offset as usize)..(offset as usize + 2)]
@@ -305,7 +325,7 @@ pub fn read_operands(def: &Definition, instruction: &[u8]) -> (Vec<i64>, i64) {
             _ => {}
         }
 
-        offset += width;
+        offset += byte_width;
     }
 
     (operands, offset)
@@ -313,7 +333,7 @@ pub fn read_operands(def: &Definition, instruction: &[u8]) -> (Vec<i64>, i64) {
 
 #[cfg(test)]
 mod tests {
-    use crate::code::{Instructions, Opcode, make};
+    use crate::code::{Instructions, Opcode, make, read_operands};
 
     #[test]
     fn make_test() {
@@ -324,6 +344,11 @@ mod tests {
                 vec![Opcode::OpConstant as u8, 255, 254],
             ),
             (Opcode::OpAdd, vec![], vec![Opcode::OpAdd as u8]),
+            (
+                Opcode::OpGetLocal,
+                vec![255],
+                vec![Opcode::OpGetLocal as u8, 255],
+            ),
         ];
 
         for test in tests {
@@ -351,14 +376,60 @@ mod tests {
     fn test_instructions_string() {
         let instructions = vec![
             make(Opcode::OpAdd, &[]),
+            make(Opcode::OpGetLocal, &[1]),
             make(Opcode::OpConstant, &[2]),
             make(Opcode::OpConstant, &[65535]),
         ];
 
-        let expected = "0000 OpAdd \n0001 OpConstant 2 \n0004 OpConstant 65535 \n";
+        let expected =
+            "0000 OpAdd \n0001 OpGetLocal 1 \n0003 OpConstant 2 \n0006 OpConstant 65535 \n";
 
         let concated: Instructions = instructions.into_iter().flat_map(|i| i).collect();
 
         assert_eq!(expected, concated.to_string());
+    }
+
+    #[test]
+    fn test_read_operands() {
+        struct TestCase {
+            op: Opcode,
+            operands: Vec<i64>,
+            bytes_read: i64,
+        }
+
+        let tests: Vec<TestCase> = vec![
+            TestCase {
+                op: Opcode::OpConstant,
+                operands: vec![65535],
+                bytes_read: 2,
+            },
+            TestCase {
+                op: Opcode::OpGetLocal,
+                operands: vec![255],
+                bytes_read: 1,
+            },
+        ];
+
+        for test in tests {
+            let instruction = make(test.op, &test.operands);
+
+            let def = test.op.get_definition();
+
+            let (operands_read, n) = read_operands(&def, &instruction[1..]);
+
+            assert_eq!(
+                n, test.bytes_read,
+                "n wrong. want: {}, got: {}",
+                test.bytes_read, n
+            );
+
+            for (i, want) in test.operands.iter().enumerate() {
+                assert_eq!(
+                    operands_read[i], *want,
+                    "operand wrong. want: {}, got: {}",
+                    want, operands_read[i]
+                )
+            }
+        }
     }
 }

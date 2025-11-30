@@ -95,6 +95,7 @@ impl Compiler {
 
         self.scopes.push(scope);
         self.scope_index += 1;
+        self.symbol_table = SymbolTable::new_enclosed(self.symbol_table.clone());
     }
 
     fn leave_scope(&mut self) -> Instructions {
@@ -102,6 +103,11 @@ impl Compiler {
 
         self.scopes.pop();
         self.scope_index -= 1;
+        self.symbol_table = *self
+            .symbol_table
+            .outer
+            .clone()
+            .expect("outer symbol table doesnt exist");
 
         instructions
     }
@@ -124,7 +130,12 @@ impl Compiler {
 
                 self.compile_expression(&let_val)?;
                 let symbol = self.symbol_table.define(&let_statement.name.value);
-                self.emit(Opcode::OpSetGlobal, &[symbol.index]);
+
+                if symbol.is_global_scope() {
+                    self.emit(Opcode::OpSetGlobal, &[symbol.index]);
+                } else {
+                    self.emit(Opcode::OpSetLocal, &[symbol.index]);
+                }
 
                 Ok(())
             }
@@ -259,8 +270,11 @@ impl Compiler {
                     return Err(CompilerError::UndefinedVariable);
                 };
 
-                self.emit(Opcode::OpGetGlobal, &[symbol.index]);
-
+                if symbol.is_global_scope() {
+                    self.emit(Opcode::OpGetGlobal, &[symbol.index]);
+                } else {
+                    self.emit(Opcode::OpGetLocal, &[symbol.index]);
+                }
                 Ok(())
             }
             Expression::StringLiteral(str_lit) => {
@@ -530,43 +544,6 @@ mod tests {
     }
 
     #[test]
-    fn test_read_operands() {
-        struct TestCase {
-            op: Opcode,
-            operands: Vec<i64>,
-            bytes_read: i64,
-        }
-
-        let tests: Vec<TestCase> = vec![TestCase {
-            op: Opcode::OpConstant,
-            operands: vec![65535],
-            bytes_read: 2,
-        }];
-
-        for test in tests {
-            let instruction = make(test.op, &test.operands);
-
-            let def = test.op.get_definition();
-
-            let (operands_read, n) = read_operands(&def, &instruction[1..]);
-
-            assert_eq!(
-                n, test.bytes_read,
-                "n wrong. want: {}, got: {}",
-                test.bytes_read, n
-            );
-
-            for (i, want) in test.operands.iter().enumerate() {
-                assert_eq!(
-                    operands_read[i], *want,
-                    "operand wrong. want: {}, got: {}",
-                    want, operands_read[i]
-                )
-            }
-        }
-    }
-
-    #[test]
     fn test_boolean_expression() {
         let tests = vec![
             CompilerTestCase {
@@ -744,6 +721,84 @@ mod tests {
                     Instructions::from(make(Opcode::OpGetGlobal, &[0])),
                     Instructions::from(make(Opcode::OpSetGlobal, &[1])),
                     Instructions::from(make(Opcode::OpGetGlobal, &[1])),
+                    Instructions::from(make(Opcode::OpPop, &[])),
+                ],
+            },
+        ];
+
+        run_compiler_tests(tests);
+    }
+
+    #[test]
+    fn test_let_statement_scopes() {
+        let tests = vec![
+            CompilerTestCase {
+                input: "
+                let num = 55;
+                function() { num }
+                "
+                .to_string(),
+                expected_constants: vec![
+                    ExpectedConstant::I64(55),
+                    ExpectedConstant::Instructions(vec![
+                        Instructions::from(make(Opcode::OpGetGlobal, &[0])),
+                        Instructions::from(make(Opcode::OpReturnValue, &[])),
+                    ]),
+                ],
+                expected_instructions: vec![
+                    Instructions::from(make(Opcode::OpConstant, &[0])),
+                    Instructions::from(make(Opcode::OpSetGlobal, &[0])),
+                    Instructions::from(make(Opcode::OpConstant, &[1])),
+                    Instructions::from(make(Opcode::OpPop, &[])),
+                ],
+            },
+            CompilerTestCase {
+                input: "
+                function() {
+                    let num = 55;
+                    num
+                }
+                "
+                .to_string(),
+                expected_constants: vec![
+                    ExpectedConstant::I64(55),
+                    ExpectedConstant::Instructions(vec![
+                        Instructions::from(make(Opcode::OpConstant, &[0])),
+                        Instructions::from(make(Opcode::OpSetLocal, &[0])),
+                        Instructions::from(make(Opcode::OpGetLocal, &[0])),
+                        Instructions::from(make(Opcode::OpReturnValue, &[])),
+                    ]),
+                ],
+                expected_instructions: vec![
+                    Instructions::from(make(Opcode::OpConstant, &[1])),
+                    Instructions::from(make(Opcode::OpPop, &[])),
+                ],
+            },
+            CompilerTestCase {
+                input: "
+                function() {
+                    let a = 55;
+                    let b = 77;
+                    a + b
+                }
+                "
+                .to_string(),
+                expected_constants: vec![
+                    ExpectedConstant::I64(55),
+                    ExpectedConstant::I64(77),
+                    ExpectedConstant::Instructions(vec![
+                        Instructions::from(make(Opcode::OpConstant, &[0])),
+                        Instructions::from(make(Opcode::OpSetLocal, &[0])),
+                        Instructions::from(make(Opcode::OpConstant, &[1])),
+                        Instructions::from(make(Opcode::OpSetLocal, &[1])),
+                        Instructions::from(make(Opcode::OpGetLocal, &[0])),
+                        Instructions::from(make(Opcode::OpGetLocal, &[1])),
+                        Instructions::from(make(Opcode::OpAdd, &[])),
+                        Instructions::from(make(Opcode::OpReturnValue, &[])),
+                    ]),
+                ],
+                expected_instructions: vec![
+                    Instructions::from(make(Opcode::OpConstant, &[2])),
                     Instructions::from(make(Opcode::OpPop, &[])),
                 ],
             },
@@ -1016,36 +1071,87 @@ mod tests {
     #[test]
     fn test_compiler_scopes() {
         let mut compiler = Compiler::new();
-
-        assert_eq!(0, compiler.scope_index);
+        assert_eq!(
+            compiler.scope_index, 0,
+            "scope_index wrong. got={}, want=0",
+            compiler.scope_index
+        );
 
         compiler.emit(Opcode::OpMul, &[]);
         compiler.enter_scope();
-        assert_eq!(1, compiler.scope_index);
+        assert_eq!(
+            compiler.scope_index, 1,
+            "scope_index wrong. got={}, want=1",
+            compiler.scope_index
+        );
 
         compiler.emit(Opcode::OpSub, &[]);
-        assert_eq!(1, compiler.scopes[compiler.scope_index].instructions.len());
+        assert_eq!(
+            compiler.scopes[compiler.scope_index].instructions.len(),
+            1,
+            "instructions length wrong. got={}",
+            compiler.scopes[compiler.scope_index].instructions.len()
+        );
 
         let last = compiler.scopes[compiler.scope_index]
             .last_instruction
-            .expect("last_instruction doesnt exist");
-        assert_eq!(last.opcode, Opcode::OpSub);
+            .expect("last_instruction doesn't exist");
+        assert_eq!(
+            last.opcode,
+            Opcode::OpSub,
+            "last_instruction.opcode wrong. got={:?}, want={:?}",
+            last.opcode,
+            Opcode::OpSub
+        );
+
+        // Check that the symbol table was enclosed
+        assert!(
+            compiler.symbol_table.outer.is_some(),
+            "compiler did not enclose symbol_table"
+        );
 
         compiler.leave_scope();
-        assert_eq!(0, compiler.scope_index);
+        assert_eq!(
+            compiler.scope_index, 0,
+            "scope_index wrong. got={}, want=0",
+            compiler.scope_index
+        );
+
+        // Check that the symbol table was restored
+        assert!(
+            compiler.symbol_table.outer.is_none(),
+            "compiler modified global symbol table incorrectly"
+        );
 
         compiler.emit(Opcode::OpAdd, &[]);
-        assert_eq!(2, compiler.scopes[compiler.scope_index].instructions.len());
+        assert_eq!(
+            compiler.scopes[compiler.scope_index].instructions.len(),
+            2,
+            "instructions length wrong. got={}",
+            compiler.scopes[compiler.scope_index].instructions.len()
+        );
 
         let last = compiler.scopes[compiler.scope_index]
             .last_instruction
-            .expect("last_instruction doesnt exist");
-        assert_eq!(last.opcode, Opcode::OpAdd);
+            .expect("last_instruction doesn't exist");
+        assert_eq!(
+            last.opcode,
+            Opcode::OpAdd,
+            "last_instruction.opcode wrong. got={:?}, want={:?}",
+            last.opcode,
+            Opcode::OpAdd
+        );
 
         let prev = compiler.scopes[compiler.scope_index]
             .prev_instruction
-            .expect("prev_instruction doesnt exist");
-        assert_eq!(prev.opcode, Opcode::OpMul);
+            .expect("prev_instruction doesn't exist");
+        assert_eq!(
+            prev.opcode,
+            Opcode::OpMul,
+            "prev_instruction.opcode wrong. got={:?}, want={:?}",
+            prev.opcode,
+            Opcode::OpMul
+        );
     }
 
     #[test]

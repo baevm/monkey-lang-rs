@@ -262,6 +262,8 @@ impl Vm {
 
                     self.push(Object::Null(Box::new(Null {})))?
                 }
+                Opcode::OpGetLocal => todo!(),
+                Opcode::OpSetLocal => todo!(),
             }
 
             i += 1;
