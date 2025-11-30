@@ -1,10 +1,10 @@
-use crate::ast::{self, HashLiteral, Identifier, IfExpression, InfixExpression};
-use crate::object::{
+use monke_core::ast::{self, HashLiteral, Identifier, IfExpression, InfixExpression};
+use monke_core::object::{
     Array, Builtin, Environment, EvaluateErr, Function, HashKey, HashObj, HashPair, HashableKey,
     InternalError, Return, StringObj,
 };
-use crate::token::TokenType;
-use crate::{
+use monke_core::token::TokenType;
+use monke_core::{
     ast::{Expression, Program, Statement},
     object::{Boolean, Integer, Null, Object},
 };
@@ -12,6 +12,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem::discriminant;
 use std::rc::Rc;
+
+use crate::builtin::BuiltinFunction;
 
 pub struct Evaluator {
     env: Rc<RefCell<Environment>>,
@@ -671,12 +673,13 @@ mod tests {
     use core::panic;
     use std::collections::HashMap;
 
-    use crate::{
-        evaluator::Evaluator,
+    use monke_core::{
         lexer::Lexer,
         object::{Boolean, Environment, HashKey, HashableKey, Integer, Object, StringObj},
         parser::Parser,
     };
+
+    use crate::interpreter::Evaluator;
 
     struct TestCase<T> {
         input: String,

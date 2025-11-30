@@ -8,8 +8,8 @@ use compiler::{
     compiler::Compiler,
     vm::{self, Vm},
 };
+use interpreter::interpreter::Evaluator;
 use monke_core::{
-    evaluator::Evaluator,
     lexer::Lexer,
     object::{Environment, Inspect, Null, Object},
     parser::{ParseErr, Parser},

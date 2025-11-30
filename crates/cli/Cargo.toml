@@ -7,3 +7,4 @@ edition = "2024"
 clap = { version = "4.5.41", features = ["derive"] }
 monke_core = { workspace = true }
 compiler = { workspace = true }
+interpreter = { workspace = true }

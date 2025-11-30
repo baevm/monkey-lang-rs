@@ -1,7 +1,7 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 
+use interpreter::interpreter::Evaluator;
 use monke_core::{
-    evaluator::Evaluator,
     lexer::Lexer,
     object::{Environment, Object},
     parser::Parser,

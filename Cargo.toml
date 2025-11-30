@@ -4,3 +4,4 @@ members = ["crates/*"]
 [workspace.dependencies]
 monke_core = { version = "*", path = "crates/monke_core" }
 compiler = { version = "*", path = "crates/compiler" }
+interpreter = { version = "*", path = "crates/interpreter" }
