@@ -237,6 +237,8 @@ impl Vm {
                     self.execute_index_expression(left, index)?
                 }
                 Opcode::OpCall => {
+                    self.update_frame_pointer(1); // TODO
+
                     let func = match &self.stack[self.sp - 1] {
                         Object::CompiledFunction(f) => f.clone(),
                         _ => return Err(VmError::CallingNonFunction),

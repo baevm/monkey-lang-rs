@@ -210,7 +210,7 @@ impl Opcode {
             },
             Opcode::OpCall => Definition {
                 name: "OpCall",
-                operand_widths: &[],
+                operand_widths: &[1],
             },
             Opcode::OpReturnValue => Definition {
                 name: "OpReturnValue",

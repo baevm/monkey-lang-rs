@@ -322,6 +322,10 @@ impl Compiler {
             Expression::FunctionLiteral(func_lit) => {
                 self.enter_scope();
 
+                for param in &func_lit.parameters {
+                    self.symbol_table.define(&param.value);
+                }
+
                 self.compile_block_statement(&func_lit.body)?;
 
                 if self.is_last_instruction(Opcode::OpPop) {
@@ -347,7 +351,12 @@ impl Compiler {
             }
             Expression::CallExpression(call_expr) => {
                 self.compile_expression(&call_expr.function)?;
-                self.emit(Opcode::OpCall, &[]);
+
+                for arg in &call_expr.arguments {
+                    self.compile_expression(arg)?;
+                }
+
+                self.emit(Opcode::OpCall, &[call_expr.arguments.len() as i64]);
 
                 Ok(())
             }
@@ -1169,7 +1178,7 @@ mod tests {
                 ],
                 expected_instructions: vec![
                     Instructions::from(make(Opcode::OpConstant, &[1])),
-                    Instructions::from(make(Opcode::OpCall, &[])),
+                    Instructions::from(make(Opcode::OpCall, &[0])),
                     Instructions::from(make(Opcode::OpPop, &[])),
                 ],
             },
@@ -1186,7 +1195,57 @@ mod tests {
                     Instructions::from(make(Opcode::OpConstant, &[1])),
                     Instructions::from(make(Opcode::OpSetGlobal, &[0])),
                     Instructions::from(make(Opcode::OpGetGlobal, &[0])),
-                    Instructions::from(make(Opcode::OpCall, &[])),
+                    Instructions::from(make(Opcode::OpCall, &[0])),
+                    Instructions::from(make(Opcode::OpPop, &[])),
+                ],
+            },
+            CompilerTestCase {
+                input: "
+                let oneArg = function(a) { a };
+                oneArg(24);"
+                    .to_string(),
+                expected_constants: vec![
+                    ExpectedConstant::Instructions(vec![
+                        Instructions::from(make(Opcode::OpGetLocal, &[0])),
+                        Instructions::from(make(Opcode::OpReturnValue, &[])),
+                    ]),
+                    ExpectedConstant::I64(24),
+                ],
+                expected_instructions: vec![
+                    Instructions::from(make(Opcode::OpConstant, &[0])),
+                    Instructions::from(make(Opcode::OpSetGlobal, &[0])),
+                    Instructions::from(make(Opcode::OpGetGlobal, &[0])),
+                    Instructions::from(make(Opcode::OpConstant, &[1])),
+                    Instructions::from(make(Opcode::OpCall, &[1])),
+                    Instructions::from(make(Opcode::OpPop, &[])),
+                ],
+            },
+            CompilerTestCase {
+                input: "
+                let manyArg = function(a, b, c) {a; b; c };
+                manyArg(24, 25, 26);"
+                    .to_string(),
+                expected_constants: vec![
+                    ExpectedConstant::Instructions(vec![
+                        Instructions::from(make(Opcode::OpGetLocal, &[0])),
+                        Instructions::from(make(Opcode::OpPop, &[])),
+                        Instructions::from(make(Opcode::OpGetLocal, &[1])),
+                        Instructions::from(make(Opcode::OpPop, &[])),
+                        Instructions::from(make(Opcode::OpGetLocal, &[2])),
+                        Instructions::from(make(Opcode::OpReturnValue, &[])),
+                    ]),
+                    ExpectedConstant::I64(24),
+                    ExpectedConstant::I64(25),
+                    ExpectedConstant::I64(26),
+                ],
+                expected_instructions: vec![
+                    Instructions::from(make(Opcode::OpConstant, &[0])),
+                    Instructions::from(make(Opcode::OpSetGlobal, &[0])),
+                    Instructions::from(make(Opcode::OpGetGlobal, &[0])),
+                    Instructions::from(make(Opcode::OpConstant, &[1])),
+                    Instructions::from(make(Opcode::OpConstant, &[2])),
+                    Instructions::from(make(Opcode::OpConstant, &[3])),
+                    Instructions::from(make(Opcode::OpCall, &[3])),
                     Instructions::from(make(Opcode::OpPop, &[])),
                 ],
             },
