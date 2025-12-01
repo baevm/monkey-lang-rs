@@ -1,7 +1,17 @@
-let x = 0; 
+let catalog = [
+    {"name": "alpha", "values": [1, 2, 3, 4]},
+    {"name": "beta", "values": [5, 6, 7, 8]},
+    {"name": "gamma", "values": [9, 10, 11, 12]}
+];
 
-for (let i = 0; i < 5; i += 1) { 
-    x += 1; 
-}; 
+let grandTotal = 0;
 
-print(x); 
+for (let i = 0; i < len(catalog); i += 1) {
+    let entry = catalog[i];
+    let values = entry["values"];
+    for (let j = 0; j < len(values); j += 1) {
+        grandTotal = grandTotal + values[j];
+    }
+};
+
+print(grandTotal);
