@@ -6,95 +6,10 @@ use crate::{
         ReturnStatement, Statement, StringLiteral,
     },
     lexer::Lexer,
+    parser_error::{InfoPosition, ParseError},
+    precedence::Precedence,
     token::{Token, TokenType},
 };
-
-#[derive(Debug, PartialEq, PartialOrd)]
-enum Precedence {
-    Lowest,
-    Assign,      // =
-    Equals,      // ==
-    LessGreater, // < >
-    Sum,         // +, -, +=, -=
-    Product,     // *, /, *=, /=
-    Prefix,      // --variable
-    Call,        // function()
-    Index,       // array[someIndex]
-}
-
-impl Precedence {
-    pub fn token_to_precedence(token: &TokenType) -> Option<Self> {
-        match token {
-            TokenType::Assign => Some(Precedence::Assign),
-
-            TokenType::Eq => Some(Precedence::Equals),
-            TokenType::NotEq => Some(Precedence::Equals),
-
-            TokenType::Lt => Some(Precedence::LessGreater),
-            TokenType::Gt => Some(Precedence::LessGreater),
-
-            TokenType::Plus => Some(Precedence::Sum),
-            TokenType::Minus => Some(Precedence::Sum),
-            TokenType::AssignAdd => Some(Precedence::Sum),
-            TokenType::AssignSub => Some(Precedence::Sum),
-
-            TokenType::Slash => Some(Precedence::Product),
-            TokenType::Asterisk => Some(Precedence::Product),
-            TokenType::AssignDiv => Some(Precedence::Product),
-            TokenType::AssignMul => Some(Precedence::Product),
-
-            TokenType::Lparen => Some(Precedence::Call),
-            TokenType::Lbracket => Some(Precedence::Index),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct InfoPosition {
-    pub line: usize,
-    pub column: usize,
-}
-
-#[derive(Debug, Clone)]
-pub enum ParseErr {
-    UnexpectedToken {
-        expected: Option<TokenType>,
-        got: TokenType,
-        info: InfoPosition,
-    },
-    MissingPrefixParseFn(TokenType),
-    CouldNotParseInteger(String),
-}
-
-impl std::fmt::Display for ParseErr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ParseErr::UnexpectedToken {
-                expected,
-                got,
-                info,
-            } => match expected {
-                Some(with_expected) => write!(
-                    f,
-                    "SyntaxError(Line: {}, Column: {}): Expected next token to be '{}', got '{}' instead",
-                    info.line, info.column, with_expected, got
-                ),
-                None => write!(
-                    f,
-                    "SyntaxError(Line: {}, Column: {}): Unexpected token: '{}'",
-                    info.line, info.column, got
-                ),
-            },
-            ParseErr::MissingPrefixParseFn(token_type) => {
-                write!(f, "No prefix parse function found for: '{:?}'", token_type)
-            }
-            ParseErr::CouldNotParseInteger(literal) => {
-                write!(f, "Could not parse '{}' as integer", literal)
-            }
-        }
-    }
-}
 
 pub struct Parser {
     lexer: Lexer,
@@ -102,7 +17,7 @@ pub struct Parser {
     curr_token: Token,
     peek_token: Token,
 
-    errors: Vec<ParseErr>,
+    errors: Vec<ParseError>,
 }
 
 impl Parser {
@@ -121,7 +36,7 @@ impl Parser {
         parser
     }
 
-    pub fn errors(&self) -> Vec<ParseErr> {
+    pub fn errors(&self) -> Vec<ParseError> {
         self.errors.clone()
     }
 
@@ -271,7 +186,7 @@ impl Parser {
 
         if prefix.is_none() {
             if self.errors.last().map_or(true, |e| match e {
-                ParseErr::UnexpectedToken { info, .. } => {
+                ParseError::UnexpectedToken { info, .. } => {
                     info.line != self.lexer.line || info.column != self.lexer.col
                 }
                 _ => true,
@@ -302,7 +217,7 @@ impl Parser {
         let value = self.curr_token.literal.parse::<i64>();
 
         if value.is_err() {
-            self.errors.push(ParseErr::CouldNotParseInteger(
+            self.errors.push(ParseError::CouldNotParseInteger(
                 self.curr_token.literal.to_string(),
             ));
             return None;
@@ -673,7 +588,7 @@ impl Parser {
     }
 
     fn peek_error(&mut self, expected: Option<TokenType>) {
-        self.errors.push(ParseErr::UnexpectedToken {
+        self.errors.push(ParseError::UnexpectedToken {
             expected,
             got: self.peek_token.token_type.clone(),
             info: InfoPosition {

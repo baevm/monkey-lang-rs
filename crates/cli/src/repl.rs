@@ -12,7 +12,8 @@ use interpreter::interpreter::Evaluator;
 use monke_core::{
     lexer::Lexer,
     object::{Environment, Inspect, Null, Object},
-    parser::{ParseErr, Parser},
+    parser::Parser,
+    parser_error::ParseError,
 };
 
 pub struct Repl {
@@ -100,7 +101,7 @@ fn compile_line(
     buf: &str,
     compiler: &mut Compiler,
     globals: &mut [Object],
-) -> Result<Option<Object>, Vec<ParseErr>> {
+) -> Result<Option<Object>, Vec<ParseError>> {
     let lexer = Lexer::new(buf.to_string());
     let mut parser = Parser::new(lexer);
     let program = parser.parse_program();
@@ -128,7 +129,7 @@ fn compile_line(
     Ok(vm.last_popped_stack_element())
 }
 
-fn interpret(buf: String) -> Result<Object, Vec<ParseErr>> {
+fn interpret(buf: String) -> Result<Object, Vec<ParseError>> {
     let lexer = Lexer::new(buf);
     let mut parser = Parser::new(lexer);
 
