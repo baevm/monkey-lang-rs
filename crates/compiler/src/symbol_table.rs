@@ -24,7 +24,7 @@ pub struct SymbolTable {
     pub outer: Option<Box<SymbolTable>>,
 
     store: HashMap<String, Symbol>,
-    num_definitions: i64,
+    pub num_definitions: i64,
 }
 
 impl SymbolTable {

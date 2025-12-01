@@ -332,10 +332,12 @@ impl Compiler {
                     self.emit(Opcode::OpReturn, &[]);
                 }
 
+                let num_locals = self.symbol_table.num_definitions;
                 let instructions = self.leave_scope();
 
                 let compiled_fn = Object::CompiledFunction(Box::new(CompiledFunction {
                     instructions: instructions.to_vec(),
+                    num_locals,
                 }));
 
                 let constant = self.add_constant(compiled_fn);

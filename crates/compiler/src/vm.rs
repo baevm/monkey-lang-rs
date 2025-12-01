@@ -49,8 +49,9 @@ impl Vm {
     pub fn new(bytecode: Bytecode) -> Self {
         let main_func = object::CompiledFunction {
             instructions: bytecode.instructions.to_vec(),
+            num_locals: 0,
         };
-        let main_frame = Frame::new(main_func);
+        let main_frame = Frame::new(main_func, 0);
 
         let mut frames: Vec<Frame> = Vec::with_capacity(MAX_FRAMES);
         frames.push(main_frame);
@@ -236,28 +237,45 @@ impl Vm {
                     self.execute_index_expression(left, index)?
                 }
                 Opcode::OpCall => {
-                    let Object::CompiledFunction(func) = &self.stack[self.sp - 1] else {
-                        return Err(VmError::CallingNonFunction);
+                    let func = match &self.stack[self.sp - 1] {
+                        Object::CompiledFunction(f) => f.clone(),
+                        _ => return Err(VmError::CallingNonFunction),
                     };
 
-                    let frame = Frame::new(*func.clone());
+                    let frame = Frame::new(*func.clone(), self.sp as i64);
+                    let bp = frame.base_pointer;
                     self.push_frame(frame);
+                    self.sp = (bp + func.num_locals) as usize;
                 }
                 Opcode::OpReturnValue => {
                     let return_value = self.pop();
-                    self.pop_frame();
-                    self.pop();
+                    let frame = self.pop_frame().expect("frame doesnt exist");
+                    self.sp = (frame.base_pointer - 1) as usize;
 
                     self.push(return_value)?
                 }
                 Opcode::OpReturn => {
-                    self.pop_frame();
-                    self.pop();
+                    let frame = self.pop_frame().expect("frame doesnt exist");
+                    self.sp = (frame.base_pointer - 1) as usize;
 
                     self.push(Object::Null(Box::new(Null {})))?
                 }
-                Opcode::OpGetLocal => todo!(),
-                Opcode::OpSetLocal => todo!(),
+                Opcode::OpSetLocal => {
+                    let local_index = u8::from_be_bytes([ins[(i + 1) as usize]]);
+                    self.update_frame_pointer(1);
+
+                    let base_pointer = self.current_frame_base_pointer();
+                    self.stack[(base_pointer + (local_index as i64)) as usize] = self.pop();
+                }
+                Opcode::OpGetLocal => {
+                    let local_index = u8::from_be_bytes([ins[(i + 1) as usize]]);
+                    self.update_frame_pointer(1);
+
+                    let base_pointer = self.current_frame_base_pointer();
+
+                    let obj = self.stack[(base_pointer + (local_index as i64)) as usize].clone();
+                    self.push(obj)?
+                }
             }
 
             i += 1;
@@ -272,6 +290,10 @@ impl Vm {
 
     fn current_frame(&self) -> &Frame {
         &self.frames[self.frame_index - 1]
+    }
+
+    fn current_frame_base_pointer(&self) -> i64 {
+        self.frames[self.frame_index - 1].base_pointer
     }
 
     fn update_frame_pointer(&mut self, to_add: i64) {
@@ -293,17 +315,8 @@ impl Vm {
     }
 
     fn pop_frame(&mut self) -> Option<&Frame> {
-        if self.frame_index == 0 {
-            return None;
-        }
-
         self.frame_index -= 1;
-
-        if self.frame_index == 0 {
-            None
-        } else {
-            self.frames.get(self.frame_index - 1)
-        }
+        self.frames.get(self.frame_index)
     }
 
     fn is_truthy(&self, object: &Object) -> bool {
@@ -1004,15 +1017,86 @@ mod tests {
 
     #[test]
     fn test_first_class_functions() {
-        let tests = vec![VmTestCase {
-            input: "
+        let tests = vec![
+            VmTestCase {
+                input: "
                 let returnsOne = function() { 1; };
                 let returnsOneReturner = function() { returnsOne; };
                 returnsOneReturner()();
             "
-            .to_string(),
-            expected: Expected::Integer(1),
-        }];
+                .to_string(),
+                expected: Expected::Integer(1),
+            },
+            VmTestCase {
+                input: "
+               let returnsOneReturner = function() {
+                let returnsOne = function() { 1; };
+                returnsOne;
+                };
+                returnsOneReturner()();
+            "
+                .to_string(),
+                expected: Expected::Integer(1),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_calling_functions_with_bindings() {
+        let tests = vec![
+            VmTestCase {
+                input: "
+               let one = function() { let one = 1; one };
+                one();
+            "
+                .to_string(),
+                expected: Expected::Integer(1),
+            },
+            VmTestCase {
+                input: "
+               let oneAndTwo = function() { let one = 1; let two = 2; one + two; };
+                oneAndTwo();
+            "
+                .to_string(),
+                expected: Expected::Integer(3),
+            },
+            VmTestCase {
+                input: "
+               let oneAndTwo = function() { let one = 1; let two = 2; one + two; };
+                let threeAndFour = function() { let three = 3; let four = 4; three + four; };
+                oneAndTwo() + threeAndFour();
+            "
+                .to_string(),
+                expected: Expected::Integer(10),
+            },
+            VmTestCase {
+                input: "
+               let firstFoobar = function() { let foobar = 50; foobar; };
+                let secondFoobar = function() { let foobar = 100; foobar; };
+                firstFoobar() + secondFoobar();
+            "
+                .to_string(),
+                expected: Expected::Integer(150),
+            },
+            VmTestCase {
+                input: "
+               let globalSeed = 50;
+                let minusOne = function() {
+                let num = 1;
+                globalSeed - num;
+                }
+                let minusTwo = function() {
+                let num = 2;
+                globalSeed - num;
+                }
+                minusOne() + minusTwo();
+            "
+                .to_string(),
+                expected: Expected::Integer(97),
+            },
+        ];
 
         run_vm_tests(tests);
     }
