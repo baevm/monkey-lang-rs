@@ -342,6 +342,7 @@ impl Compiler {
                 let compiled_fn = Object::CompiledFunction(Box::new(CompiledFunction {
                     instructions: instructions.to_vec(),
                     num_locals,
+                    num_parameters: func_lit.parameters.len() as i64,
                 }));
 
                 let constant = self.add_constant(compiled_fn);

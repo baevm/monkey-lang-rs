@@ -26,7 +26,7 @@ pub struct Vm {
     frame_index: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum VmError {
     StackOverflowError(StackOverflowError),
     InvalidType,
@@ -34,9 +34,10 @@ pub enum VmError {
     UnusableAsHashKey,
     UnsupportedIndexOperator,
     CallingNonFunction,
+    WrongNumberOfArgs,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct StackOverflowError;
 
 impl std::fmt::Display for StackOverflowError {
@@ -50,6 +51,7 @@ impl Vm {
         let main_func = object::CompiledFunction {
             instructions: bytecode.instructions.to_vec(),
             num_locals: 0,
+            num_parameters: 0,
         };
         let main_frame = Frame::new(main_func, 0);
 
@@ -237,17 +239,10 @@ impl Vm {
                     self.execute_index_expression(left, index)?
                 }
                 Opcode::OpCall => {
-                    self.update_frame_pointer(1); // TODO
+                    let num_args = u8::from_be_bytes([ins[(i + 1) as usize]]) as usize;
+                    self.update_frame_pointer(1);
 
-                    let func = match &self.stack[self.sp - 1] {
-                        Object::CompiledFunction(f) => f.clone(),
-                        _ => return Err(VmError::CallingNonFunction),
-                    };
-
-                    let frame = Frame::new(*func.clone(), self.sp as i64);
-                    let bp = frame.base_pointer;
-                    self.push_frame(frame);
-                    self.sp = (bp + func.num_locals) as usize;
+                    self.call_function(num_args)?;
                 }
                 Opcode::OpReturnValue => {
                     let return_value = self.pop();
@@ -525,6 +520,25 @@ impl Vm {
 
         self.push(pair.value.clone())
     }
+
+    fn call_function(&mut self, num_args: usize) -> Result<(), VmError> {
+        let func = match &self.stack[self.sp - 1 - num_args] {
+            Object::CompiledFunction(f) => f.clone(),
+            _ => return Err(VmError::CallingNonFunction),
+        };
+
+        if func.num_parameters != num_args as i64 {
+            return Err(VmError::WrongNumberOfArgs);
+        }
+
+        let frame = Frame::new(*func.clone(), (self.sp - num_args) as i64);
+
+        let bp = frame.base_pointer;
+        self.push_frame(frame);
+        self.sp = (bp + func.num_locals) as usize;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -538,8 +552,12 @@ mod tests {
         parser::Parser,
     };
 
-    use crate::{compiler::Compiler, vm::Vm};
+    use crate::{
+        compiler::Compiler,
+        vm::{Vm, VmError},
+    };
 
+    #[derive(Debug)]
     enum Expected {
         Integer(i64),
         Boolean(bool),
@@ -1101,6 +1119,129 @@ mod tests {
         ];
 
         run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_calling_functions_with_arguments_and_bindings() {
+        let tests = vec![
+            VmTestCase {
+                input: "
+                let identity = function(a) { a; };
+                identity(4);
+            "
+                .to_string(),
+                expected: Expected::Integer(4),
+            },
+            VmTestCase {
+                input: "
+               let sum = function(a, b) { a + b; };
+                sum(1, 2);
+            "
+                .to_string(),
+                expected: Expected::Integer(3),
+            },
+            VmTestCase {
+                input: "
+               let sum = function(a, b) {
+                    let c = a + b;
+                    c;
+                };
+                sum(1, 2);
+            "
+                .to_string(),
+                expected: Expected::Integer(3),
+            },
+            VmTestCase {
+                input: "
+               let sum = function(a, b) {
+                    let c = a + b;
+                    c;
+                };
+                sum(1, 2) + sum(3, 4);
+            "
+                .to_string(),
+                expected: Expected::Integer(10),
+            },
+            VmTestCase {
+                input: "
+               let sum = function(a, b) {
+                    let c = a + b;
+                    c;
+                };
+                let outer = function() {
+                    sum(1, 2) + sum(3, 4);
+                };
+                outer();
+            "
+                .to_string(),
+                expected: Expected::Integer(10),
+            },
+            VmTestCase {
+                input: "
+            let globalNum = 10;
+            let sum = function(a, b) {
+                let c = a + b;
+                c + globalNum;
+            };
+            let outer = function() {
+                sum(1, 2) + sum(3, 4) + globalNum;
+            };
+            outer() + globalNum;
+            "
+                .to_string(),
+                expected: Expected::Integer(50),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_calling_functions_with_wrong_arguments() {
+        let tests = vec![
+            VmTestCase {
+                input: "
+                function() { 1; }(1);
+            "
+                .to_string(),
+                expected: Expected::String("wrong number of arguments: want=0, got=1".to_string()),
+            },
+            VmTestCase {
+                input: "
+                function(a) { a; }();
+            "
+                .to_string(),
+                expected: Expected::String("wrong number of arguments: want=1, got=0".to_string()),
+            },
+            VmTestCase {
+                input: "
+                function(a, b) { a + b; }(1);
+            "
+                .to_string(),
+                expected: Expected::String("wrong number of arguments: want=2, got=1".to_string()),
+            },
+        ];
+
+        for test in tests {
+            let program = parse(test.input);
+
+            let mut compiler = Compiler::new();
+            compiler.compile(program).expect("compiler error");
+
+            let mut vm = Vm::new(compiler.bytecode());
+            let result = vm.run();
+
+            if result.is_ok() {
+                panic!("expected VM error but resulted in none");
+            }
+
+            let Expected::String(expected_err) = test.expected else {
+                panic!("object is not String. got: {:?}", test.expected);
+            };
+
+            // TODO: add test for error message, not just type of error
+            assert_eq!(result.err().unwrap(), VmError::WrongNumberOfArgs)
+        }
     }
 
     fn create_hash_key(value: i64) -> HashKey {

@@ -302,6 +302,7 @@ impl Inspect for HashObj {
 pub struct CompiledFunction {
     pub instructions: Vec<u8>,
     pub num_locals: i64,
+    pub num_parameters: i64,
 }
 
 impl Inspect for CompiledFunction {
