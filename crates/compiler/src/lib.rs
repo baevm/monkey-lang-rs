@@ -1,3 +1,4 @@
+mod builtin;
 mod code;
 pub mod compiler;
 mod frame;

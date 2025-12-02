@@ -90,6 +90,18 @@ impl SymbolTable {
             self.define_builtin(i as i64, name);
         }
     }
+
+    pub fn get_builtin(index: usize) -> Option<&'static str> {
+        // gets by index of builtins array in define_builtins
+        match index {
+            0 => Some("len"),
+            1 => Some("first"),
+            2 => Some("last"),
+            3 => Some("push"),
+            4 => Some("print"),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]

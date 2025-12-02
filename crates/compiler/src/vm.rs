@@ -1,13 +1,16 @@
 use std::collections::HashMap;
 
 use monke_core::object::{
-    self, Array, Boolean, HashKey, HashObj, HashPair, Integer, Null, Object, StringObj,
+    self, Array, Boolean, Builtin, CompiledFunction, HashKey, HashObj, HashPair, Integer, Null,
+    Object, StringObj,
 };
 
 use crate::{
+    builtin::BuiltinFunction,
     code::{Instructions, Opcode},
     compiler::Bytecode,
     frame::Frame,
+    symbol_table::SymbolTable,
 };
 
 const STACK_SIZE: usize = 2048;
@@ -242,7 +245,7 @@ impl Vm {
                     let num_args = u8::from_be_bytes([ins[(i + 1) as usize]]) as usize;
                     self.update_frame_pointer(1);
 
-                    self.call_function(num_args)?;
+                    self.execute_call(num_args)?;
                 }
                 Opcode::OpReturnValue => {
                     let return_value = self.pop();
@@ -273,7 +276,21 @@ impl Vm {
                     let obj = self.stack[(base_pointer + (local_index as i64)) as usize].clone();
                     self.push(obj)?
                 }
-                Opcode::OpGetBuiltin => todo!(),
+                Opcode::OpGetBuiltin => {
+                    let builtin_index = u8::from_be_bytes([ins[(i + 1) as usize]]);
+                    self.update_frame_pointer(1);
+
+                    let Some(builtin_name) = SymbolTable::get_builtin(builtin_index as usize)
+                    else {
+                        return Err(VmError::CallingNonFunction);
+                    };
+
+                    let Some(builtin) = Builtin::get_by_identifier(builtin_name) else {
+                        return Err(VmError::CallingNonFunction);
+                    };
+
+                    self.push(builtin)?
+                }
             }
 
             i += 1;
@@ -284,6 +301,16 @@ impl Vm {
 
     pub fn globals(&self) -> Vec<Object> {
         self.globals.clone()
+    }
+
+    fn execute_call(&mut self, num_args: usize) -> Result<(), VmError> {
+        let callee = self.stack[self.sp - 1 - num_args].clone();
+
+        match callee {
+            Object::CompiledFunction(compiled_fn) => self.call_function(&compiled_fn, num_args),
+            Object::Builtin(builtin_fn) => self.call_builtin_function(&builtin_fn, num_args),
+            _ => Err(VmError::CallingNonFunction),
+        }
     }
 
     fn current_frame(&self) -> &Frame {
@@ -522,23 +549,34 @@ impl Vm {
         self.push(pair.value.clone())
     }
 
-    fn call_function(&mut self, num_args: usize) -> Result<(), VmError> {
-        let func = match &self.stack[self.sp - 1 - num_args] {
-            Object::CompiledFunction(f) => f.clone(),
-            _ => return Err(VmError::CallingNonFunction),
-        };
-
+    fn call_function(&mut self, func: &CompiledFunction, num_args: usize) -> Result<(), VmError> {
         if func.num_parameters != num_args as i64 {
             return Err(VmError::WrongNumberOfArgs);
         }
 
-        let frame = Frame::new(*func.clone(), (self.sp - num_args) as i64);
+        let frame = Frame::new(func.clone(), (self.sp - num_args) as i64);
 
         let bp = frame.base_pointer;
         self.push_frame(frame);
         self.sp = (bp + func.num_locals) as usize;
 
         Ok(())
+    }
+
+    fn call_builtin_function(&mut self, builtin: &Builtin, num_args: usize) -> Result<(), VmError> {
+        let args = &self.stack[self.sp - num_args..self.sp];
+
+        let result = (builtin.func)(args);
+        self.sp = self.sp - num_args - 1;
+
+        match result {
+            Object::Null(_) => {
+                return self.push(Object::Null(Box::new(Null {})));
+            }
+            result => {
+                return self.push(result);
+            }
+        }
     }
 }
 
@@ -549,7 +587,7 @@ mod tests {
     use monke_core::{
         ast,
         lexer::Lexer,
-        object::{HashKey, HashableKey, Integer, Null, Object},
+        object::{BuiltinFnError, HashKey, HashableKey, Integer, InternalError, Null, Object},
         parser::Parser,
     };
 
@@ -566,6 +604,7 @@ mod tests {
         String(String),
         Array(Vec<Expected>),
         Hash(HashMap<HashKey, Expected>),
+        InternalError(InternalError),
     }
 
     struct VmTestCase {
@@ -1245,6 +1284,130 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_builtin_functions() {
+        let tests = vec![
+            VmTestCase {
+                input: r#"
+               len("")
+            "#
+                .to_string(),
+                expected: Expected::Integer(0),
+            },
+            VmTestCase {
+                input: r#"
+                       len("four")
+                    "#
+                .to_string(),
+                expected: Expected::Integer(4),
+            },
+            VmTestCase {
+                input: r#"
+                       len("hello world")
+                    "#
+                .to_string(),
+                expected: Expected::Integer(11),
+            },
+            VmTestCase {
+                input: r#"
+                       len(1)
+                    "#
+                .to_string(),
+                expected: Expected::InternalError(InternalError {
+                    message: BuiltinFnError::WrongNumberOfArgs(format!("Got: Integer, want: 0")),
+                }),
+            },
+            VmTestCase {
+                input: r#"
+                       len("one", "two")
+                    "#
+                .to_string(),
+                expected: Expected::InternalError(InternalError {
+                    message: BuiltinFnError::WrongNumberOfArgs(format!("Got: 2, want: 1")),
+                }),
+            },
+            VmTestCase {
+                input: r#"
+                       len([1, 2, 3])
+                    "#
+                .to_string(),
+                expected: Expected::Integer(3),
+            },
+            VmTestCase {
+                input: r#"
+                       len([])
+                    "#
+                .to_string(),
+                expected: Expected::Integer(0),
+            },
+            VmTestCase {
+                input: r#"
+                       push("hello", "world!")
+                    "#
+                .to_string(),
+                expected: Expected::Null(Null {}),
+            },
+            VmTestCase {
+                input: r#"
+                       first([1, 2, 3])
+                    "#
+                .to_string(),
+                expected: Expected::Integer(1),
+            },
+            VmTestCase {
+                input: r#"
+                       first([])
+                    "#
+                .to_string(),
+                expected: Expected::Null(Null {}),
+            },
+            VmTestCase {
+                input: r#"
+                       first(1)
+                    "#
+                .to_string(),
+                expected: Expected::Null(Null {}),
+            },
+            VmTestCase {
+                input: r#"
+                       last([1, 2, 3])
+                    "#
+                .to_string(),
+                expected: Expected::Integer(3),
+            },
+            VmTestCase {
+                input: r#"
+                       last([])
+                    "#
+                .to_string(),
+                expected: Expected::Null(Null {}),
+            },
+            VmTestCase {
+                input: r#"
+                       last(1)
+                    "#
+                .to_string(),
+                expected: Expected::Null(Null {}),
+            },
+            VmTestCase {
+                input: r#"
+                       push([], 1)
+                    "#
+                .to_string(),
+                expected: Expected::Array(vec![Expected::Integer(1)]),
+            },
+            VmTestCase {
+                input: r#"
+                       push(1, 1)
+                    "#
+                .to_string(),
+                expected: Expected::Null(Null {}),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
     fn create_hash_key(value: i64) -> HashKey {
         let val = Integer { value };
         val.hash_key()
@@ -1291,6 +1454,19 @@ mod tests {
             Expected::String(str_val) => test_string_object(&str_val, actual),
             Expected::Array(arr) => test_array_object(arr, actual),
             Expected::Hash(hash_map) => test_hash_object(hash_map, actual),
+            Expected::InternalError(expected_err) => {
+                let Object::InternalError(actual_err) = actual else {
+                    panic!("object is not InternalError. got: {}", actual);
+                };
+
+                assert_eq!(
+                    actual_err.message.to_string(),
+                    expected_err.message.to_string(),
+                    "wrong error message. want: {}, got: {}",
+                    expected_err.message,
+                    actual_err.message
+                );
+            }
         }
     }
 

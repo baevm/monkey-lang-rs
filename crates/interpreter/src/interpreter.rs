@@ -1,6 +1,6 @@
 use monke_core::ast::{self, HashLiteral, Identifier, IfExpression, InfixExpression};
 use monke_core::object::{
-    Array, Builtin, Environment, EvaluateErr, Function, HashKey, HashObj, HashPair, HashableKey,
+    Array, Builtin, BuiltinFnError, Environment, Function, HashKey, HashObj, HashPair, HashableKey,
     InternalError, Return, StringObj,
 };
 use monke_core::token::TokenType;
@@ -251,7 +251,7 @@ impl Evaluator {
             &TokenType::Bang => self.eval_bang_operator_expression(right),
             &TokenType::Minus => self.eval_minus_prefix_operator_expression(right),
             _ => Object::InternalError(Box::new(InternalError {
-                message: EvaluateErr::UnknownOperator(format!("{operator}{right}")),
+                message: BuiltinFnError::UnknownOperator(format!("{operator}{right}")),
             })),
         }
     }
@@ -283,7 +283,7 @@ impl Evaluator {
                 }
 
                 return Object::InternalError(Box::new(InternalError {
-                    message: EvaluateErr::TypeError(format!("{}", left_ident.value,)),
+                    message: BuiltinFnError::TypeError(format!("{}", left_ident.value,)),
                 }));
             }
         }
@@ -308,7 +308,7 @@ impl Evaluator {
     fn eval_minus_prefix_operator_expression(&self, right: Object) -> Object {
         let Object::Integer(int_expr) = right else {
             return Object::InternalError(Box::new(InternalError {
-                message: EvaluateErr::UnknownOperator(format!("-{right}")),
+                message: BuiltinFnError::UnknownOperator(format!("-{right}")),
             }));
         };
 
@@ -325,7 +325,7 @@ impl Evaluator {
     ) -> Object {
         if discriminant(left) != discriminant(right) {
             return Object::InternalError(Box::new(InternalError {
-                message: EvaluateErr::UnknownOperator(format!("{left} {operator} {right}")),
+                message: BuiltinFnError::UnknownOperator(format!("{left} {operator} {right}")),
             }));
         }
 
@@ -340,7 +340,7 @@ impl Evaluator {
                 return self.eval_string_concatenation(operator, left_expr, right_expr);
             }
             (left_expr, right_expr) => Object::InternalError(Box::new(InternalError {
-                message: EvaluateErr::UnknownOperator(format!(
+                message: BuiltinFnError::UnknownOperator(format!(
                     "{left_expr} {operator} {right_expr}"
                 )),
             })),
@@ -381,7 +381,7 @@ impl Evaluator {
                 value: left.value != right.value,
             })),
             _ => Object::InternalError(Box::new(InternalError {
-                message: EvaluateErr::UnknownOperator(format!("{left} {operator} {right}")),
+                message: BuiltinFnError::UnknownOperator(format!("{left} {operator} {right}")),
             })),
         }
     }
@@ -400,7 +400,7 @@ impl Evaluator {
                 value: left.value != right.value,
             })),
             _ => Object::InternalError(Box::new(InternalError {
-                message: EvaluateErr::UnknownOperator(format!("{left} {operator} {right}")),
+                message: BuiltinFnError::UnknownOperator(format!("{left} {operator} {right}")),
             })),
         }
     }
@@ -437,7 +437,7 @@ impl Evaluator {
         }
 
         Object::InternalError(Box::new(InternalError {
-            message: EvaluateErr::UnknownIdentifier(ident.value.to_string()),
+            message: BuiltinFnError::UnknownIdentifier(ident.value.to_string()),
         }))
     }
 
@@ -484,7 +484,7 @@ impl Evaluator {
             }
             Object::Builtin(builtin) => (builtin.func)(args),
             _ => Object::InternalError(Box::new(InternalError {
-                message: EvaluateErr::TypeError(format!("{func}")),
+                message: BuiltinFnError::TypeError(format!("{func}")),
             })),
         }
     }
@@ -510,7 +510,7 @@ impl Evaluator {
                 value: format!("{}{}", left.value, right.value),
             })),
             _ => Object::InternalError(Box::new(InternalError {
-                message: EvaluateErr::UnknownOperator(format!("{left} {operator} {right}")),
+                message: BuiltinFnError::UnknownOperator(format!("{left} {operator} {right}")),
             })),
         }
     }
@@ -531,7 +531,7 @@ impl Evaluator {
         if let Object::HashObj(hash_obj) = &left {
             if !self.is_hashable(&index) {
                 return Object::InternalError(Box::new(InternalError {
-                    message: EvaluateErr::UnknownHashKey(format!("{index}")),
+                    message: BuiltinFnError::UnknownHashKey(format!("{index}")),
                 }));
             }
 
@@ -552,7 +552,7 @@ impl Evaluator {
         }
 
         Object::InternalError(Box::new(InternalError {
-            message: EvaluateErr::IndexNotSupported(format!("{left}")),
+            message: BuiltinFnError::IndexNotSupported(format!("{left}")),
         }))
     }
 
@@ -568,7 +568,7 @@ impl Evaluator {
 
             if !self.is_hashable(&key) {
                 return Object::InternalError(Box::new(InternalError {
-                    message: EvaluateErr::UnknownHashKey(format!("{key}")),
+                    message: BuiltinFnError::UnknownHashKey(format!("{key}")),
                 }));
             }
 
@@ -614,7 +614,7 @@ impl Evaluator {
                 // if identifier doesnt exist
                 if env.get(&ident.value).is_none() {
                     return Object::InternalError(Box::new(InternalError {
-                        message: EvaluateErr::UnknownIdentifier(ident.value.to_string()),
+                        message: BuiltinFnError::UnknownIdentifier(ident.value.to_string()),
                     }));
                 }
 
@@ -657,12 +657,12 @@ impl Evaluator {
                 }
 
                 Object::InternalError(Box::new(InternalError {
-                    message: EvaluateErr::TypeError("".to_string()),
+                    message: BuiltinFnError::TypeError("".to_string()),
                 }))
             }
 
             _ => Object::InternalError(Box::new(InternalError {
-                message: EvaluateErr::TypeError("".to_string()),
+                message: BuiltinFnError::TypeError("".to_string()),
             })),
         }
     }

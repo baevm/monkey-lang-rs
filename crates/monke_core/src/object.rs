@@ -161,7 +161,7 @@ impl Inspect for Return {
 }
 
 #[derive(Debug, Clone)]
-pub enum EvaluateErr {
+pub enum BuiltinFnError {
     UnknownOperator(String),
     TypeError(String),
     IndexNotSupported(String),
@@ -170,15 +170,15 @@ pub enum EvaluateErr {
     WrongNumberOfArgs(String),
 }
 
-impl std::fmt::Display for EvaluateErr {
+impl std::fmt::Display for BuiltinFnError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            EvaluateErr::UnknownOperator(e) => write!(f, "unknown operator: {e}"),
-            EvaluateErr::UnknownIdentifier(e) => write!(f, "unknown identifier: {e}"),
-            EvaluateErr::TypeError(e) => write!(f, "type error: {e}"),
-            EvaluateErr::IndexNotSupported(e) => write!(f, "index operator not supported: {e}"),
-            EvaluateErr::UnknownHashKey(e) => write!(f, "unknown as hash key: {e}"),
-            EvaluateErr::WrongNumberOfArgs(e) => write!(f, "wrong number of arguments. {e}"),
+            BuiltinFnError::UnknownOperator(e) => write!(f, "unknown operator: {e}"),
+            BuiltinFnError::UnknownIdentifier(e) => write!(f, "unknown identifier: {e}"),
+            BuiltinFnError::TypeError(e) => write!(f, "type error: {e}"),
+            BuiltinFnError::IndexNotSupported(e) => write!(f, "index operator not supported: {e}"),
+            BuiltinFnError::UnknownHashKey(e) => write!(f, "unknown as hash key: {e}"),
+            BuiltinFnError::WrongNumberOfArgs(e) => write!(f, "wrong number of arguments. {e}"),
         }
     }
 }
@@ -186,7 +186,7 @@ impl std::fmt::Display for EvaluateErr {
 // TODO: move to interpreter crate
 #[derive(Debug, Clone)]
 pub struct InternalError {
-    pub message: EvaluateErr,
+    pub message: BuiltinFnError,
 }
 
 impl Inspect for InternalError {
