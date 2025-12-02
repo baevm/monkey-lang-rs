@@ -273,6 +273,7 @@ impl Vm {
                     let obj = self.stack[(base_pointer + (local_index as i64)) as usize].clone();
                     self.push(obj)?
                 }
+                Opcode::OpGetBuiltin => todo!(),
             }
 
             i += 1;

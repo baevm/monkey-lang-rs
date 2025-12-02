@@ -4,12 +4,13 @@ use std::collections::HashMap;
 pub enum SymbolScope {
     Global,
     Local,
+    Builtin,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Symbol {
     name: String,
-    scope: SymbolScope,
+    pub scope: SymbolScope,
     pub index: i64,
 }
 
@@ -71,6 +72,23 @@ impl SymbolTable {
         }
 
         obj
+    }
+
+    fn define_builtin(&mut self, index: i64, name: &str) -> Option<&Symbol> {
+        let symbol = Symbol {
+            name: name.to_string(),
+            index,
+            scope: SymbolScope::Builtin,
+        };
+        self.store.insert(name.to_string(), symbol);
+        self.store.get(name)
+    }
+
+    pub fn define_builtins(&mut self) {
+        let builtins = ["len", "first", "last", "push", "print"];
+        for (i, name) in builtins.iter().enumerate() {
+            self.define_builtin(i as i64, name);
+        }
     }
 }
 
@@ -303,6 +321,55 @@ mod tests {
                     .expect("name is not resolvable");
 
                 assert_eq!(&symbol, result);
+            }
+        }
+    }
+
+    #[test]
+    fn test_define_resolve_builtins() {
+        let expected = vec![
+            Symbol {
+                name: "a".to_string(),
+                scope: SymbolScope::Builtin,
+                index: 0,
+            },
+            Symbol {
+                name: "c".to_string(),
+                scope: SymbolScope::Builtin,
+                index: 1,
+            },
+            Symbol {
+                name: "e".to_string(),
+                scope: SymbolScope::Builtin,
+                index: 2,
+            },
+            Symbol {
+                name: "f".to_string(),
+                scope: SymbolScope::Builtin,
+                index: 3,
+            },
+        ];
+
+        let mut global = SymbolTable::new();
+
+        for (i, exp) in expected.iter().enumerate() {
+            global.define_builtin(i as i64, &exp.name);
+        }
+
+        let first_local = SymbolTable::new_enclosed(global.clone());
+        let second_local = SymbolTable::new_enclosed(first_local.clone());
+
+        for table in [&global, &first_local, &second_local] {
+            for sym in &expected {
+                let result = table
+                    .resolve(&sym.name)
+                    .unwrap_or_else(|| panic!("name {} not resolvable", sym.name));
+
+                assert_eq!(
+                    sym, result,
+                    "expected {} to resolve to {:?}, got={:?}",
+                    sym.name, sym, result
+                );
             }
         }
     }

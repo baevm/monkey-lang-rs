@@ -6,7 +6,7 @@ use monke_core::{
 
 use crate::{
     code::{Instructions, Opcode, make},
-    symbol_table::SymbolTable,
+    symbol_table::{Symbol, SymbolScope, SymbolTable},
 };
 
 #[derive(Copy, Clone)]
@@ -54,9 +54,12 @@ impl Compiler {
             prev_instruction: None,
         };
 
+        let mut symbol_table = SymbolTable::new();
+        symbol_table.define_builtins();
+
         Self {
+            symbol_table,
             constants: vec![],
-            symbol_table: SymbolTable::new(),
             scopes: vec![main_scope],
             scope_index: 0,
         }
@@ -270,10 +273,16 @@ impl Compiler {
                     return Err(CompilerError::UndefinedVariable);
                 };
 
-                if symbol.is_global_scope() {
-                    self.emit(Opcode::OpGetGlobal, &[symbol.index]);
-                } else {
-                    self.emit(Opcode::OpGetLocal, &[symbol.index]);
+                match symbol.scope {
+                    SymbolScope::Global => {
+                        self.emit(Opcode::OpGetGlobal, &[symbol.index]);
+                    }
+                    SymbolScope::Local => {
+                        self.emit(Opcode::OpGetLocal, &[symbol.index]);
+                    }
+                    SymbolScope::Builtin => {
+                        self.emit(Opcode::OpGetBuiltin, &[symbol.index]);
+                    }
                 }
                 Ok(())
             }
@@ -1247,6 +1256,49 @@ mod tests {
                     Instructions::from(make(Opcode::OpConstant, &[2])),
                     Instructions::from(make(Opcode::OpConstant, &[3])),
                     Instructions::from(make(Opcode::OpCall, &[3])),
+                    Instructions::from(make(Opcode::OpPop, &[])),
+                ],
+            },
+        ];
+
+        run_compiler_tests(tests);
+    }
+
+    #[test]
+    fn test_builtins() {
+        let tests = vec![
+            CompilerTestCase {
+                input: "
+                len([]);
+                push([], 1);
+            "
+                .to_string(),
+                expected_constants: vec![ExpectedConstant::I64(1)],
+                expected_instructions: vec![
+                    Instructions::from(make(Opcode::OpGetBuiltin, &[0])),
+                    Instructions::from(make(Opcode::OpArray, &[0])),
+                    Instructions::from(make(Opcode::OpCall, &[1])),
+                    Instructions::from(make(Opcode::OpPop, &[])),
+                    Instructions::from(make(Opcode::OpGetBuiltin, &[3])),
+                    Instructions::from(make(Opcode::OpArray, &[0])),
+                    Instructions::from(make(Opcode::OpConstant, &[0])),
+                    Instructions::from(make(Opcode::OpCall, &[2])),
+                    Instructions::from(make(Opcode::OpPop, &[])),
+                ],
+            },
+            CompilerTestCase {
+                input: "
+                function() { len([]) };
+            "
+                .to_string(),
+                expected_constants: vec![ExpectedConstant::Instructions(vec![
+                    Instructions::from(make(Opcode::OpGetBuiltin, &[0])),
+                    Instructions::from(make(Opcode::OpArray, &[0])),
+                    Instructions::from(make(Opcode::OpCall, &[1])),
+                    Instructions::from(make(Opcode::OpReturnValue, &[])),
+                ])],
+                expected_instructions: vec![
+                    Instructions::from(make(Opcode::OpConstant, &[0])),
                     Instructions::from(make(Opcode::OpPop, &[])),
                 ],
             },

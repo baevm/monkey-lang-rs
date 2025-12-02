@@ -119,6 +119,7 @@ pub enum Opcode {
     OpReturn = 23,      // function return with no value (null)
     OpGetLocal = 24,
     OpSetLocal = 25,
+    OpGetBuiltin = 26,
 }
 
 impl Opcode {
@@ -228,6 +229,10 @@ impl Opcode {
                 name: "OpSetLocal",
                 operand_widths: &[1],
             },
+            Opcode::OpGetBuiltin => Definition {
+                name: "OpGetBuiltin",
+                operand_widths: &[1],
+            },
         }
     }
 
@@ -259,6 +264,7 @@ impl Opcode {
             23 => Some(Opcode::OpReturn),
             24 => Some(Opcode::OpGetLocal),
             25 => Some(Opcode::OpSetLocal),
+            26 => Some(Opcode::OpGetBuiltin),
             _ => None,
         }
     }
