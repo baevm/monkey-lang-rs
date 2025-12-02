@@ -26,6 +26,7 @@ impl Instructions {
         match operand_count {
             0 => def.name.to_string(),
             1 => format!("{} {}", def.name, operands[0]),
+            2 => format!("{} {} {}", def.name, operands[0], operands[1]),
             _ => format!("ERROR: unhandled operandCount for {}", def.name),
         }
     }
@@ -120,6 +121,7 @@ pub enum Opcode {
     OpGetLocal = 24,
     OpSetLocal = 25,
     OpGetBuiltin = 26,
+    OpClosure = 27,
 }
 
 impl Opcode {
@@ -233,6 +235,12 @@ impl Opcode {
                 name: "OpGetBuiltin",
                 operand_widths: &[1],
             },
+            Opcode::OpClosure => Definition {
+                name: "OpClosure",
+                // first operand - constant index
+                // second operand - "free variables" on stack
+                operand_widths: &[2, 1],
+            },
         }
     }
 
@@ -265,6 +273,7 @@ impl Opcode {
             24 => Some(Opcode::OpGetLocal),
             25 => Some(Opcode::OpSetLocal),
             26 => Some(Opcode::OpGetBuiltin),
+            27 => Some(Opcode::OpClosure),
             _ => None,
         }
     }
@@ -355,6 +364,11 @@ mod tests {
                 vec![255],
                 vec![Opcode::OpGetLocal as u8, 255],
             ),
+            (
+                Opcode::OpClosure,
+                vec![65534, 255],
+                vec![Opcode::OpClosure as u8, 255, 254, 255],
+            ),
         ];
 
         for test in tests {
@@ -385,10 +399,10 @@ mod tests {
             make(Opcode::OpGetLocal, &[1]),
             make(Opcode::OpConstant, &[2]),
             make(Opcode::OpConstant, &[65535]),
+            make(Opcode::OpClosure, &[65535, 255]),
         ];
 
-        let expected =
-            "0000 OpAdd \n0001 OpGetLocal 1 \n0003 OpConstant 2 \n0006 OpConstant 65535 \n";
+        let expected = "0000 OpAdd \n0001 OpGetLocal 1 \n0003 OpConstant 2 \n0006 OpConstant 65535 \n0009 OpClosure 65535 255 \n";
 
         let concated: Instructions = instructions.into_iter().flat_map(|i| i).collect();
 
@@ -413,6 +427,11 @@ mod tests {
                 op: Opcode::OpGetLocal,
                 operands: vec![255],
                 bytes_read: 1,
+            },
+            TestCase {
+                op: Opcode::OpClosure,
+                operands: vec![65535, 255],
+                bytes_read: 3,
             },
         ];
 

@@ -31,6 +31,7 @@ pub enum Object {
     Array(Box<Array>),
     HashObj(Box<HashObj>),
     CompiledFunction(Box<CompiledFunction>),
+    Closure(Box<Closure>),
 }
 
 impl Inspect for Object {
@@ -47,6 +48,7 @@ impl Inspect for Object {
             Object::Array(array) => array.inspect(),
             Object::HashObj(hash_obj) => hash_obj.inspect(),
             Object::CompiledFunction(compiled_fn) => compiled_fn.inspect(),
+            Object::Closure(closure) => closure.inspect(),
         }
     }
 }
@@ -311,6 +313,18 @@ impl Inspect for CompiledFunction {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Closure {
+    pub func: CompiledFunction,
+    pub free: Vec<Object>,
+}
+
+impl Inspect for Closure {
+    fn inspect(&self) -> String {
+        format!("Closure")
+    }
+}
+
 macro_rules! impl_display_name {
     ($($type:ty => $name:expr),* $(,)?) => {
         $(
@@ -333,7 +347,9 @@ impl_display_name! {
     StringObj => "String",
     Builtin => "Builtin Function",
     Array => "Array",
-    HashObj => "Object"
+    HashObj => "Object",
+    CompiledFunction => "CompiledFunction",
+    Closure => "Closure",
 }
 
 #[cfg(test)]

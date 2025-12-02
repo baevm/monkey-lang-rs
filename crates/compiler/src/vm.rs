@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use monke_core::object::{
-    self, Array, Boolean, Builtin, CompiledFunction, HashKey, HashObj, HashPair, Integer, Null,
-    Object, StringObj,
+    self, Array, Boolean, Builtin, Closure, CompiledFunction, HashKey, HashObj, HashPair, Integer,
+    Null, Object, StringObj,
 };
 
 use crate::{
@@ -56,7 +56,11 @@ impl Vm {
             num_locals: 0,
             num_parameters: 0,
         };
-        let main_frame = Frame::new(main_func, 0);
+        let main_closure = Closure {
+            func: main_func,
+            free: vec![],
+        };
+        let main_frame = Frame::new(main_closure, 0);
 
         let mut frames: Vec<Frame> = Vec::with_capacity(MAX_FRAMES);
         frames.push(main_frame);
@@ -291,6 +295,19 @@ impl Vm {
 
                     self.push(builtin)?
                 }
+                Opcode::OpClosure => {
+                    let const_index: usize = u16::from_be_bytes(
+                        ins[(i as usize + 1)..(i as usize + 3)]
+                            .try_into()
+                            .expect("failed to convert instruction to u16"),
+                    )
+                    .try_into()
+                    .unwrap();
+
+                    self.update_frame_pointer(3);
+
+                    self.push_closure(const_index)?
+                }
             }
 
             i += 1;
@@ -307,7 +324,7 @@ impl Vm {
         let callee = self.stack[self.sp - 1 - num_args].clone();
 
         match callee {
-            Object::CompiledFunction(compiled_fn) => self.call_function(&compiled_fn, num_args),
+            Object::Closure(closure_fn) => self.call_closure(closure_fn, num_args),
             Object::Builtin(builtin_fn) => self.call_builtin_function(&builtin_fn, num_args),
             _ => Err(VmError::CallingNonFunction),
         }
@@ -549,20 +566,6 @@ impl Vm {
         self.push(pair.value.clone())
     }
 
-    fn call_function(&mut self, func: &CompiledFunction, num_args: usize) -> Result<(), VmError> {
-        if func.num_parameters != num_args as i64 {
-            return Err(VmError::WrongNumberOfArgs);
-        }
-
-        let frame = Frame::new(func.clone(), (self.sp - num_args) as i64);
-
-        let bp = frame.base_pointer;
-        self.push_frame(frame);
-        self.sp = (bp + func.num_locals) as usize;
-
-        Ok(())
-    }
-
     fn call_builtin_function(&mut self, builtin: &Builtin, num_args: usize) -> Result<(), VmError> {
         let args = &self.stack[self.sp - num_args..self.sp];
 
@@ -577,6 +580,34 @@ impl Vm {
                 return self.push(result);
             }
         }
+    }
+
+    fn call_closure(&mut self, closure_fn: Box<Closure>, num_args: usize) -> Result<(), VmError> {
+        if closure_fn.func.num_parameters != num_args as i64 {
+            return Err(VmError::WrongNumberOfArgs);
+        }
+
+        let frame = Frame::new(*closure_fn.clone(), (self.sp - num_args) as i64);
+
+        let bp = frame.base_pointer;
+        self.push_frame(frame);
+        self.sp = (bp + closure_fn.func.num_locals) as usize;
+
+        Ok(())
+    }
+
+    fn push_closure(&mut self, const_index: usize) -> Result<(), VmError> {
+        let constant = self.constants[const_index].clone();
+
+        let Object::CompiledFunction(compiled_fn) = constant else {
+            return Err(VmError::InvalidType);
+        };
+
+        let closure = Object::Closure(Box::new(Closure {
+            func: *compiled_fn,
+            free: vec![],
+        }));
+        self.push(closure)
     }
 }
 

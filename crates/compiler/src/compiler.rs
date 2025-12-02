@@ -355,7 +355,7 @@ impl Compiler {
                 }));
 
                 let constant = self.add_constant(compiled_fn);
-                self.emit(Opcode::OpConstant, &[constant]);
+                self.emit(Opcode::OpClosure, &[constant]);
 
                 Ok(())
             }
@@ -768,7 +768,7 @@ mod tests {
                 expected_instructions: vec![
                     Instructions::from(make(Opcode::OpConstant, &[0])),
                     Instructions::from(make(Opcode::OpSetGlobal, &[0])),
-                    Instructions::from(make(Opcode::OpConstant, &[1])),
+                    Instructions::from(make(Opcode::OpClosure, &[1, 0])),
                     Instructions::from(make(Opcode::OpPop, &[])),
                 ],
             },
@@ -790,7 +790,7 @@ mod tests {
                     ]),
                 ],
                 expected_instructions: vec![
-                    Instructions::from(make(Opcode::OpConstant, &[1])),
+                    Instructions::from(make(Opcode::OpClosure, &[1, 0])),
                     Instructions::from(make(Opcode::OpPop, &[])),
                 ],
             },
@@ -818,7 +818,7 @@ mod tests {
                     ]),
                 ],
                 expected_instructions: vec![
-                    Instructions::from(make(Opcode::OpConstant, &[2])),
+                    Instructions::from(make(Opcode::OpClosure, &[2, 0])),
                     Instructions::from(make(Opcode::OpPop, &[])),
                 ],
             },
@@ -1035,7 +1035,7 @@ mod tests {
                     ]),
                 ],
                 expected_instructions: vec![
-                    Instructions::from(make(Opcode::OpConstant, &[2])),
+                    Instructions::from(make(Opcode::OpClosure, &[2, 0])),
                     Instructions::from(make(Opcode::OpPop, &[])),
                 ],
             },
@@ -1052,7 +1052,7 @@ mod tests {
                     ]),
                 ],
                 expected_instructions: vec![
-                    Instructions::from(make(Opcode::OpConstant, &[2])),
+                    Instructions::from(make(Opcode::OpClosure, &[2, 0])),
                     Instructions::from(make(Opcode::OpPop, &[])),
                 ],
             },
@@ -1069,7 +1069,7 @@ mod tests {
                     ]),
                 ],
                 expected_instructions: vec![
-                    Instructions::from(make(Opcode::OpConstant, &[2])),
+                    Instructions::from(make(Opcode::OpClosure, &[2, 0])),
                     Instructions::from(make(Opcode::OpPop, &[])),
                 ],
             },
@@ -1079,7 +1079,7 @@ mod tests {
                     make(Opcode::OpReturn, &[]),
                 )])],
                 expected_instructions: vec![
-                    Instructions::from(make(Opcode::OpConstant, &[0])),
+                    Instructions::from(make(Opcode::OpClosure, &[0, 0])),
                     Instructions::from(make(Opcode::OpPop, &[])),
                 ],
             },
@@ -1187,7 +1187,7 @@ mod tests {
                     ]),
                 ],
                 expected_instructions: vec![
-                    Instructions::from(make(Opcode::OpConstant, &[1])),
+                    Instructions::from(make(Opcode::OpClosure, &[1, 0])),
                     Instructions::from(make(Opcode::OpCall, &[0])),
                     Instructions::from(make(Opcode::OpPop, &[])),
                 ],
@@ -1202,7 +1202,7 @@ mod tests {
                     ]),
                 ],
                 expected_instructions: vec![
-                    Instructions::from(make(Opcode::OpConstant, &[1])),
+                    Instructions::from(make(Opcode::OpClosure, &[1, 0])),
                     Instructions::from(make(Opcode::OpSetGlobal, &[0])),
                     Instructions::from(make(Opcode::OpGetGlobal, &[0])),
                     Instructions::from(make(Opcode::OpCall, &[0])),
@@ -1222,7 +1222,7 @@ mod tests {
                     ExpectedConstant::I64(24),
                 ],
                 expected_instructions: vec![
-                    Instructions::from(make(Opcode::OpConstant, &[0])),
+                    Instructions::from(make(Opcode::OpClosure, &[0, 0])),
                     Instructions::from(make(Opcode::OpSetGlobal, &[0])),
                     Instructions::from(make(Opcode::OpGetGlobal, &[0])),
                     Instructions::from(make(Opcode::OpConstant, &[1])),
@@ -1249,7 +1249,7 @@ mod tests {
                     ExpectedConstant::I64(26),
                 ],
                 expected_instructions: vec![
-                    Instructions::from(make(Opcode::OpConstant, &[0])),
+                    Instructions::from(make(Opcode::OpClosure, &[0, 0])),
                     Instructions::from(make(Opcode::OpSetGlobal, &[0])),
                     Instructions::from(make(Opcode::OpGetGlobal, &[0])),
                     Instructions::from(make(Opcode::OpConstant, &[1])),
@@ -1298,7 +1298,7 @@ mod tests {
                     Instructions::from(make(Opcode::OpReturnValue, &[])),
                 ])],
                 expected_instructions: vec![
-                    Instructions::from(make(Opcode::OpConstant, &[0])),
+                    Instructions::from(make(Opcode::OpClosure, &[0, 0])),
                     Instructions::from(make(Opcode::OpPop, &[])),
                 ],
             },

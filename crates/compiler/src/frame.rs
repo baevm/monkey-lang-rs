@@ -4,7 +4,7 @@ use crate::code::Instructions;
 
 #[derive(Debug)]
 pub struct Frame {
-    func: object::CompiledFunction,
+    func: object::Closure,
 
     /// instruction pointer
     pub ip: i64,
@@ -13,7 +13,7 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn new(func: object::CompiledFunction, base_pointer: i64) -> Self {
+    pub fn new(func: object::Closure, base_pointer: i64) -> Self {
         Frame {
             func,
             ip: -1,
@@ -22,6 +22,6 @@ impl Frame {
     }
 
     pub fn instructions(&self) -> Instructions {
-        Instructions::from(self.func.instructions.clone())
+        Instructions::from(self.func.func.instructions.clone())
     }
 }
