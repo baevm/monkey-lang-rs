@@ -12,7 +12,7 @@ use crate::{
 #[derive(Copy, Clone)]
 pub struct EmittedInstruction {
     opcode: Opcode,
-    position: i64,
+    position: usize,
 }
 
 struct CompilationScope {
@@ -301,7 +301,7 @@ impl Compiler {
                     self.compile_expression(elem)?;
                 }
 
-                self.emit(Opcode::OpArray, &[arr_lit.elements.len() as i64]);
+                self.emit(Opcode::OpArray, &[arr_lit.elements.len()]);
 
                 Ok(())
             }
@@ -351,7 +351,7 @@ impl Compiler {
                 let compiled_fn = Object::CompiledFunction(Box::new(CompiledFunction {
                     instructions: instructions.to_vec(),
                     num_locals,
-                    num_parameters: func_lit.parameters.len() as i64,
+                    num_parameters: func_lit.parameters.len(),
                 }));
 
                 let constant = self.add_constant(compiled_fn);
@@ -366,7 +366,7 @@ impl Compiler {
                     self.compile_expression(arg)?;
                 }
 
-                self.emit(Opcode::OpCall, &[call_expr.arguments.len() as i64]);
+                self.emit(Opcode::OpCall, &[call_expr.arguments.len()]);
 
                 Ok(())
             }
@@ -374,30 +374,30 @@ impl Compiler {
     }
 
     /// adds object to pool of constants
-    fn add_constant(&mut self, obj: Object) -> i64 {
+    fn add_constant(&mut self, obj: Object) -> usize {
         self.constants.push(obj);
-        (self.constants.len() - 1).try_into().unwrap()
+        self.constants.len() - 1
     }
 
-    fn emit(&mut self, opcode: Opcode, operands: &[i64]) -> i64 {
-        let instruction = make(opcode, &operands);
+    fn emit(&mut self, opcode: Opcode, operands: &[usize]) -> usize {
+        let instruction = make(opcode, operands);
         let position = self.add_instruction(&instruction);
         self.set_last_instruction(opcode, position);
 
         position
     }
 
-    fn add_instruction(&mut self, instruction: &Vec<u8>) -> i64 {
+    fn add_instruction(&mut self, instruction: &Vec<u8>) -> usize {
         let pos_new_instruction = self.current_instructions().len();
 
         self.scopes[self.scope_index]
             .instructions
             .extend(instruction);
 
-        pos_new_instruction.try_into().unwrap()
+        pos_new_instruction
     }
 
-    fn set_last_instruction(&mut self, opcode: Opcode, position: i64) {
+    fn set_last_instruction(&mut self, opcode: Opcode, position: usize) {
         let prev = self.scopes[self.scope_index].last_instruction;
         let last = EmittedInstruction { opcode, position };
 
@@ -419,7 +419,7 @@ impl Compiler {
         let last = self.scopes[self.scope_index].last_instruction;
         let prev = self.scopes[self.scope_index].prev_instruction;
 
-        let last_position = last.map_or(0, |v| v.position) as usize;
+        let last_position = last.map_or(0, |v| v.position);
 
         let old = self.current_instructions();
         let new = &old[..last_position];
@@ -428,14 +428,14 @@ impl Compiler {
         self.scopes[self.scope_index].last_instruction = prev;
     }
 
-    fn replace_instruction(&mut self, position: i64, new_instruction: Vec<u8>) {
+    fn replace_instruction(&mut self, position: usize, new_instruction: Vec<u8>) {
         for i in 0..new_instruction.len() {
-            self.scopes[self.scope_index].instructions[position as usize + i] = new_instruction[i];
+            self.scopes[self.scope_index].instructions[position + i] = new_instruction[i];
         }
     }
 
-    fn change_operand(&mut self, op_position: i64, operand: i64) {
-        let opcode = Opcode::from_byte(self.current_instructions()[op_position as usize]);
+    fn change_operand(&mut self, op_position: usize, operand: usize) {
+        let opcode = Opcode::from_byte(self.current_instructions()[op_position]);
 
         let Some(opcode) = opcode else {
             return;

@@ -67,7 +67,7 @@ impl Vm {
 
         Self {
             constants: bytecode.constants,
-            stack: vec![Object::Null(Box::new(Null {})); STACK_SIZE as usize],
+            stack: vec![Object::Null(Box::new(Null {})); STACK_SIZE],
             sp: 0,
             globals: vec![Object::Null(Box::new(Null {})); GLOBALS_SIZE],
             frame_index: 1,
@@ -583,15 +583,15 @@ impl Vm {
     }
 
     fn call_closure(&mut self, closure_fn: Box<Closure>, num_args: usize) -> Result<(), VmError> {
-        if closure_fn.func.num_parameters != num_args as i64 {
+        if closure_fn.func.num_parameters != num_args {
             return Err(VmError::WrongNumberOfArgs);
         }
 
         let frame = Frame::new(*closure_fn.clone(), (self.sp - num_args) as i64);
 
-        let bp = frame.base_pointer;
+        let bp = frame.base_pointer as usize;
         self.push_frame(frame);
-        self.sp = (bp + closure_fn.func.num_locals) as usize;
+        self.sp = bp + closure_fn.func.num_locals;
 
         Ok(())
     }

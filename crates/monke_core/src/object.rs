@@ -303,8 +303,8 @@ impl Inspect for HashObj {
 #[derive(Debug, Clone)]
 pub struct CompiledFunction {
     pub instructions: Vec<u8>,
-    pub num_locals: i64,
-    pub num_parameters: i64,
+    pub num_locals: usize,
+    pub num_parameters: usize,
 }
 
 impl Inspect for CompiledFunction {

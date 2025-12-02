@@ -11,7 +11,7 @@ pub enum SymbolScope {
 pub struct Symbol {
     name: String,
     pub scope: SymbolScope,
-    pub index: i64,
+    pub index: usize,
 }
 
 impl Symbol {
@@ -25,7 +25,7 @@ pub struct SymbolTable {
     pub outer: Option<Box<SymbolTable>>,
 
     store: HashMap<String, Symbol>,
-    pub num_definitions: i64,
+    pub num_definitions: usize,
 }
 
 impl SymbolTable {
@@ -74,7 +74,7 @@ impl SymbolTable {
         obj
     }
 
-    fn define_builtin(&mut self, index: i64, name: &str) -> Option<&Symbol> {
+    fn define_builtin(&mut self, index: usize, name: &str) -> Option<&Symbol> {
         let symbol = Symbol {
             name: name.to_string(),
             index,
@@ -87,7 +87,7 @@ impl SymbolTable {
     pub fn define_builtins(&mut self) {
         let builtins = ["len", "first", "last", "push", "print"];
         for (i, name) in builtins.iter().enumerate() {
-            self.define_builtin(i as i64, name);
+            self.define_builtin(i, name);
         }
     }
 
@@ -365,7 +365,7 @@ mod tests {
         let mut global = SymbolTable::new();
 
         for (i, exp) in expected.iter().enumerate() {
-            global.define_builtin(i as i64, &exp.name);
+            global.define_builtin(i, &exp.name);
         }
 
         let first_local = SymbolTable::new_enclosed(global.clone());

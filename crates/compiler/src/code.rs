@@ -12,7 +12,7 @@ impl Instructions {
         Self(value)
     }
 
-    fn fmt_instruction(&self, def: &Definition, operands: Vec<i64>) -> String {
+    fn fmt_instruction(&self, def: &Definition, operands: Vec<usize>) -> String {
         let operand_count = def.operand_widths.len();
 
         if operands.len() != operand_count {
@@ -55,7 +55,7 @@ impl std::fmt::Display for Instructions {
                 i,
                 self.fmt_instruction(&def, operands)
             ));
-            i += 1 + read_bytes as usize;
+            i += 1 + read_bytes;
         }
 
         write!(f, "{}", sb)
@@ -282,16 +282,16 @@ impl Opcode {
 pub struct Definition {
     pub name: &'static str,
     /// Number of bytes each operand takes
-    pub operand_widths: &'static [i64],
+    pub operand_widths: &'static [usize],
 }
 
-pub fn make(opcode: Opcode, operands: &[i64]) -> Vec<u8> {
+pub fn make(opcode: Opcode, operands: &[usize]) -> Vec<u8> {
     let definition = opcode.get_definition();
 
     let instruction_len: usize = definition
         .operand_widths
         .iter()
-        .fold(1, |acc, val| acc + *val as usize);
+        .fold(1, |acc, val| acc + *val);
 
     let mut instruction: Vec<u8> = vec![0; instruction_len];
     instruction[0] = opcode as u8;
@@ -299,7 +299,7 @@ pub fn make(opcode: Opcode, operands: &[i64]) -> Vec<u8> {
     let mut offset = 1;
 
     for (idx, operand) in operands.iter().enumerate() {
-        let width = definition.operand_widths[idx] as usize;
+        let width = definition.operand_widths[idx];
 
         match width {
             1 => {
@@ -319,22 +319,19 @@ pub fn make(opcode: Opcode, operands: &[i64]) -> Vec<u8> {
     instruction
 }
 
-pub fn read_operands(def: &Definition, instruction: &[u8]) -> (Vec<i64>, i64) {
-    let mut operands: Vec<i64> = vec![0; def.operand_widths.len()];
-    let mut offset: i64 = 0;
+pub fn read_operands(def: &Definition, instruction: &[u8]) -> (Vec<usize>, usize) {
+    let mut operands: Vec<usize> = vec![0; def.operand_widths.len()];
+    let mut offset = 0;
 
     for (idx, byte_width) in def.operand_widths.iter().enumerate() {
         match byte_width {
             1 => {
-                let u8num = u8::from_be_bytes([instruction[offset as usize]]);
+                let u8num = u8::from_be_bytes([instruction[offset]]);
                 operands[idx] = u8num.try_into().unwrap()
             }
             2 => {
-                let u16num = u16::from_be_bytes(
-                    instruction[(offset as usize)..(offset as usize + 2)]
-                        .try_into()
-                        .unwrap(),
-                );
+                let u16num =
+                    u16::from_be_bytes(instruction[(offset)..(offset + 2)].try_into().unwrap());
                 operands[idx] = u16num.try_into().unwrap()
             }
             _ => {}
@@ -352,7 +349,7 @@ mod tests {
 
     #[test]
     fn make_test() {
-        let tests: Vec<(Opcode, Vec<i64>, Vec<u8>)> = vec![
+        let tests: Vec<(Opcode, Vec<usize>, Vec<u8>)> = vec![
             (
                 Opcode::OpConstant,
                 vec![65534],
@@ -413,8 +410,8 @@ mod tests {
     fn test_read_operands() {
         struct TestCase {
             op: Opcode,
-            operands: Vec<i64>,
-            bytes_read: i64,
+            operands: Vec<usize>,
+            bytes_read: usize,
         }
 
         let tests: Vec<TestCase> = vec![
