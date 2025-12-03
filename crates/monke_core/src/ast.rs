@@ -289,6 +289,7 @@ impl std::fmt::Display for BlockStatement {
 
 #[derive(Debug, Clone)]
 pub struct FunctionLiteral {
+    pub name: String,
     pub parameters: Vec<Identifier>,
     pub body: BlockStatement,
 }

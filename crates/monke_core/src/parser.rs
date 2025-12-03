@@ -97,7 +97,13 @@ impl Parser {
 
         self.next_token();
 
-        let value = self.parse_expression(Precedence::Lowest);
+        let mut value = self.parse_expression(Precedence::Lowest);
+
+        if let Some(expr) = &mut value {
+            if let Expression::FunctionLiteral(func_lit) = expr {
+                func_lit.name = name.value.to_string();
+            }
+        }
 
         let let_stmt = Statement::LetStatement(Box::new(LetStatement { name, value }));
 
@@ -395,8 +401,11 @@ impl Parser {
 
         let body = self.parse_block_statement();
 
-        let func_literal =
-            Expression::FunctionLiteral(Box::new(FunctionLiteral { parameters, body }));
+        let func_literal = Expression::FunctionLiteral(Box::new(FunctionLiteral {
+            parameters,
+            body,
+            name: "".to_string(),
+        }));
 
         Some(func_literal)
     }
@@ -1864,6 +1873,45 @@ mod tests {
             let error = parser.errors[0].to_string();
             assert_eq!(error, expected_error, "for input \"{}\"", input);
         }
+    }
+
+    #[test]
+    fn test_function_literal_with_name() {
+        let input = "let myFunction = function() { };".to_string();
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+
+        assert_eq!(
+            parser.errors.len(),
+            0,
+            "found errors while parsing: {:#?}",
+            parser.errors
+        );
+
+        assert_eq!(
+            program.body.len(),
+            1,
+            "program.body does not contain 1 statements. got={}",
+            program.body.len()
+        );
+
+        let Statement::LetStatement(let_stmt) = &program.body[0] else {
+            panic!(
+                "program.body[0] is not LetStatement. got={:?}",
+                program.body[0]
+            );
+        };
+
+        let Some(Expression::FunctionLiteral(function)) = &let_stmt.value else {
+            panic!(
+                "let_stmt.value is not FunctionLiteral. got={:?}",
+                let_stmt.value
+            );
+        };
+
+        assert_eq!(function.name, "myFunction");
     }
 
     fn parse(input: &str) -> ExpressionStatement {

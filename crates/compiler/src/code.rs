@@ -122,6 +122,8 @@ pub enum Opcode {
     OpSetLocal = 25,
     OpGetBuiltin = 26,
     OpClosure = 27,
+    OpGetFree = 28,
+    OpCurrentClosure = 29,
 }
 
 impl Opcode {
@@ -241,6 +243,14 @@ impl Opcode {
                 // second operand - "free variables" on stack
                 operand_widths: &[2, 1],
             },
+            Opcode::OpGetFree => Definition {
+                name: "OpGetFree",
+                operand_widths: &[1],
+            },
+            Opcode::OpCurrentClosure => Definition {
+                name: "OpCurrentClosure",
+                operand_widths: &[],
+            },
         }
     }
 
@@ -274,6 +284,8 @@ impl Opcode {
             25 => Some(Opcode::OpSetLocal),
             26 => Some(Opcode::OpGetBuiltin),
             27 => Some(Opcode::OpClosure),
+            28 => Some(Opcode::OpGetFree),
+            29 => Some(Opcode::OpCurrentClosure),
             _ => None,
         }
     }

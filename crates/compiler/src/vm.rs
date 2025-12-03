@@ -303,10 +303,23 @@ impl Vm {
                     )
                     .try_into()
                     .unwrap();
+                    let num_free = u8::from_be_bytes([ins[(i + 3) as usize]]);
 
                     self.update_frame_pointer(3);
 
-                    self.push_closure(const_index)?
+                    self.push_closure(const_index, num_free as usize)?
+                }
+                Opcode::OpGetFree => {
+                    let free_index = u8::from_be_bytes([ins[(i + 1) as usize]]) as usize;
+                    self.update_frame_pointer(1);
+
+                    let current_closure = self.current_frame().current_closure();
+
+                    self.push(current_closure.free[free_index].clone())?
+                }
+                Opcode::OpCurrentClosure => {
+                    let current_closure = self.current_frame().current_closure();
+                    self.push(Object::Closure(Box::new(current_closure)))?
                 }
             }
 
@@ -596,16 +609,24 @@ impl Vm {
         Ok(())
     }
 
-    fn push_closure(&mut self, const_index: usize) -> Result<(), VmError> {
+    fn push_closure(&mut self, const_index: usize, num_free: usize) -> Result<(), VmError> {
         let constant = self.constants[const_index].clone();
 
         let Object::CompiledFunction(compiled_fn) = constant else {
             return Err(VmError::InvalidType);
         };
 
+        let mut free: Vec<Object> = Vec::with_capacity(num_free);
+
+        for i in 0..num_free {
+            free.push(self.stack[self.sp - num_free + i].clone());
+        }
+
+        self.sp = self.sp - num_free;
+
         let closure = Object::Closure(Box::new(Closure {
             func: *compiled_fn,
-            free: vec![],
+            free,
         }));
         self.push(closure)
     }
@@ -1433,6 +1454,137 @@ mod tests {
                     "#
                 .to_string(),
                 expected: Expected::Null(Null {}),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_closures() {
+        let tests = vec![
+            VmTestCase {
+                input: r#"
+               let newClosure = function(a) {
+                    function() { a; };
+                };
+                let closure = newClosure(99);
+                closure();
+            "#
+                .to_string(),
+                expected: Expected::Integer(99),
+            },
+            VmTestCase {
+                input: r#"
+                let newAdder = function(a, b) {
+                    let c = a + b;
+                    function(d) { c + d };
+                };
+                let adder = newAdder(1, 2);
+                adder(8);
+            "#
+                .to_string(),
+                expected: Expected::Integer(11),
+            },
+            VmTestCase {
+                input: r#"
+            let newAdderOuter = function(a, b) {
+            let c = a + b;
+            function(d) {
+                let e = d + c;
+                function(f) { e + f; };
+            };
+            };
+            let newAdderInner = newAdderOuter(1, 2)
+            let adder = newAdderInner(3);
+            adder(8);
+            "#
+                .to_string(),
+                expected: Expected::Integer(14),
+            },
+            VmTestCase {
+                input: r#"
+            let a = 1;
+            let newAdderOuter = function(b) {
+                function(c) {
+                    function(d) { a + b + c + d };
+                };
+            };
+            let newAdderInner = newAdderOuter(2)
+            let adder = newAdderInner(3);
+            adder(8);
+            "#
+                .to_string(),
+                expected: Expected::Integer(14),
+            },
+            VmTestCase {
+                input: r#"
+            let newClosure = function(a, b) {
+                let one = function() { a; };
+                let two = function() { b; };
+                function() { one() + two(); };
+            };
+            let closure = newClosure(9, 90);
+            closure();
+            "#
+                .to_string(),
+                expected: Expected::Integer(99),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_recursive_closures() {
+        let tests = vec![
+            VmTestCase {
+                input: r#"
+                let countDown = function(x) {
+                    if (x == 0) {
+                    return 0;
+                    } else {
+                    countDown(x - 1);
+                    }
+                };
+                countDown(1);
+            "#
+                .to_string(),
+                expected: Expected::Integer(0),
+            },
+            VmTestCase {
+                input: r#"
+                let countDown = function(x) {
+                    if (x == 0) {
+                    return 0;
+                    } else {
+                    countDown(x - 1);
+                    }
+                };
+                let wrapper = function() {
+                    countDown(1);
+                };
+                wrapper();
+            "#
+                .to_string(),
+                expected: Expected::Integer(0),
+            },
+            VmTestCase {
+                input: r#"
+                let wrapper = function() {
+                let countDown = function(x) {
+                    if (x == 0) {
+                        return 0;
+                    } else {
+                        countDown(x - 1);
+                    }
+                };
+                countDown(1);
+            };
+            wrapper();
+            "#
+                .to_string(),
+                expected: Expected::Integer(0),
             },
         ];
 
