@@ -18,7 +18,7 @@ fn compile_and_run(input: &str) -> i64 {
 
     vm.run().unwrap();
 
-    if let Some(obj) = vm.last_popped_stack_element() {
+    if let Some(obj) = vm.get_run_result() {
         if let monke_core::object::Object::Integer(val) = obj {
             return val.value;
         }

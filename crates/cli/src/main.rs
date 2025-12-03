@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::repl::{Repl, run_file};
+use crate::repl::MonkeCli;
 mod repl;
 
 #[derive(Parser)]
@@ -17,8 +17,10 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
 
+    let monke_cli = MonkeCli::new(cli.compile);
+
     if let Some(path) = cli.path {
-        let result = run_file(path);
+        let result = monke_cli.execute_file(path);
 
         if result.is_err() {
             println!("{:?}", result.err())
@@ -28,7 +30,6 @@ fn main() {
     }
 
     if cli.repl {
-        let repl = Repl::new(cli.compile);
-        repl.start();
+        monke_cli.start();
     }
 }

@@ -29,24 +29,23 @@ pub struct Vm {
     frame_index: usize,
 }
 
-#[derive(Debug, PartialEq)]
+// TODO: add reasons, like "unknown operator: *-"
+#[derive(Debug, PartialEq, strum_macros::Display)]
 pub enum VmError {
-    StackOverflowError(StackOverflowError),
+    #[strum(to_string = "stack overflow")]
+    StackOverflowError,
+    #[strum(to_string = "invalid type")]
     InvalidType,
+    #[strum(to_string = "unknown operator")]
     UnknownOperator,
+    #[strum(to_string = "unusable as hash key")]
     UnusableAsHashKey,
+    #[strum(to_string = "unsupported index operator")]
     UnsupportedIndexOperator,
+    #[strum(to_string = "calling non function")]
     CallingNonFunction,
+    #[strum(to_string = "wrong number of arguments")]
     WrongNumberOfArgs,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct StackOverflowError;
-
-impl std::fmt::Display for StackOverflowError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "stack overflow")
-    }
 }
 
 impl Vm {
@@ -384,7 +383,7 @@ impl Vm {
 
     fn push(&mut self, object: Object) -> Result<(), VmError> {
         if self.sp >= STACK_SIZE {
-            return Err(VmError::StackOverflowError(StackOverflowError {}));
+            return Err(VmError::StackOverflowError);
         }
 
         self.stack[self.sp] = object;
@@ -399,7 +398,7 @@ impl Vm {
         object.clone()
     }
 
-    pub fn last_popped_stack_element(&self) -> Option<Object> {
+    pub fn get_run_result(&self) -> Option<Object> {
         self.stack.get(self.sp).cloned()
     }
 
@@ -1611,7 +1610,7 @@ mod tests {
                 panic!("vm error: {:?}", err);
             }
 
-            let stack_element = vm.last_popped_stack_element();
+            let stack_element = vm.get_run_result();
 
             let Some(stack_element) = &stack_element else {
                 panic!("stack is empty");

@@ -38,11 +38,13 @@ pub struct Bytecode {
     pub constants: Vec<Object>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, strum_macros::Display)]
 pub enum CompilerError {
     // todo: remove later
+    #[strum(to_string = "unknown compiler error")]
     Unknown,
 
+    #[strum(to_string = "undefined variable")]
     UndefinedVariable,
 }
 

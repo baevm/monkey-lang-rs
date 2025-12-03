@@ -1,5 +1,5 @@
 # monkey-lang-rs
-Monkey language interpreter based on book "Writing an Interpreter in Go"
+Monkey language interpreter and compiler based on books "Writing an Interpreter in Go" and "Writing A Compiler In Go"
 
 ---
 Supported features:
@@ -30,3 +30,9 @@ Welcome to Monkey programming language!
 >> addFunction(6,2);
 "8"
 ```
+
+## CLI usage
+
+- `--repl` / `-r`: start an interactive REPL session (interpreter by default, compiler if combined with `--compile`).
+- `--compile` / `-c`: enable compiler mode (affects both REPL and file execution).
+- `<path>`: optional `.monke` file to execute. When omitted, the tool waits for `--repl` to launch an interactive session.

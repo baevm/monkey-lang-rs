@@ -187,6 +187,8 @@ dependencies = [
  "byteorder",
  "criterion",
  "monke_core",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]
