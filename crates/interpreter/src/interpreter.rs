@@ -189,7 +189,7 @@ impl Evaluator {
             Expression::FunctionLiteral(func) => Object::Function(Box::new(Function {
                 parameters: func.parameters.clone(),
                 body: func.body.clone(),
-                env: self.env.borrow().clone(),
+                env: Rc::clone(&self.env),
             })),
             Expression::CallExpression(call_expr) => {
                 let func = self.eval_expression(&call_expr.function);
@@ -490,7 +490,7 @@ impl Evaluator {
     }
 
     fn extend_function_env(&self, func_obj: &Box<Function>, args: &Vec<Object>) -> Environment {
-        let mut new_env = Environment::new_enclosed(Rc::new(RefCell::new(func_obj.env.clone())));
+        let mut new_env = Environment::new_enclosed(Rc::clone(&func_obj.env));
 
         for (idx, param) in func_obj.parameters.iter().enumerate() {
             new_env.set(&param.value, args[idx].clone());
@@ -1186,6 +1186,23 @@ mod tests {
         let evaluated = test_eval(input);
 
         test_integer_object(&evaluated, 4);
+    }
+
+    #[test]
+    fn test_recursive_functions() {
+        let input = r"
+        let recurs = function(x) {
+            if(x == 0) {return 100500;}
+            return recurs(x - 1);
+        };
+
+        recurs(4);
+        "
+        .to_string();
+
+        let evaluated = test_eval(input);
+
+        test_integer_object(&evaluated, 100500);
     }
 
     #[test]

@@ -201,7 +201,7 @@ impl Inspect for InternalError {
 pub struct Function {
     pub parameters: Vec<Identifier>,
     pub body: BlockStatement,
-    pub env: Environment,
+    pub env: Rc<RefCell<Environment>>,
 }
 
 impl Inspect for Function {
