@@ -6,7 +6,7 @@ use monke_core::{
 
 use crate::{
     code::{Instructions, Opcode, make},
-    symbol_table::{Symbol, SymbolScope, SymbolTable},
+    symbol_table::{SymbolScope, SymbolTable},
 };
 
 #[derive(Copy, Clone)]
@@ -503,7 +503,6 @@ mod tests {
 
     enum ExpectedConstant {
         I64(i64),
-        Bool(bool),
         String(String),
         Instructions(Vec<Instructions>),
     }
@@ -1539,7 +1538,6 @@ mod tests {
         for (idx, constant) in expected.into_iter().enumerate() {
             match constant {
                 ExpectedConstant::I64(constant) => test_integer_object(&constant, &actual[idx]),
-                ExpectedConstant::Bool(boolean) => test_boolean_object(&boolean, &actual[idx]),
                 ExpectedConstant::String(string) => test_string_object(&string, &actual[idx]),
                 ExpectedConstant::Instructions(items) => {
                     let Object::CompiledFunction(compiled_fn) = &actual[idx] else {
@@ -1553,18 +1551,6 @@ mod tests {
                 }
             }
         }
-    }
-
-    fn test_boolean_object(expected: &bool, actual: &Object) {
-        let Object::Boolean(bool_obj) = actual else {
-            panic!("object is not Integer. got: {}", actual);
-        };
-
-        assert_eq!(
-            bool_obj.value, *expected,
-            "object has wrong value. got: {}, want: {}",
-            bool_obj.value, expected
-        );
     }
 
     fn test_integer_object(expected: &i64, actual: &Object) {

@@ -1980,14 +1980,6 @@ mod tests {
         );
     }
 
-    fn test_let_statement(stmt: &Statement, expected: &str) {
-        if let Statement::LetStatement(let_stmt) = stmt {
-            assert_eq!(let_stmt.name.value.as_ref(), expected);
-        } else {
-            panic!("stmt is not LetStatement");
-        };
-    }
-
     fn test_identifier(expr: Expression, value: &str) {
         let identifier = match expr {
             Expression::Identifier(identifier) => identifier,

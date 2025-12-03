@@ -18,17 +18,21 @@ Supported features:
 ---
 To run REPL:
 ```
-    cargo run . 
+    cargo build --release
+
+    ./target/release/cli --repl // runs interpreter mode
+    ./target/release/cli --repl --compile // runs compiler mode 
 ```
 
 Example:
 ```
-Welcome to Monkey programming language!
+Welcome to Monke programming language!
+Running in compiler mode.
 
 >> let addFunction = function(x, y) { return x + y; };
-"null"
+
 >> addFunction(6,2);
-"8"
+8
 ```
 
 ## CLI usage

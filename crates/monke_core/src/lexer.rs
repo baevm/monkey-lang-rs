@@ -31,6 +31,7 @@ impl Lexer {
     }
 
     /// Reads next token in input
+    #[allow(unused_assignments)]
     pub fn next_token(&mut self) -> Token {
         let mut token: Token = Token {
             token_type: TokenType::Eof,

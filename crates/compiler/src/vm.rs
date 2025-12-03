@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use monke_core::object::{
-    self, Array, Boolean, Builtin, Closure, CompiledFunction, HashKey, HashObj, HashPair, Integer,
-    Null, Object, StringObj,
+    self, Array, Boolean, Builtin, Closure, HashKey, HashObj, HashPair, Integer, Null, Object,
+    StringObj,
 };
 
 use crate::{
@@ -81,6 +81,7 @@ impl Vm {
         vm
     }
 
+    #[allow(unused_assignments)]
     pub fn run(&mut self) -> Result<(), VmError> {
         let mut i = 0;
         let mut ins: Instructions = Instructions::new();
@@ -1326,7 +1327,7 @@ mod tests {
                 panic!("expected VM error but resulted in none");
             }
 
-            let Expected::String(expected_err) = test.expected else {
+            let Expected::String(_) = test.expected else {
                 panic!("object is not String. got: {:?}", test.expected);
             };
 
