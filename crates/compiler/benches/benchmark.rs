@@ -102,7 +102,7 @@ fn benchmark_many_operations(c: &mut Criterion) {
 }
 
 fn benchmark_fibonacci_of_20(c: &mut Criterion) {
-    c.bench_function("fibonacci of 20", |b| {
+    c.bench_function("compiler fibonacci of 20", |b| {
         let input = r#"
             let fibonacci = function(x) {
                 if (x == 0) {

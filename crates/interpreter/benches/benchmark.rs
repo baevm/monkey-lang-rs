@@ -63,7 +63,7 @@ fn benchmark_for_loop(c: &mut Criterion) {
 }
 
 fn benchmark_fibonacci_of_20(c: &mut Criterion) {
-    c.bench_function("fibonacci of 20", |b| {
+    c.bench_function("interpreter fibonacci of 20", |b| {
         b.iter(|| {
             let input = r#"
                 let fibonacci = function(x) {
