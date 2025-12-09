@@ -1,24 +1,22 @@
-use std::rc::Rc;
+use std::{rc::Rc, str::Chars};
 
 use crate::token::{Token, TokenType};
 
-pub struct Lexer {
-    input: String,
-    position: usize,      // current position in input (points to current char)
-    read_position: usize, // current reading position in input (after current char)
-    ch: char,             // current char
-    pub line: usize,      // current line
-    pub col: usize,       // current column
+pub struct Lexer<'a> {
+    input: &'a str,
+    ch: char,        // current char
+    pub line: usize, // current line
+    pub col: usize,  // current column
+    chars: Chars<'a>,
 }
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     const ASCII_NULL: char = '\0';
 
-    pub fn new(input: String) -> Self {
+    pub fn new(input: &'a str) -> Self {
         let mut lexer = Lexer {
-            input,
-            position: 0,
-            read_position: 0,
+            input: &input,
+            chars: input.chars(),
             ch: Self::ASCII_NULL,
             line: 1,
             col: 0,
@@ -212,6 +210,7 @@ impl Lexer {
             _ => {
                 if self.is_letter(self.ch) {
                     let literal = self.read_identififer();
+
                     let token_type = Token::check_ident(&literal);
 
                     return Token {
@@ -242,24 +241,10 @@ impl Lexer {
 
     /// Reads next character in input
     fn read_char(&mut self) {
-        if self.read_position >= self.input.len() {
-            self.ch = Self::ASCII_NULL;
-            self.position = self.read_position;
+        if let Some(ch) = self.chars.next() {
+            self.ch = ch;
         } else {
-            let current_byte = self.input.as_bytes()[self.read_position];
-
-            // fast path
-            if current_byte.is_ascii() {
-                self.ch = current_byte as char;
-                self.position = self.read_position;
-                self.read_position += 1;
-            } else {
-                let remainder = &self.input[self.read_position..];
-                let char_decoded = remainder.chars().next().unwrap();
-                self.ch = char_decoded;
-                self.position = self.read_position;
-                self.read_position += char_decoded.len_utf8();
-            }
+            self.ch = Self::ASCII_NULL;
         }
 
         self.col += 1;
@@ -274,23 +259,25 @@ impl Lexer {
     }
 
     fn read_identififer(&mut self) -> Rc<str> {
-        let position = self.position;
+        let mut result = String::new();
 
         while self.is_letter(self.ch) {
+            result.push(self.ch);
             self.read_char();
         }
 
-        Rc::from(self.input[position..self.position].to_string())
+        Rc::from(result)
     }
 
     fn read_number(&mut self) -> Rc<str> {
-        let position = self.position;
+        let mut result = String::new();
 
         while self.is_digit(self.ch) {
+            result.push(self.ch);
             self.read_char();
         }
 
-        Rc::from(self.input[position..self.position].to_string())
+        Rc::from(result)
     }
 
     fn skip_whitespace(&mut self) {
@@ -305,33 +292,24 @@ impl Lexer {
     }
 
     fn peek_char(&self) -> char {
-        if self.read_position >= self.input.len() {
-            Self::ASCII_NULL
+        if let Some(ch) = self.chars.clone().next() {
+            ch
         } else {
-            let current_byte = self.input.as_bytes()[self.read_position];
-
-            if current_byte.is_ascii() {
-                current_byte as char
-            } else {
-                // decode next UTF-8 char from byte index
-                let remainder = &self.input[self.read_position..];
-                remainder.chars().next().unwrap()
-            }
+            Self::ASCII_NULL
         }
     }
 
     fn read_string(&mut self) -> Rc<str> {
-        let position = self.position + 1; // skip " quote
+        let mut result = String::new();
+        self.read_char();
 
-        loop {
+        while self.ch != '"' && self.ch != Self::ASCII_NULL {
+            result.push(self.ch);
+
             self.read_char();
-
-            if self.ch == '"' || self.ch == Self::ASCII_NULL {
-                break;
-            }
         }
 
-        Rc::from(self.input[position..self.position].to_string())
+        Rc::from(result)
     }
 }
 
@@ -508,7 +486,7 @@ mod tests {
             (TokenType::Eof, "EOF"),
         ];
 
-        let mut lexer = Lexer::new(input);
+        let mut lexer = Lexer::new(&input);
 
         for test in tests {
             let token = lexer.next_token();
@@ -550,7 +528,7 @@ let b = 440;"#
             (TokenType::Eof, 2, 14),
         ];
 
-        let mut lexer = Lexer::new(input);
+        let mut lexer = Lexer::new(&input);
 
         for expect in expected {
             let token = lexer.next_token();

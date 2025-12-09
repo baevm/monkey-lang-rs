@@ -6,7 +6,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use monke_core::{lexer::Lexer, parser::Parser};
 
 fn compile_and_run(input: &str) -> i64 {
-    let lexer = Lexer::new(input.to_string());
+    let lexer = Lexer::new(input);
     let mut parser = Parser::new(lexer);
     let program = parser.parse_program();
 
@@ -44,7 +44,7 @@ fn benchmark_arithmetic(c: &mut Criterion) {
 fn benchmark_compilation_only(c: &mut Criterion) {
     c.bench_function("compile simple expression", |b| {
         b.iter(|| {
-            let lexer = Lexer::new(black_box("1 + 2 * 3".to_string()));
+            let lexer = Lexer::new(black_box("1 + 2 * 3"));
             let mut parser = Parser::new(lexer);
             let program = parser.parse_program();
 
@@ -55,7 +55,7 @@ fn benchmark_compilation_only(c: &mut Criterion) {
 
     c.bench_function("compile complex expression", |b| {
         b.iter(|| {
-            let input = black_box("(5 + 10 * 2 + 15 / 3) * 2 + 10".to_string());
+            let input = black_box("(5 + 10 * 2 + 15 / 3) * 2 + 10");
             let lexer = Lexer::new(input);
             let mut parser = Parser::new(lexer);
             let program = parser.parse_program();
@@ -68,7 +68,7 @@ fn benchmark_compilation_only(c: &mut Criterion) {
 
 fn benchmark_vm_execution(c: &mut Criterion) {
     // Pre-compile the bytecode
-    let lexer = Lexer::new("(5 + 10 * 2 + 15 / 3) * 2 + 10".to_string());
+    let lexer = Lexer::new("(5 + 10 * 2 + 15 / 3) * 2 + 10");
     let mut parser = Parser::new(lexer);
     let program = parser.parse_program();
     let mut compiler = Compiler::new();

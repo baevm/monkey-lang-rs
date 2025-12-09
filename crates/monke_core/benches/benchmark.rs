@@ -34,7 +34,7 @@ grandTotal;
 "#;
 
 fn run_lexer(src: &str) {
-    let mut lexer = Lexer::new(src.to_string());
+    let mut lexer = Lexer::new(src);
     loop {
         if lexer.next_token().token_type == TokenType::Eof {
             break;

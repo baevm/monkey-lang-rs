@@ -238,7 +238,7 @@ impl MonkeCli {
     }
 
     fn parse_program(&self, buf: String) -> Result<Program, Vec<ParseError>> {
-        let lexer = Lexer::new(buf);
+        let lexer = Lexer::new(&buf);
         let mut parser = Parser::new(lexer);
 
         if parser.is_err() {

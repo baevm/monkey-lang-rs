@@ -1601,7 +1601,7 @@ mod tests {
     }
 
     fn parse(input: String) -> ast::Program {
-        let lexer = Lexer::new(input);
+        let lexer = Lexer::new(&input);
         let mut parser = Parser::new(lexer);
         return parser.parse_program();
     }

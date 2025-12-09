@@ -11,8 +11,8 @@ use crate::{
     token::{Token, TokenType},
 };
 
-pub struct Parser {
-    lexer: Lexer,
+pub struct Parser<'a> {
+    lexer: Lexer<'a>,
 
     curr_token: Token,
     peek_token: Token,
@@ -20,8 +20,8 @@ pub struct Parser {
     errors: Vec<ParseError>,
 }
 
-impl Parser {
-    pub fn new(lexer: Lexer) -> Self {
+impl<'a> Parser<'a> {
+    pub fn new(lexer: Lexer<'a>) -> Self {
         let mut parser = Parser {
             lexer,
             curr_token: Token::new(),
@@ -652,10 +652,15 @@ mod tests {
                 expected_identifier: "foobar".to_string(),
                 expected_value: ExpectedValue::String("y".to_string()),
             },
+            TestCase {
+                input: "let emptyString = \"\";".to_string(),
+                expected_identifier: "emptyString".to_string(),
+                expected_value: ExpectedValue::String("".to_string()),
+            },
         ];
 
         for test in tests {
-            let lexer = Lexer::new(test.input);
+            let lexer = Lexer::new(&test.input);
             let mut parser = Parser::new(lexer);
 
             let program = parser.parse_program();
@@ -710,6 +715,15 @@ mod tests {
                         actual.value
                     );
                 }
+                (ExpectedValue::String(expected), Expression::StringLiteral(actual)) => {
+                    assert_eq!(
+                        actual.value.as_ref(),
+                        expected.as_str(),
+                        "let statement value is not {}. got: {}",
+                        expected,
+                        actual.value
+                    );
+                }
                 (expected_type, actual_expr) => {
                     panic!(
                         "Type mismatch: expected {:?}, got {:?}",
@@ -750,7 +764,7 @@ mod tests {
         ];
 
         for test in tests {
-            let lexer = Lexer::new(test.input);
+            let lexer = Lexer::new(&test.input);
             let mut parser = Parser::new(lexer);
 
             let program = parser.parse_program();
@@ -823,7 +837,7 @@ mod tests {
         }];
 
         for test in tests {
-            let lexer = Lexer::new(test.input);
+            let lexer = Lexer::new(&test.input);
             let mut parser = Parser::new(lexer);
 
             let program = parser.parse_program();
@@ -855,7 +869,7 @@ mod tests {
     fn test_identifier_expression() {
         let input = "variableName".to_string();
 
-        let lexer = Lexer::new(input);
+        let lexer = Lexer::new(&input);
         let mut parser = Parser::new(lexer);
 
         let program = parser.parse_program();
@@ -884,7 +898,7 @@ mod tests {
     fn test_integer_literal_expression() {
         let input = "5;".to_string();
 
-        let lexer = Lexer::new(input);
+        let lexer = Lexer::new(&input);
         let mut parser = Parser::new(lexer);
 
         let program = parser.parse_program();
@@ -932,7 +946,7 @@ mod tests {
         ];
 
         for test in tests {
-            let lexer = Lexer::new(test.input);
+            let lexer = Lexer::new(&test.input);
             let mut parser = Parser::new(lexer);
 
             let program = parser.parse_program();
@@ -1027,7 +1041,7 @@ mod tests {
         ];
 
         for test in tests {
-            let lexer = Lexer::new(test.input);
+            let lexer = Lexer::new(&test.input);
 
             let mut parser = Parser::new(lexer);
             let program = parser.parse_program();
@@ -1101,7 +1115,7 @@ mod tests {
         ];
 
         for test in tests {
-            let lexer = Lexer::new(test.input);
+            let lexer = Lexer::new(&test.input);
 
             let mut parser = Parser::new(lexer);
             let program = parser.parse_program();
@@ -1217,7 +1231,7 @@ mod tests {
         ];
 
         for test in tests {
-            let lexer = Lexer::new(test.0.to_string());
+            let lexer = Lexer::new(&test.0);
 
             let mut parser = Parser::new(lexer);
             let program = parser.parse_program();
@@ -1244,7 +1258,7 @@ mod tests {
         let tests = vec![("true", "true"), ("false", "false")];
 
         for test in tests {
-            let lexer = Lexer::new(test.0.to_string());
+            let lexer = Lexer::new(&test.0);
 
             let mut parser = Parser::new(lexer);
             let program = parser.parse_program();
@@ -1274,7 +1288,7 @@ mod tests {
         ];
 
         for test in tests {
-            let lexer = Lexer::new(test);
+            let lexer = Lexer::new(&test);
 
             let mut parser = Parser::new(lexer);
             let program = parser.parse_program();
@@ -1386,7 +1400,7 @@ mod tests {
     fn test_parsing_function_literal() {
         let input = "function(x, y) { x + y; }".to_string();
 
-        let lexer = Lexer::new(input);
+        let lexer = Lexer::new(&input);
 
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program();
@@ -1507,7 +1521,7 @@ mod tests {
         ];
 
         for test in tests {
-            let lexer = Lexer::new(test.0);
+            let lexer = Lexer::new(&test.0);
 
             let mut parser = Parser::new(lexer);
             let program = parser.parse_program();
@@ -1558,7 +1572,7 @@ mod tests {
     fn test_parsing_call_expression() {
         let input = "method(1, 2 * 3, 4 + 5);".to_string();
 
-        let lexer = Lexer::new(input);
+        let lexer = Lexer::new(&input);
 
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program();
@@ -1644,7 +1658,7 @@ mod tests {
     fn test_string_literal_expression() {
         let input = "\"hello world\"".to_string();
 
-        let lexer = Lexer::new(input);
+        let lexer = Lexer::new(&input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program();
 
@@ -1678,7 +1692,7 @@ mod tests {
     fn test_parsing_array_literal() {
         let input = "[1, 2 * 2, 3 + 3]".to_string();
 
-        let lexer = Lexer::new(input);
+        let lexer = Lexer::new(&input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program();
 
@@ -1724,7 +1738,7 @@ mod tests {
     fn test_parsing_index_expression() {
         let input = "arr[1 + 1]".to_string();
 
-        let lexer = Lexer::new(input);
+        let lexer = Lexer::new(&input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program();
 
@@ -1853,7 +1867,7 @@ mod tests {
         ];
 
         for (input, expected_error) in tests {
-            let lexer = Lexer::new(input.to_string());
+            let lexer = Lexer::new(&input);
             let mut parser = Parser::new(lexer);
             parser.parse_program();
 
@@ -1879,7 +1893,7 @@ mod tests {
     fn test_function_literal_with_name() {
         let input = "let myFunction = function() { };".to_string();
 
-        let lexer = Lexer::new(input);
+        let lexer = Lexer::new(&input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program();
 
@@ -1915,7 +1929,7 @@ mod tests {
     }
 
     fn parse(input: &str) -> ExpressionStatement {
-        let lexer = Lexer::new(input.to_string());
+        let lexer = Lexer::new(&input);
         let mut parser = Parser::new(lexer);
         let program = parser.parse_program();
 

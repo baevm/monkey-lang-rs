@@ -1315,7 +1315,7 @@ mod tests {
         ];
 
         for test in tests {
-            let program = parse(test.input);
+            let program = parse(&test.input);
 
             let mut compiler = Compiler::new();
             compiler.compile(program).expect("compiler error");
@@ -1598,7 +1598,7 @@ mod tests {
 
     fn run_vm_tests(tests: Vec<VmTestCase>) {
         for test in tests {
-            let program = parse(test.input);
+            let program = parse(&test.input);
             let mut compiler = Compiler::new();
 
             if let Err(err) = compiler.compile(program) {
@@ -1617,26 +1617,26 @@ mod tests {
                 panic!("stack is empty");
             };
 
-            test_expected_object(&test.expected, &stack_element);
+            test_expected_object(&test.expected, &stack_element, &test.input);
         }
     }
 
-    fn test_expected_object(expected: &Expected, actual: &Object) {
+    fn test_expected_object(expected: &Expected, actual: &Object, input: &str) {
         match expected {
             Expected::Integer(int) => {
-                test_integer_object(&int, actual);
+                test_integer_object(&int, actual, input);
             }
             Expected::Boolean(boolean) => {
-                test_boolean_object(boolean, actual);
+                test_boolean_object(boolean, actual, input);
             }
             Expected::Null(_) => {
                 let Object::Null(_) = actual else {
                     panic!("object is not Null. got: {}", actual)
                 };
             }
-            Expected::String(str_val) => test_string_object(&str_val, actual),
-            Expected::Array(arr) => test_array_object(arr, actual),
-            Expected::Hash(hash_map) => test_hash_object(hash_map, actual),
+            Expected::String(str_val) => test_string_object(&str_val, actual, input),
+            Expected::Array(arr) => test_array_object(arr, actual, input),
+            Expected::Hash(hash_map) => test_hash_object(hash_map, actual, input),
             Expected::InternalError(expected_err) => {
                 let Object::InternalError(actual_err) = actual else {
                     panic!("object is not InternalError. got: {}", actual);
@@ -1653,7 +1653,7 @@ mod tests {
         }
     }
 
-    fn test_hash_object(expected: &HashMap<HashKey, Expected>, actual: &Object) {
+    fn test_hash_object(expected: &HashMap<HashKey, Expected>, actual: &Object, input: &str) {
         let Object::HashObj(actual_hash_obj) = actual else {
             panic!("object is not HashObj. got: {}", actual);
         };
@@ -1673,11 +1673,11 @@ mod tests {
                 .find(|p| p.0.value == expected_key.value)
                 .expect("no pair for given key in pairs");
 
-            test_expected_object(expected_val, &pair.1.value);
+            test_expected_object(expected_val, &pair.1.value, input);
         }
     }
 
-    fn test_array_object(expected: &[Expected], actual: &Object) {
+    fn test_array_object(expected: &[Expected], actual: &Object, input: &str) {
         let Object::Array(actual_arr) = actual else {
             panic!("object is not Array. got: {}", actual);
         };
@@ -1691,11 +1691,11 @@ mod tests {
         );
 
         for (expected, actual) in expected.iter().zip(actual_arr.elements.iter()) {
-            test_expected_object(expected, actual);
+            test_expected_object(expected, actual, input);
         }
     }
 
-    fn test_boolean_object(expected: &bool, actual: &Object) {
+    fn test_boolean_object(expected: &bool, actual: &Object, input: &str) {
         let Object::Boolean(bool_obj) = actual else {
             panic!("object is not Integer. got: {}", actual);
         };
@@ -1707,19 +1707,19 @@ mod tests {
         );
     }
 
-    fn test_integer_object(expected: &i64, actual: &Object) {
+    fn test_integer_object(expected: &i64, actual: &Object, input: &str) {
         let Object::Integer(int_obj) = actual else {
-            panic!("object is not Integer. got: {}", actual);
+            panic!("object is not Integer. got: {actual}. \n input: {input}");
         };
 
         assert_eq!(
             int_obj.value, *expected,
-            "object has wrong value. got: {}, want: {}",
+            "object has wrong value. got: {}, want: {}. \n input: {input}",
             int_obj.value, expected
         );
     }
 
-    fn test_string_object(expected: &str, actual: &Object) {
+    fn test_string_object(expected: &str, actual: &Object, input: &str) {
         let Object::String(str_obj) = actual else {
             panic!("object is not String. got: {}", actual);
         };
@@ -1731,8 +1731,8 @@ mod tests {
         );
     }
 
-    fn parse(input: String) -> ast::Program {
-        let lexer = Lexer::new(input);
+    fn parse(input: &str) -> ast::Program {
+        let lexer = Lexer::new(&input);
         let mut parser = Parser::new(lexer);
         return parser.parse_program();
     }

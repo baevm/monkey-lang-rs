@@ -8,7 +8,7 @@ use monke_core::{
 };
 
 fn evaluate(input: String) -> Object {
-    let lexer = Lexer::new(input);
+    let lexer = Lexer::new(&input);
     let mut parser = Parser::new(lexer);
 
     let program = parser.parse_program();
