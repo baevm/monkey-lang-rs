@@ -62,10 +62,35 @@ fn benchmark_for_loop(c: &mut Criterion) {
     });
 }
 
+fn benchmark_fibonacci_of_20(c: &mut Criterion) {
+    c.bench_function("fibonacci of 20", |b| {
+        b.iter(|| {
+            let input = r#"
+                let fibonacci = function(x) {
+                    if (x == 0) {
+                        return 0;
+                    } else {
+                    if (x == 1) {
+                            return 1;
+                        } else {
+                            return fibonacci(x - 1) + fibonacci(x - 2);
+                        }
+                    }
+                };
+                let result = fibonacci(20);
+            "#
+            .to_string();
+
+            evaluate(input);
+        })
+    });
+}
+
 criterion_group!(
     benches,
     benchmark_adding_numbers,
     benchmark_function_call,
-    benchmark_for_loop
+    benchmark_for_loop,
+    benchmark_fibonacci_of_20
 );
 criterion_main!(benches);

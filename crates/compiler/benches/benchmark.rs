@@ -101,11 +101,32 @@ fn benchmark_many_operations(c: &mut Criterion) {
     });
 }
 
+fn benchmark_fibonacci_of_20(c: &mut Criterion) {
+    c.bench_function("fibonacci of 20", |b| {
+        let input = r#"
+            let fibonacci = function(x) {
+                if (x == 0) {
+                    return 0;
+                } else {
+                    if (x == 1) {
+                        return 1;
+                    } else {
+                        return fibonacci(x - 1) + fibonacci(x - 2);
+                    }
+                }
+            };
+            fibonacci(20);
+        "#;
+        b.iter(|| black_box(compile_and_run(input)))
+    });
+}
+
 criterion_group!(
     benches,
     benchmark_arithmetic,
     benchmark_compilation_only,
     benchmark_vm_execution,
-    benchmark_many_operations
+    benchmark_many_operations,
+    benchmark_fibonacci_of_20
 );
 criterion_main!(benches);
