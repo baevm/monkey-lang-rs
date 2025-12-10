@@ -14,7 +14,7 @@ fn compile_and_run(input: &str) -> i64 {
     compiler.compile(program).unwrap();
 
     let bytecode = compiler.bytecode();
-    let mut vm = Vm::new(bytecode);
+    let mut vm = Vm::new(&bytecode);
 
     vm.run().unwrap();
 
@@ -77,7 +77,7 @@ fn benchmark_vm_execution(c: &mut Criterion) {
 
     c.bench_function("vm execute precompiled", |b| {
         b.iter(|| {
-            let mut vm = Vm::new(bytecode.clone());
+            let mut vm = Vm::new(&bytecode);
             black_box(vm.run().unwrap());
         })
     });

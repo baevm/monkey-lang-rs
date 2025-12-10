@@ -17,8 +17,8 @@ const STACK_SIZE: usize = 2048;
 pub const GLOBALS_SIZE: usize = 65536;
 const MAX_FRAMES: usize = 1024;
 
-pub struct Vm {
-    constants: Vec<Object>,
+pub struct Vm<'a> {
+    constants: &'a Vec<Object>,
 
     stack: Vec<Object>,
     sp: usize, // stack pointer - always points to the next value.
@@ -48,8 +48,8 @@ pub enum VmError {
     WrongNumberOfArgs,
 }
 
-impl Vm {
-    pub fn new(bytecode: Bytecode) -> Self {
+impl<'a> Vm<'a> {
+    pub fn new(bytecode: &'a Bytecode) -> Self {
         let main_func = object::CompiledFunction {
             instructions: bytecode.instructions.to_vec(),
             num_locals: 0,
@@ -74,8 +74,8 @@ impl Vm {
         }
     }
 
-    pub fn new_with_state(bytecode: Bytecode, globals: Vec<Object>) -> Self {
-        let mut vm = Vm::new(bytecode);
+    pub fn new_with_state(bytecode: &'a Bytecode, globals: Vec<Object>) -> Self {
+        let mut vm = Vm::new(&bytecode);
         vm.globals = globals;
 
         vm
@@ -1320,7 +1320,8 @@ mod tests {
             let mut compiler = Compiler::new();
             compiler.compile(program).expect("compiler error");
 
-            let mut vm = Vm::new(compiler.bytecode());
+            let bytcode = compiler.bytecode();
+            let mut vm = Vm::new(&bytcode);
             let result = vm.run();
 
             if result.is_ok() {
@@ -1605,7 +1606,8 @@ mod tests {
                 panic!("compiler error: {:?}", err);
             }
 
-            let mut vm = Vm::new(compiler.bytecode());
+            let bytcode = compiler.bytecode();
+            let mut vm = Vm::new(&bytcode);
 
             if let Err(err) = vm.run() {
                 panic!("vm error: {:?}", err);

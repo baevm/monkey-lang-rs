@@ -33,9 +33,9 @@ pub struct Compiler {
 }
 
 #[derive(Clone)]
-pub struct Bytecode {
-    pub instructions: Instructions,
-    pub constants: Vec<Object>,
+pub struct Bytecode<'a> {
+    pub instructions: &'a Instructions,
+    pub constants: &'a Vec<Object>,
 }
 
 #[derive(Debug, strum_macros::Display)]
@@ -161,10 +161,10 @@ impl Compiler {
         }
     }
 
-    pub fn bytecode(&self) -> Bytecode {
+    pub fn bytecode(&'_ self) -> Bytecode<'_> {
         Bytecode {
-            instructions: self.current_instructions().clone(),
-            constants: self.constants.clone(),
+            instructions: self.current_instructions(),
+            constants: &self.constants,
         }
     }
 
@@ -1526,7 +1526,7 @@ mod tests {
         }
     }
 
-    fn test_constants(expected: Vec<ExpectedConstant>, actual: Vec<Object>) {
+    fn test_constants(expected: Vec<ExpectedConstant>, actual: &Vec<Object>) {
         assert_eq!(
             actual.len(),
             expected.len(),
@@ -1546,7 +1546,7 @@ mod tests {
 
                     test_instructions(
                         items,
-                        code::Instructions::from(compiled_fn.instructions.clone()),
+                        &code::Instructions::from(compiled_fn.instructions.clone()),
                     );
                 }
             }
@@ -1577,7 +1577,7 @@ mod tests {
         );
     }
 
-    fn test_instructions(expected: Vec<Instructions>, actual: Instructions) {
+    fn test_instructions(expected: Vec<Instructions>, actual: &Instructions) {
         let concated: Instructions = expected.into_iter().flat_map(|i| i).collect();
 
         assert_eq!(

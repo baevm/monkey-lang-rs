@@ -163,7 +163,7 @@ impl MonkeCli {
         };
 
         let bytecode = compiler.bytecode();
-        let mut vm = Vm::new(bytecode);
+        let mut vm = Vm::new(&bytecode);
 
         if let Err(vm_error) = vm.run() {
             return Err(Error::new(ErrorKind::Other, vm_error.to_string()));
@@ -212,7 +212,7 @@ impl MonkeCli {
 
         let bytecode = compiler.bytecode();
 
-        let mut vm = Vm::new_with_state(bytecode, globals.to_vec());
+        let mut vm = Vm::new_with_state(&bytecode, globals.to_vec());
 
         if let Err(_e) = vm.run() {
             return Err(vec![]);
