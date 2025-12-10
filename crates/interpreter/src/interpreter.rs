@@ -3,7 +3,7 @@ use monke_core::object::{
     Array, Builtin, BuiltinFnError, Environment, Function, HashKey, HashObj, HashPair, HashableKey,
     InternalError, Return, StringObj,
 };
-use monke_core::token::TokenType;
+use monke_core::token::Kind;
 use monke_core::{
     ast::{Expression, Program, Statement},
     object::{Boolean, Integer, Null, Object},
@@ -162,7 +162,7 @@ impl Evaluator {
                 self.eval_prefix_expression(&prefix_expr.operator, right)
             }
             Expression::InfixExpression(infix_expr) => {
-                if infix_expr.operator == TokenType::Assign {
+                if infix_expr.operator == Kind::Assign {
                     return self.eval_assigment(infix_expr);
                 }
 
@@ -246,10 +246,10 @@ impl Evaluator {
         result
     }
 
-    fn eval_prefix_expression(&self, operator: &TokenType, right: Object) -> Object {
+    fn eval_prefix_expression(&self, operator: &Kind, right: Object) -> Object {
         match operator {
-            &TokenType::Bang => self.eval_bang_operator_expression(right),
-            &TokenType::Minus => self.eval_minus_prefix_operator_expression(right),
+            &Kind::Bang => self.eval_bang_operator_expression(right),
+            &Kind::Minus => self.eval_minus_prefix_operator_expression(right),
             _ => Object::InternalError(Box::new(InternalError {
                 message: BuiltinFnError::UnknownOperator(format!("{operator}{right}")),
             })),
@@ -271,10 +271,10 @@ impl Evaluator {
                     && let Object::Integer(right_int) = right
                 {
                     left_int.value = match infix_expr.operator {
-                        TokenType::AssignAdd => left_int.value + right_int.value,
-                        TokenType::AssignSub => left_int.value - right_int.value,
-                        TokenType::AssignMul => left_int.value * right_int.value,
-                        TokenType::AssignDiv => left_int.value / right_int.value,
+                        Kind::AssignAdd => left_int.value + right_int.value,
+                        Kind::AssignSub => left_int.value - right_int.value,
+                        Kind::AssignMul => left_int.value * right_int.value,
+                        Kind::AssignDiv => left_int.value / right_int.value,
                         _ => left_int.value,
                     };
                     env.set(&left_ident.value, Object::Integer(left_int));
@@ -319,7 +319,7 @@ impl Evaluator {
 
     fn eval_infix_expression(
         &self,
-        operator: &TokenType,
+        operator: &Kind,
         left: &mut Object,
         right: &mut Object,
     ) -> Object {
@@ -351,33 +351,33 @@ impl Evaluator {
 
     fn eval_integer_infix_expression(
         &self,
-        operator: &TokenType,
+        operator: &Kind,
         left: &mut Box<Integer>,
         right: &mut Box<Integer>,
     ) -> Object {
         match operator {
-            TokenType::Plus => Object::Integer(Box::new(Integer {
+            Kind::Plus => Object::Integer(Box::new(Integer {
                 value: left.value + right.value,
             })),
-            TokenType::Minus => Object::Integer(Box::new(Integer {
+            Kind::Minus => Object::Integer(Box::new(Integer {
                 value: left.value - right.value,
             })),
-            TokenType::Asterisk => Object::Integer(Box::new(Integer {
+            Kind::Asterisk => Object::Integer(Box::new(Integer {
                 value: left.value * right.value,
             })),
-            TokenType::Slash => Object::Integer(Box::new(Integer {
+            Kind::Slash => Object::Integer(Box::new(Integer {
                 value: left.value / right.value,
             })),
-            TokenType::Gt => Object::Boolean(Box::new(Boolean {
+            Kind::Gt => Object::Boolean(Box::new(Boolean {
                 value: left.value > right.value,
             })),
-            TokenType::Lt => Object::Boolean(Box::new(Boolean {
+            Kind::Lt => Object::Boolean(Box::new(Boolean {
                 value: left.value < right.value,
             })),
-            TokenType::Eq => Object::Boolean(Box::new(Boolean {
+            Kind::Eq => Object::Boolean(Box::new(Boolean {
                 value: left.value == right.value,
             })),
-            TokenType::NotEq => Object::Boolean(Box::new(Boolean {
+            Kind::NotEq => Object::Boolean(Box::new(Boolean {
                 value: left.value != right.value,
             })),
             _ => Object::InternalError(Box::new(InternalError {
@@ -388,15 +388,15 @@ impl Evaluator {
 
     fn eval_boolean_infix_expression(
         &self,
-        operator: &TokenType,
+        operator: &Kind,
         left: &mut Box<Boolean>,
         right: &mut Box<Boolean>,
     ) -> Object {
         match operator {
-            TokenType::Eq => Object::Boolean(Box::new(Boolean {
+            Kind::Eq => Object::Boolean(Box::new(Boolean {
                 value: left.value == right.value,
             })),
-            TokenType::NotEq => Object::Boolean(Box::new(Boolean {
+            Kind::NotEq => Object::Boolean(Box::new(Boolean {
                 value: left.value != right.value,
             })),
             _ => Object::InternalError(Box::new(InternalError {
@@ -501,12 +501,12 @@ impl Evaluator {
 
     fn eval_string_concatenation(
         &self,
-        operator: &TokenType,
+        operator: &Kind,
         left: &mut Box<StringObj>,
         right: &mut Box<StringObj>,
     ) -> Object {
         match operator {
-            &TokenType::Plus => Object::String(Box::new(StringObj {
+            &Kind::Plus => Object::String(Box::new(StringObj {
                 value: format!("{}{}", left.value, right.value),
             })),
             _ => Object::InternalError(Box::new(InternalError {

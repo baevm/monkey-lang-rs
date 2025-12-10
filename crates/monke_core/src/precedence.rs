@@ -1,4 +1,4 @@
-use crate::token::TokenType;
+use crate::token::Kind;
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum Precedence {
@@ -14,28 +14,28 @@ pub enum Precedence {
 }
 
 impl Precedence {
-    pub fn token_to_precedence(token: &TokenType) -> Option<Self> {
+    pub fn token_to_precedence(token: &Kind) -> Option<Self> {
         match token {
-            TokenType::Assign => Some(Precedence::Assign),
+            Kind::Assign => Some(Precedence::Assign),
 
-            TokenType::Eq => Some(Precedence::Equals),
-            TokenType::NotEq => Some(Precedence::Equals),
+            Kind::Eq => Some(Precedence::Equals),
+            Kind::NotEq => Some(Precedence::Equals),
 
-            TokenType::Lt => Some(Precedence::LessGreater),
-            TokenType::Gt => Some(Precedence::LessGreater),
+            Kind::Lt => Some(Precedence::LessGreater),
+            Kind::Gt => Some(Precedence::LessGreater),
 
-            TokenType::Plus => Some(Precedence::Sum),
-            TokenType::Minus => Some(Precedence::Sum),
-            TokenType::AssignAdd => Some(Precedence::Sum),
-            TokenType::AssignSub => Some(Precedence::Sum),
+            Kind::Plus => Some(Precedence::Sum),
+            Kind::Minus => Some(Precedence::Sum),
+            Kind::AssignAdd => Some(Precedence::Sum),
+            Kind::AssignSub => Some(Precedence::Sum),
 
-            TokenType::Slash => Some(Precedence::Product),
-            TokenType::Asterisk => Some(Precedence::Product),
-            TokenType::AssignDiv => Some(Precedence::Product),
-            TokenType::AssignMul => Some(Precedence::Product),
+            Kind::Slash => Some(Precedence::Product),
+            Kind::Asterisk => Some(Precedence::Product),
+            Kind::AssignDiv => Some(Precedence::Product),
+            Kind::AssignMul => Some(Precedence::Product),
 
-            TokenType::Lparen => Some(Precedence::Call),
-            TokenType::Lbracket => Some(Precedence::Index),
+            Kind::Lparen => Some(Precedence::Call),
+            Kind::Lbracket => Some(Precedence::Index),
             _ => None,
         }
     }

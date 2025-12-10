@@ -1,4 +1,4 @@
-use crate::token::TokenType;
+use crate::token::Kind;
 
 #[derive(Debug, Clone)]
 pub struct InfoPosition {
@@ -9,11 +9,11 @@ pub struct InfoPosition {
 #[derive(Debug, Clone)]
 pub enum ParseError {
     UnexpectedToken {
-        expected: Option<TokenType>,
-        got: TokenType,
+        expected: Option<Kind>,
+        got: Kind,
         info: InfoPosition,
     },
-    MissingPrefixParseFn(TokenType),
+    MissingPrefixParseFn(Kind),
     CouldNotParseInteger(String),
 }
 
@@ -36,8 +36,8 @@ impl std::fmt::Display for ParseError {
                     info.line, info.column, got
                 ),
             },
-            ParseError::MissingPrefixParseFn(token_type) => {
-                write!(f, "No prefix parse function found for: '{:?}'", token_type)
+            ParseError::MissingPrefixParseFn(kind) => {
+                write!(f, "No prefix parse function found for: '{:?}'", kind)
             }
             ParseError::CouldNotParseInteger(literal) => {
                 write!(f, "Could not parse '{}' as integer", literal)

@@ -1,6 +1,6 @@
 use std::{rc::Rc, str::Chars};
 
-use crate::token::{Token, TokenType};
+use crate::token::{Kind, Token};
 
 pub struct Lexer<'a> {
     input: &'a str,
@@ -32,8 +32,8 @@ impl<'a> Lexer<'a> {
     #[allow(unused_assignments)]
     pub fn next_token(&mut self) -> Token {
         let mut token: Token = Token {
-            token_type: TokenType::Eof,
-            literal: Rc::from(Self::ASCII_NULL.to_string()),
+            kind: Kind::Eof,
+            value: Rc::from(Self::ASCII_NULL.to_string()),
         };
 
         self.skip_whitespace();
@@ -41,194 +41,188 @@ impl<'a> Lexer<'a> {
         match self.ch {
             '(' => {
                 token = Token {
-                    literal: Rc::from(TokenType::Lparen.to_str()),
-                    token_type: TokenType::Lparen,
+                    value: Rc::from(Kind::Lparen.to_str()),
+                    kind: Kind::Lparen,
                 }
             }
             ')' => {
                 token = Token {
-                    literal: Rc::from(TokenType::Rparen.to_str()),
-                    token_type: TokenType::Rparen,
+                    value: Rc::from(Kind::Rparen.to_str()),
+                    kind: Kind::Rparen,
                 }
             }
             '{' => {
                 token = Token {
-                    literal: Rc::from(TokenType::Lbrace.to_str()),
-                    token_type: TokenType::Lbrace,
+                    value: Rc::from(Kind::Lbrace.to_str()),
+                    kind: Kind::Lbrace,
                 }
             }
             '}' => {
                 token = Token {
-                    literal: Rc::from(TokenType::Rbrace.to_str()),
-                    token_type: TokenType::Rbrace,
+                    value: Rc::from(Kind::Rbrace.to_str()),
+                    kind: Kind::Rbrace,
                 }
             }
             ';' => {
                 token = Token {
-                    literal: Rc::from(TokenType::Semicolon.to_str()),
-                    token_type: TokenType::Semicolon,
+                    value: Rc::from(Kind::Semicolon.to_str()),
+                    kind: Kind::Semicolon,
                 }
             }
             ':' => {
                 token = Token {
-                    literal: Rc::from(TokenType::Colon.to_str()),
-                    token_type: TokenType::Colon,
+                    value: Rc::from(Kind::Colon.to_str()),
+                    kind: Kind::Colon,
                 }
             }
             ',' => {
                 token = Token {
-                    literal: Rc::from(TokenType::Comma.to_str()),
-                    token_type: TokenType::Comma,
+                    value: Rc::from(Kind::Comma.to_str()),
+                    kind: Kind::Comma,
                 }
             }
             '+' => {
                 if self.peek_char() == '=' {
                     token = Token {
-                        literal: Rc::from(TokenType::AssignAdd.to_str()),
-                        token_type: TokenType::AssignAdd,
+                        value: Rc::from(Kind::AssignAdd.to_str()),
+                        kind: Kind::AssignAdd,
                     };
 
                     self.read_char();
                 } else {
                     token = Token {
-                        literal: Rc::from(TokenType::Plus.to_str()),
-                        token_type: TokenType::Plus,
+                        value: Rc::from(Kind::Plus.to_str()),
+                        kind: Kind::Plus,
                     }
                 }
             }
             '-' => {
                 if self.peek_char() == '=' {
                     token = Token {
-                        literal: Rc::from(TokenType::AssignSub.to_str()),
-                        token_type: TokenType::AssignSub,
+                        value: Rc::from(Kind::AssignSub.to_str()),
+                        kind: Kind::AssignSub,
                     };
 
                     self.read_char();
                 } else {
                     token = Token {
-                        literal: Rc::from(TokenType::Minus.to_str()),
-                        token_type: TokenType::Minus,
+                        value: Rc::from(Kind::Minus.to_str()),
+                        kind: Kind::Minus,
                     }
                 }
             }
             '*' => {
                 if self.peek_char() == '=' {
                     token = Token {
-                        literal: Rc::from(TokenType::AssignMul.to_str()),
-                        token_type: TokenType::AssignMul,
+                        value: Rc::from(Kind::AssignMul.to_str()),
+                        kind: Kind::AssignMul,
                     };
 
                     self.read_char();
                 } else {
                     token = Token {
-                        literal: Rc::from(TokenType::Asterisk.to_str()),
-                        token_type: TokenType::Asterisk,
+                        value: Rc::from(Kind::Asterisk.to_str()),
+                        kind: Kind::Asterisk,
                     }
                 }
             }
             '/' => {
                 if self.peek_char() == '=' {
                     token = Token {
-                        literal: Rc::from(TokenType::AssignDiv.to_str()),
-                        token_type: TokenType::AssignDiv,
+                        value: Rc::from(Kind::AssignDiv.to_str()),
+                        kind: Kind::AssignDiv,
                     };
 
                     self.read_char();
                 } else {
                     token = Token {
-                        literal: Rc::from(TokenType::Slash.to_str()),
-                        token_type: TokenType::Slash,
+                        value: Rc::from(Kind::Slash.to_str()),
+                        kind: Kind::Slash,
                     }
                 }
             }
             '<' => {
                 token = Token {
-                    literal: Rc::from(TokenType::Lt.to_str()),
-                    token_type: TokenType::Lt,
+                    value: Rc::from(Kind::Lt.to_str()),
+                    kind: Kind::Lt,
                 }
             }
             '>' => {
                 token = Token {
-                    literal: Rc::from(TokenType::Gt.to_str()),
-                    token_type: TokenType::Gt,
+                    value: Rc::from(Kind::Gt.to_str()),
+                    kind: Kind::Gt,
                 }
             }
             '=' => {
                 if self.peek_char() == '=' {
                     token = Token {
-                        literal: Rc::from(TokenType::Eq.to_str()),
-                        token_type: TokenType::Eq,
+                        value: Rc::from(Kind::Eq.to_str()),
+                        kind: Kind::Eq,
                     };
 
                     self.read_char();
                 } else {
                     token = Token {
-                        literal: Rc::from(TokenType::Assign.to_str()),
-                        token_type: TokenType::Assign,
+                        value: Rc::from(Kind::Assign.to_str()),
+                        kind: Kind::Assign,
                     }
                 }
             }
             '!' => {
                 if self.peek_char() == '=' {
                     token = Token {
-                        literal: Rc::from(TokenType::NotEq.to_str()),
-                        token_type: TokenType::NotEq,
+                        value: Rc::from(Kind::NotEq.to_str()),
+                        kind: Kind::NotEq,
                     };
 
                     self.read_char();
                 } else {
                     token = Token {
-                        literal: Rc::from(TokenType::Bang.to_str()),
-                        token_type: TokenType::Bang,
+                        value: Rc::from(Kind::Bang.to_str()),
+                        kind: Kind::Bang,
                     }
                 }
             }
             '"' => {
                 token = Token {
-                    literal: self.read_string(),
-                    token_type: TokenType::String,
+                    value: self.read_string(),
+                    kind: Kind::String,
                 };
             }
             '[' => {
                 token = Token {
-                    literal: Rc::from(TokenType::Lbracket.to_str()),
-                    token_type: TokenType::Lbracket,
+                    value: Rc::from(Kind::Lbracket.to_str()),
+                    kind: Kind::Lbracket,
                 };
             }
             ']' => {
                 token = Token {
-                    literal: Rc::from(TokenType::Rbracket.to_str()),
-                    token_type: TokenType::Rbracket,
+                    value: Rc::from(Kind::Rbracket.to_str()),
+                    kind: Kind::Rbracket,
                 };
             }
             Self::ASCII_NULL => {
                 token = Token {
-                    literal: Rc::from(TokenType::Eof.to_str()),
-                    token_type: TokenType::Eof,
+                    value: Rc::from(Kind::Eof.to_str()),
+                    kind: Kind::Eof,
                 }
             }
             _ => {
                 if self.is_letter(self.ch) {
-                    let literal = self.read_identififer();
+                    let value = self.read_identififer();
 
-                    let token_type = Token::check_ident(&literal);
+                    let kind = Token::check_ident(&value);
 
-                    return Token {
-                        literal,
-                        token_type,
-                    };
+                    return Token { value, kind };
                 } else if self.is_digit(self.ch) {
-                    let token_type = TokenType::Int;
-                    let literal = self.read_number();
+                    let kind = Kind::Int;
+                    let value = self.read_number();
 
-                    return Token {
-                        literal,
-                        token_type,
-                    };
+                    return Token { value, kind };
                 } else {
                     token = Token {
-                        literal: Rc::from(TokenType::Illegal.to_string()),
-                        token_type: TokenType::Illegal,
+                        value: Rc::from(Kind::Illegal.to_string()),
+                        kind: Kind::Illegal,
                     }
                 }
             }
@@ -315,7 +309,7 @@ impl<'a> Lexer<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::token::TokenType;
+    use crate::token::Kind;
 
     use super::Lexer;
 
@@ -359,131 +353,131 @@ mod tests {
         .to_string();
 
         let tests = vec![
-            (TokenType::Let, "let"),
-            (TokenType::Ident, "five"),
-            (TokenType::Assign, "="),
-            (TokenType::Int, "5"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Let, "let"),
-            (TokenType::Ident, "ten"),
-            (TokenType::Assign, "="),
-            (TokenType::Int, "10"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Let, "let"),
-            (TokenType::Ident, "add"),
-            (TokenType::Assign, "="),
-            (TokenType::Function, "function"),
-            (TokenType::Lparen, "("),
-            (TokenType::Ident, "x"),
-            (TokenType::Comma, ","),
-            (TokenType::Ident, "y"),
-            (TokenType::Rparen, ")"),
-            (TokenType::Lbrace, "{"),
-            (TokenType::Ident, "x"),
-            (TokenType::Plus, "+"),
-            (TokenType::Ident, "y"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Rbrace, "}"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Let, "let"),
-            (TokenType::Ident, "result"),
-            (TokenType::Assign, "="),
-            (TokenType::Ident, "add"),
-            (TokenType::Lparen, "("),
-            (TokenType::Ident, "five"),
-            (TokenType::Comma, ","),
-            (TokenType::Ident, "ten"),
-            (TokenType::Rparen, ")"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Bang, "!"),
-            (TokenType::Minus, "-"),
-            (TokenType::Slash, "/"),
-            (TokenType::Asterisk, "*"),
-            (TokenType::Int, "5"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Int, "5"),
-            (TokenType::Lt, "<"),
-            (TokenType::Int, "10"),
-            (TokenType::Gt, ">"),
-            (TokenType::Int, "5"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::If, "if"),
-            (TokenType::Lparen, "("),
-            (TokenType::Int, "5"),
-            (TokenType::Lt, "<"),
-            (TokenType::Int, "10"),
-            (TokenType::Rparen, ")"),
-            (TokenType::Lbrace, "{"),
-            (TokenType::Return, "return"),
-            (TokenType::True, "true"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Rbrace, "}"),
-            (TokenType::Else, "else"),
-            (TokenType::Lbrace, "{"),
-            (TokenType::Return, "return"),
-            (TokenType::False, "false"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Rbrace, "}"),
-            (TokenType::Int, "10"),
-            (TokenType::Eq, "=="),
-            (TokenType::Int, "10"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Int, "10"),
-            (TokenType::NotEq, "!="),
-            (TokenType::Int, "9"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::String, "randomString"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Lbracket, "["),
-            (TokenType::Int, "1"),
-            (TokenType::Comma, ","),
-            (TokenType::Int, "2"),
-            (TokenType::Rbracket, "]"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Lbrace, "{"),
-            (TokenType::String, "foo"),
-            (TokenType::Colon, ":"),
-            (TokenType::String, "bar"),
-            (TokenType::Rbrace, "}"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Ident, "a"),
-            (TokenType::AssignAdd, "+="),
-            (TokenType::Int, "1"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Ident, "a"),
-            (TokenType::AssignSub, "-="),
-            (TokenType::Int, "1"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Ident, "a"),
-            (TokenType::AssignMul, "*="),
-            (TokenType::Int, "1"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Ident, "a"),
-            (TokenType::AssignDiv, "/="),
-            (TokenType::Int, "1"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Ident, "a"),
-            (TokenType::Assign, "="),
-            (TokenType::Int, "1"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::For, "for"),
-            (TokenType::Lparen, "("),
-            (TokenType::Let, "let"),
-            (TokenType::Ident, "i"),
-            (TokenType::Assign, "="),
-            (TokenType::Int, "0"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Ident, "i"),
-            (TokenType::Lt, "<"),
-            (TokenType::Int, "10"),
-            (TokenType::Semicolon, ";"),
-            (TokenType::Ident, "i"),
-            (TokenType::AssignAdd, "+="),
-            (TokenType::Int, "1"),
-            (TokenType::Rparen, ")"),
-            (TokenType::Lbrace, "{"),
-            (TokenType::Rbrace, "}"),
-            (TokenType::Eof, "EOF"),
+            (Kind::Let, "let"),
+            (Kind::Ident, "five"),
+            (Kind::Assign, "="),
+            (Kind::Int, "5"),
+            (Kind::Semicolon, ";"),
+            (Kind::Let, "let"),
+            (Kind::Ident, "ten"),
+            (Kind::Assign, "="),
+            (Kind::Int, "10"),
+            (Kind::Semicolon, ";"),
+            (Kind::Let, "let"),
+            (Kind::Ident, "add"),
+            (Kind::Assign, "="),
+            (Kind::Function, "function"),
+            (Kind::Lparen, "("),
+            (Kind::Ident, "x"),
+            (Kind::Comma, ","),
+            (Kind::Ident, "y"),
+            (Kind::Rparen, ")"),
+            (Kind::Lbrace, "{"),
+            (Kind::Ident, "x"),
+            (Kind::Plus, "+"),
+            (Kind::Ident, "y"),
+            (Kind::Semicolon, ";"),
+            (Kind::Rbrace, "}"),
+            (Kind::Semicolon, ";"),
+            (Kind::Let, "let"),
+            (Kind::Ident, "result"),
+            (Kind::Assign, "="),
+            (Kind::Ident, "add"),
+            (Kind::Lparen, "("),
+            (Kind::Ident, "five"),
+            (Kind::Comma, ","),
+            (Kind::Ident, "ten"),
+            (Kind::Rparen, ")"),
+            (Kind::Semicolon, ";"),
+            (Kind::Bang, "!"),
+            (Kind::Minus, "-"),
+            (Kind::Slash, "/"),
+            (Kind::Asterisk, "*"),
+            (Kind::Int, "5"),
+            (Kind::Semicolon, ";"),
+            (Kind::Int, "5"),
+            (Kind::Lt, "<"),
+            (Kind::Int, "10"),
+            (Kind::Gt, ">"),
+            (Kind::Int, "5"),
+            (Kind::Semicolon, ";"),
+            (Kind::If, "if"),
+            (Kind::Lparen, "("),
+            (Kind::Int, "5"),
+            (Kind::Lt, "<"),
+            (Kind::Int, "10"),
+            (Kind::Rparen, ")"),
+            (Kind::Lbrace, "{"),
+            (Kind::Return, "return"),
+            (Kind::True, "true"),
+            (Kind::Semicolon, ";"),
+            (Kind::Rbrace, "}"),
+            (Kind::Else, "else"),
+            (Kind::Lbrace, "{"),
+            (Kind::Return, "return"),
+            (Kind::False, "false"),
+            (Kind::Semicolon, ";"),
+            (Kind::Rbrace, "}"),
+            (Kind::Int, "10"),
+            (Kind::Eq, "=="),
+            (Kind::Int, "10"),
+            (Kind::Semicolon, ";"),
+            (Kind::Int, "10"),
+            (Kind::NotEq, "!="),
+            (Kind::Int, "9"),
+            (Kind::Semicolon, ";"),
+            (Kind::String, "randomString"),
+            (Kind::Semicolon, ";"),
+            (Kind::Lbracket, "["),
+            (Kind::Int, "1"),
+            (Kind::Comma, ","),
+            (Kind::Int, "2"),
+            (Kind::Rbracket, "]"),
+            (Kind::Semicolon, ";"),
+            (Kind::Lbrace, "{"),
+            (Kind::String, "foo"),
+            (Kind::Colon, ":"),
+            (Kind::String, "bar"),
+            (Kind::Rbrace, "}"),
+            (Kind::Semicolon, ";"),
+            (Kind::Ident, "a"),
+            (Kind::AssignAdd, "+="),
+            (Kind::Int, "1"),
+            (Kind::Semicolon, ";"),
+            (Kind::Ident, "a"),
+            (Kind::AssignSub, "-="),
+            (Kind::Int, "1"),
+            (Kind::Semicolon, ";"),
+            (Kind::Ident, "a"),
+            (Kind::AssignMul, "*="),
+            (Kind::Int, "1"),
+            (Kind::Semicolon, ";"),
+            (Kind::Ident, "a"),
+            (Kind::AssignDiv, "/="),
+            (Kind::Int, "1"),
+            (Kind::Semicolon, ";"),
+            (Kind::Ident, "a"),
+            (Kind::Assign, "="),
+            (Kind::Int, "1"),
+            (Kind::Semicolon, ";"),
+            (Kind::For, "for"),
+            (Kind::Lparen, "("),
+            (Kind::Let, "let"),
+            (Kind::Ident, "i"),
+            (Kind::Assign, "="),
+            (Kind::Int, "0"),
+            (Kind::Semicolon, ";"),
+            (Kind::Ident, "i"),
+            (Kind::Lt, "<"),
+            (Kind::Int, "10"),
+            (Kind::Semicolon, ";"),
+            (Kind::Ident, "i"),
+            (Kind::AssignAdd, "+="),
+            (Kind::Int, "1"),
+            (Kind::Rparen, ")"),
+            (Kind::Lbrace, "{"),
+            (Kind::Rbrace, "}"),
+            (Kind::Eof, "EOF"),
         ];
 
         let mut lexer = Lexer::new(&input);
@@ -492,17 +486,17 @@ mod tests {
             let token = lexer.next_token();
 
             assert_eq!(
-                test.0, token.token_type,
-                "token type wrong: expected={:?}, got={:?}",
-                test.0, token.token_type
+                test.0, token.kind,
+                "token kind wrong: expected={:?}, got={:?}",
+                test.0, token.kind
             );
 
             assert_eq!(
                 test.1,
-                token.literal.as_ref(),
-                "token literal wrong: expected={:?}, got={:?}",
+                token.value.as_ref(),
+                "token value wrong: expected={:?}, got={:?}",
                 test.1,
-                token.literal
+                token.value
             )
         }
     }
@@ -515,17 +509,17 @@ let b = 440;"#
 
         let expected = vec![
             // token, line, col
-            (TokenType::Let, 1, 4),
-            (TokenType::Ident, 1, 6),
-            (TokenType::Assign, 1, 8),
-            (TokenType::Int, 1, 12),
-            (TokenType::Semicolon, 1, 13),
-            (TokenType::Let, 2, 4),
-            (TokenType::Ident, 2, 6),
-            (TokenType::Assign, 2, 8),
-            (TokenType::Int, 2, 12),
-            (TokenType::Semicolon, 2, 13),
-            (TokenType::Eof, 2, 14),
+            (Kind::Let, 1, 4),
+            (Kind::Ident, 1, 6),
+            (Kind::Assign, 1, 8),
+            (Kind::Int, 1, 12),
+            (Kind::Semicolon, 1, 13),
+            (Kind::Let, 2, 4),
+            (Kind::Ident, 2, 6),
+            (Kind::Assign, 2, 8),
+            (Kind::Int, 2, 12),
+            (Kind::Semicolon, 2, 13),
+            (Kind::Eof, 2, 14),
         ];
 
         let mut lexer = Lexer::new(&input);
@@ -533,19 +527,19 @@ let b = 440;"#
         for expect in expected {
             let token = lexer.next_token();
             assert_eq!(
-                expect.0, token.token_type,
-                "token type wrong: expected={:?}, got={:?}",
-                expect.0, token.token_type
+                expect.0, token.kind,
+                "token kind wrong: expected={:?}, got={:?}",
+                expect.0, token.kind
             );
             assert_eq!(
                 expect.1, lexer.line,
-                "line wrong for literal '{}': expected={}, got={}",
-                token.literal, expect.1, lexer.line
+                "line wrong for value '{}': expected={}, got={}",
+                token.value, expect.1, lexer.line
             );
             assert_eq!(
                 expect.2, lexer.col,
-                "col wrong for literal '{}': expected={}, got={}",
-                token.literal, expect.2, lexer.col
+                "col wrong for value '{}': expected={}, got={}",
+                token.value, expect.2, lexer.col
             );
         }
     }

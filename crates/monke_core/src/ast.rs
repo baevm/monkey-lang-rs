@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::token::TokenType;
+use crate::token::Kind;
 
 pub struct Program {
     pub body: Vec<Statement>,
@@ -190,7 +190,7 @@ impl std::fmt::Display for IntegerLiteral {
 
 #[derive(Debug, Clone)]
 pub struct PrefixExpression {
-    pub operator: TokenType,
+    pub operator: Kind,
     pub right: Expression,
 }
 
@@ -207,17 +207,14 @@ impl std::fmt::Display for PrefixExpression {
 #[derive(Debug, Clone)]
 pub struct InfixExpression {
     pub left: Expression,
-    pub operator: TokenType,
+    pub operator: Kind,
     pub right: Expression,
 }
 
 impl InfixExpression {
     pub fn is_compound_assign(&self) -> bool {
         match self.operator {
-            TokenType::AssignAdd
-            | TokenType::AssignSub
-            | TokenType::AssignMul
-            | TokenType::AssignDiv => true,
+            Kind::AssignAdd | Kind::AssignSub | Kind::AssignMul | Kind::AssignDiv => true,
             _ => false,
         }
     }

@@ -1,5 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use monke_core::{lexer::Lexer, token::TokenType};
+use monke_core::{lexer::Lexer, token::Kind};
 use std::hint::black_box;
 
 const SMALL_PROGRAM: &str = r#"
@@ -36,7 +36,7 @@ grandTotal;
 fn run_lexer(src: &str) {
     let mut lexer = Lexer::new(src);
     loop {
-        if lexer.next_token().token_type == TokenType::Eof {
+        if lexer.next_token().kind == Kind::Eof {
             break;
         }
     }

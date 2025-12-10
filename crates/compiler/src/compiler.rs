@@ -1,7 +1,7 @@
 use monke_core::{
     ast::{BlockStatement, Expression, Program, Statement},
     object::{CompiledFunction, Integer, Object, StringObj},
-    token::TokenType,
+    token::Kind,
 };
 
 use crate::{
@@ -192,7 +192,7 @@ impl Compiler {
                 Ok(())
             }
             Expression::InfixExpression(infix) => {
-                if infix.operator == TokenType::Lt {
+                if infix.operator == Kind::Lt {
                     self.compile_expression(&infix.right)?;
                     self.compile_expression(&infix.left)?;
 
@@ -204,13 +204,13 @@ impl Compiler {
                 self.compile_expression(&infix.right)?;
 
                 match infix.operator {
-                    TokenType::Plus => self.emit(Opcode::OpAdd, &[]),
-                    TokenType::Minus => self.emit(Opcode::OpSub, &[]),
-                    TokenType::Asterisk => self.emit(Opcode::OpMul, &[]),
-                    TokenType::Slash => self.emit(Opcode::OpDiv, &[]),
-                    TokenType::Gt => self.emit(Opcode::OpGreaterThan, &[]),
-                    TokenType::Eq => self.emit(Opcode::OpEqual, &[]),
-                    TokenType::NotEq => self.emit(Opcode::OpNotEqual, &[]),
+                    Kind::Plus => self.emit(Opcode::OpAdd, &[]),
+                    Kind::Minus => self.emit(Opcode::OpSub, &[]),
+                    Kind::Asterisk => self.emit(Opcode::OpMul, &[]),
+                    Kind::Slash => self.emit(Opcode::OpDiv, &[]),
+                    Kind::Gt => self.emit(Opcode::OpGreaterThan, &[]),
+                    Kind::Eq => self.emit(Opcode::OpEqual, &[]),
+                    Kind::NotEq => self.emit(Opcode::OpNotEqual, &[]),
                     _ => unreachable!("unknown operator"),
                 };
 
@@ -220,8 +220,8 @@ impl Compiler {
                 self.compile_expression(&prefix_expr.right)?;
 
                 match prefix_expr.operator {
-                    TokenType::Bang => self.emit(Opcode::OpBang, &[]),
-                    TokenType::Minus => self.emit(Opcode::OpMinus, &[]),
+                    Kind::Bang => self.emit(Opcode::OpBang, &[]),
+                    Kind::Minus => self.emit(Opcode::OpMinus, &[]),
                     _ => unreachable!("unknown operator"),
                 };
 

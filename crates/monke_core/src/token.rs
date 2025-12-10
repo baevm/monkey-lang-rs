@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 #[derive(PartialEq, Debug, Clone)]
-pub enum TokenType {
+pub enum Kind {
     Illegal, // unknown token
     Eof,     // end of file
 
@@ -51,50 +51,50 @@ pub enum TokenType {
     For,
 }
 
-impl TokenType {
+impl Kind {
     pub fn to_str(&self) -> &'static str {
         match self {
-            TokenType::Illegal => "ILLEGAL",
-            TokenType::Eof => "EOF",
-            TokenType::Ident => "IDENT",
-            TokenType::Int => "INT",
-            TokenType::String => "STRING",
-            TokenType::Assign => "=",
-            TokenType::Plus => "+",
-            TokenType::Minus => "-",
-            TokenType::Bang => "!",
-            TokenType::Slash => "/",
-            TokenType::Asterisk => "*",
-            TokenType::AssignAdd => "+=",
-            TokenType::AssignSub => "-=",
-            TokenType::AssignMul => "*=",
-            TokenType::AssignDiv => "/=",
-            TokenType::Lt => "<",
-            TokenType::Gt => ">",
-            TokenType::Eq => "==",
-            TokenType::NotEq => "!=",
-            TokenType::Comma => ",",
-            TokenType::Semicolon => ";",
-            TokenType::Colon => ":",
-            TokenType::Lparen => "(",
-            TokenType::Rparen => ")",
-            TokenType::Lbrace => "{",
-            TokenType::Rbrace => "}",
-            TokenType::Lbracket => "[",
-            TokenType::Rbracket => "]",
-            TokenType::Function => "FUNCTION",
-            TokenType::Let => "LET",
-            TokenType::If => "IF",
-            TokenType::Else => "ELSE",
-            TokenType::Return => "RETURN",
-            TokenType::True => "TRUE",
-            TokenType::False => "FALSE",
-            TokenType::For => "FOR",
+            Kind::Illegal => "ILLEGAL",
+            Kind::Eof => "EOF",
+            Kind::Ident => "IDENT",
+            Kind::Int => "INT",
+            Kind::String => "STRING",
+            Kind::Assign => "=",
+            Kind::Plus => "+",
+            Kind::Minus => "-",
+            Kind::Bang => "!",
+            Kind::Slash => "/",
+            Kind::Asterisk => "*",
+            Kind::AssignAdd => "+=",
+            Kind::AssignSub => "-=",
+            Kind::AssignMul => "*=",
+            Kind::AssignDiv => "/=",
+            Kind::Lt => "<",
+            Kind::Gt => ">",
+            Kind::Eq => "==",
+            Kind::NotEq => "!=",
+            Kind::Comma => ",",
+            Kind::Semicolon => ";",
+            Kind::Colon => ":",
+            Kind::Lparen => "(",
+            Kind::Rparen => ")",
+            Kind::Lbrace => "{",
+            Kind::Rbrace => "}",
+            Kind::Lbracket => "[",
+            Kind::Rbracket => "]",
+            Kind::Function => "FUNCTION",
+            Kind::Let => "LET",
+            Kind::If => "IF",
+            Kind::Else => "ELSE",
+            Kind::Return => "RETURN",
+            Kind::True => "TRUE",
+            Kind::False => "FALSE",
+            Kind::For => "FOR",
         }
     }
 }
 
-impl std::fmt::Display for TokenType {
+impl std::fmt::Display for Kind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.to_str().fmt(f)
     }
@@ -102,29 +102,29 @@ impl std::fmt::Display for TokenType {
 
 #[derive(Debug, Clone)]
 pub struct Token {
-    pub token_type: TokenType,
-    pub literal: Rc<str>,
+    pub kind: Kind,
+    pub value: Rc<str>,
 }
 
 impl Token {
     pub fn new() -> Self {
         Token {
-            token_type: TokenType::Eof,
-            literal: Rc::from(""),
+            kind: Kind::Eof,
+            value: Rc::from(""),
         }
     }
 
-    pub fn check_ident(ident: &str) -> TokenType {
+    pub fn check_ident(ident: &str) -> Kind {
         match ident {
-            "function" => TokenType::Function,
-            "let" => TokenType::Let,
-            "if" => TokenType::If,
-            "else" => TokenType::Else,
-            "return" => TokenType::Return,
-            "true" => TokenType::True,
-            "false" => TokenType::False,
-            "for" => TokenType::For,
-            _ => TokenType::Ident,
+            "function" => Kind::Function,
+            "let" => Kind::Let,
+            "if" => Kind::If,
+            "else" => Kind::Else,
+            "return" => Kind::Return,
+            "true" => Kind::True,
+            "false" => Kind::False,
+            "for" => Kind::For,
+            _ => Kind::Ident,
         }
     }
 }
