@@ -84,7 +84,7 @@ impl SymbolTable {
                 return Some(obj);
             }
 
-            let free = self.define_free(obj.clone());
+            let free = self.define_free(obj);
             return free;
         }
 

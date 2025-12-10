@@ -600,11 +600,12 @@ impl<'a> Vm<'a> {
             return Err(VmError::WrongNumberOfArgs);
         }
 
-        let frame = Frame::new(*closure_fn.clone(), (self.sp - num_args) as i64);
+        let num_locals = closure_fn.func.num_locals;
+        let frame = Frame::new(*closure_fn, (self.sp - num_args) as i64);
 
         let bp = frame.base_pointer as usize;
         self.push_frame(frame);
-        self.sp = bp + closure_fn.func.num_locals;
+        self.sp = bp + num_locals;
 
         Ok(())
     }
