@@ -1,7 +1,8 @@
 use std::rc::Rc;
 
-use monke_core::object::{
-    Array, Builtin, BuiltinFnError, Inspect, Integer, InternalError, Null, Object,
+use monke_core::{
+    object::{Array, Builtin, BuiltinFnError, Inspect, Integer, InternalError, Null, Object},
+    output::print_output,
 };
 
 pub trait BuiltinFunction {
@@ -112,7 +113,7 @@ impl BuiltinFunction for Builtin {
 
     fn print(args: &[Object]) -> Object {
         for arg in args {
-            println!("{}", arg.inspect());
+            print_output(&arg.inspect());
         }
 
         Object::Null(Box::new(Null {}))

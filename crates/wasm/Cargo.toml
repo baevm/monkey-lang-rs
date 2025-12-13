@@ -1,0 +1,13 @@
+[package]
+name = "wasm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+monke_core = { workspace = true }
+interpreter = { workspace = true }
+compiler = { workspace = true }
+wasm-bindgen = "0.2.106"
+
+[lib]
+crate-type = ["cdylib"]
