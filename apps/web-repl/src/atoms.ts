@@ -1,7 +1,7 @@
 import { action, atom } from '@reatom/framework'
 import { compilerWorker } from './workerInstance'
 
-type Mode = 'compiler' | 'interpreter'
+export type Mode = 'compiler' | 'interpreter'
 
 export const codeAtom = atom<string | undefined>('', 'codeAtom')
 export const runnerModeAtom = atom<Mode>('compiler', 'runnerModeAtom')

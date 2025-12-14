@@ -7,6 +7,7 @@ export default defineConfig({
   plugins: [react(), wasm(), topLevelAwait()],
 
   worker: {
+    format: 'es',
     plugins: () => [wasm(), topLevelAwait()],
   },
 

@@ -2,8 +2,7 @@ import { Button, Flex, Group, Radio } from '@mantine/core'
 import { useAction, useAtom } from '@reatom/npm-react'
 
 import styles from './App.module.css'
-import type { Mode } from 'fs'
-import { runnerModeAtom, workerReadyAtom, runCode, onRunnerModeChange } from './atoms'
+import { runnerModeAtom, workerReadyAtom, runCode, onRunnerModeChange, type Mode } from './atoms'
 
 export const Toolbar = () => {
   const [runnerMode] = useAtom(runnerModeAtom)
