@@ -12,7 +12,7 @@ export const CodeEditor = () => {
     <section className={styles.code}>
       <Editor
         height="100%"
-        options={{ minimap: { enabled: false } }}
+        options={{ minimap: { enabled: false }, fontSize: 16 }}
         value={code}
         onChange={handleChange}
       />

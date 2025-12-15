@@ -28,7 +28,29 @@
   flex: 1;
   height: 100%;
   overflow: auto;
+  background-color: var(--mantine-color-gray-1);
 }
 
-.resultStdout {
+.resultContainer {
+  width: 100%;
+}
+
+.resultLabel {
+  display: flex;
+}
+
+.resultLabel::before,
+.resultLabel::after {
+  border-top: 1px solid var(--mantine-color-default-border);
+  content: '';
+  flex: 1 1 auto;
+  margin: auto;
+}
+
+.resultLabel::before {
+  margin-right: 16px;
+}
+
+.resultLabel::after {
+  margin-left: 16px;
 }
