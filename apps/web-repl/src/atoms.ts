@@ -1,9 +1,10 @@
 import { action, atom } from '@reatom/framework'
 import { compilerWorker } from './workerInstance'
+import { CODE_EXAMPLES } from './codeExamples'
 
 export type Mode = 'compiler' | 'interpreter'
 
-export const codeAtom = atom<string | undefined>('', 'codeAtom')
+export const codeAtom = atom<string | undefined>(CODE_EXAMPLES[0].value, 'codeAtom')
 export const runnerModeAtom = atom<Mode>('compiler', 'runnerModeAtom')
 export const resultAtom = atom<string>('', 'resultAtom')
 const workerReadyAtom = atom<boolean>(false, 'workerReadyAtom')
@@ -44,6 +45,7 @@ export const onChangeCodeExample = action(
   'onChangeCodeExample',
 )
 
+/** Sends message to worker with WASM initialized with code to compile */
 export const runCode = action(ctx => {
   const code = ctx.get(codeAtom)
   const mode = ctx.get(runnerModeAtom)
