@@ -28,7 +28,14 @@
   flex: 1;
   height: 100%;
   overflow: auto;
-  background-color: var(--mantine-color-gray-1);
+}
+
+[data-mantine-color-scheme='light'] .result {
+  background-color: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme='dark'] .result {
+  background-color: var(--mantine-color-dark-6);
 }
 
 .resultContainer {
