@@ -1,5 +1,5 @@
-# monkey-lang-rs
-Monkey language interpreter and compiler based on books "Writing an Interpreter in Go" and "Writing A Compiler In Go"
+# monke-lang-rs
+Monke language interpreter and compiler based on books "Writing an Interpreter in Go" and "Writing A Compiler In Go"
 
 ---
 Supported features:
