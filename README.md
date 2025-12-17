@@ -1,8 +1,10 @@
 # monke-lang-rs
-Monke language interpreter and compiler based on books "Writing an Interpreter in Go" and "Writing A Compiler In Go"
+Monke language interpreter and compiler based on books *"Writing an Interpreter in Go"* and *"Writing A Compiler In Go"*
+
+🐵 Monke language in your browser (running in WASM + worker): [https://monkey-lang-rs.vercel.app/](https://monkey-lang-rs.vercel.app/)
 
 ---
-Supported features:
+Features:
 - [x] Variables, variables reassignment
 - [x] Types: integers, booleans, strings, null
 - [x] Arithmetic operations and compound operators: +, -, *, /, +=, -=, *=, /=
@@ -14,6 +16,7 @@ Supported features:
 - [x] Built-in functions
 - [x] Arrays
 - [x] Objects
+- [x] Web playground with compiler/interpreter compiled to WASM running in web worker
 
 ---
 To run REPL:
