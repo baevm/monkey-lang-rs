@@ -83,33 +83,30 @@ impl<'a> Vm<'a> {
 
     #[allow(unused_assignments)]
     pub fn run(&mut self) -> Result<(), VmError> {
-        let mut i = 0;
-        let mut ins: Instructions = Instructions::new();
-        let mut opcode: Option<Opcode> = None;
+        let mut i: usize;
+        let mut ins: Instructions;
+        let mut opcode: Option<Opcode>;
 
-        while self.current_frame().ip < ((self.current_frame().instructions().len() - 1) as i64) {
-            self.update_frame_pointer(1);
-
+        while self.current_frame().ip < self.current_frame().instructions().len() {
             i = self.current_frame().ip;
             ins = self.current_frame().instructions();
-            opcode = Opcode::from_byte(ins[i as usize]);
+            opcode = Opcode::from_byte(ins[i]);
 
             let Some(opcode) = opcode else {
+                self.update_frame_pointer(1);
                 continue;
             };
 
             match opcode {
                 Opcode::OpConstant => {
-                    // first byte is opcode, read 2 bytes from i+1..i+3
                     let const_index = u16::from_be_bytes(
-                        ins[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i + 1)..(i + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     );
-                    self.update_frame_pointer(2);
+                    self.update_frame_pointer(3);
 
                     let constant = self.constants[const_index as usize].clone();
-
                     self.push(constant)?
                 }
                 Opcode::OpAdd | Opcode::OpSub | Opcode::OpMul | Opcode::OpDiv => {
@@ -141,113 +138,127 @@ impl<'a> Vm<'a> {
                         }
                         _ => return Err(VmError::InvalidType),
                     }
+
+                    self.update_frame_pointer(1);
                 }
                 Opcode::OpPop => {
                     self.pop();
+                    self.update_frame_pointer(1);
                 }
-                Opcode::OpTrue => self.push(Object::Boolean(Box::new(Boolean { value: true })))?,
+                Opcode::OpTrue => {
+                    self.push(Object::Boolean(Box::new(Boolean { value: true })))?;
+                    self.update_frame_pointer(1);
+                }
                 Opcode::OpFalse => {
-                    self.push(Object::Boolean(Box::new(Boolean { value: false })))?
+                    self.push(Object::Boolean(Box::new(Boolean { value: false })))?;
+                    self.update_frame_pointer(1);
                 }
                 Opcode::OpEqual | Opcode::OpNotEqual | Opcode::OpGreaterThan => {
-                    self.execute_comparison(&opcode)?
+                    self.execute_comparison(&opcode)?;
+                    self.update_frame_pointer(1);
                 }
-                Opcode::OpMinus => self.execute_minus_operator()?,
-                Opcode::OpBang => self.execute_bang_operator()?,
+                Opcode::OpMinus => {
+                    self.execute_minus_operator()?;
+                    self.update_frame_pointer(1);
+                }
+                Opcode::OpBang => {
+                    self.execute_bang_operator()?;
+                    self.update_frame_pointer(1);
+                }
                 Opcode::OpJumpNotTruthy => {
                     let pos = u16::from_be_bytes(
-                        ins[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i + 1)..(i + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     );
 
-                    self.update_frame_pointer(2);
+                    self.update_frame_pointer(3);
 
                     let condition = self.pop();
 
                     if !self.is_truthy(&condition) {
-                        self.set_frame_pointer(pos as i64 - 1);
+                        self.set_frame_pointer(pos as usize);
                     }
                 }
                 Opcode::OpJump => {
                     let pos = u16::from_be_bytes(
-                        ins[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i + 1)..(i + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     );
-                    self.set_frame_pointer(pos as i64 - 1);
+                    self.set_frame_pointer(pos as usize);
                 }
-                Opcode::OpNull => self.push(Object::Null(Box::new(Null {})))?,
+                Opcode::OpNull => {
+                    self.push(Object::Null(Box::new(Null {})))?;
+                    self.update_frame_pointer(1);
+                }
                 Opcode::OpSetGlobal => {
                     let global_idx: usize = u16::from_be_bytes(
-                        ins[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i + 1)..(i + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     )
                     .try_into()
                     .unwrap();
 
-                    self.update_frame_pointer(2);
+                    self.update_frame_pointer(3);
 
                     self.globals[global_idx] = self.pop();
                 }
                 Opcode::OpGetGlobal => {
                     let global_idx: usize = u16::from_be_bytes(
-                        ins[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i + 1)..(i + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     )
                     .try_into()
                     .unwrap();
 
-                    self.update_frame_pointer(2);
+                    self.update_frame_pointer(3);
 
                     let obj = self.globals[global_idx].clone();
                     self.push(obj)?;
                 }
                 Opcode::OpArray => {
                     let num_elements: usize = u16::from_be_bytes(
-                        ins[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i + 1)..(i + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     )
                     .try_into()
                     .unwrap();
 
-                    self.update_frame_pointer(2);
+                    self.update_frame_pointer(3);
 
                     let array = self.build_array(self.sp - num_elements, self.sp);
-
                     self.sp = self.sp - num_elements;
-
                     self.push(array)?
                 }
                 Opcode::OpHash => {
                     let num_elements: usize = u16::from_be_bytes(
-                        ins[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i + 1)..(i + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     )
                     .try_into()
                     .unwrap();
 
-                    self.update_frame_pointer(2);
+                    self.update_frame_pointer(3);
 
                     let hash = self.build_hash(self.sp - num_elements, self.sp)?;
-
                     self.sp = self.sp - num_elements;
-
                     self.push(hash)?
                 }
                 Opcode::OpIndex => {
                     let index = self.pop();
                     let left = self.pop();
 
-                    self.execute_index_expression(left, index)?
+                    self.execute_index_expression(left, index)?;
+                    self.update_frame_pointer(1);
                 }
                 Opcode::OpCall => {
-                    let num_args = u8::from_be_bytes([ins[(i + 1) as usize]]) as usize;
-                    self.update_frame_pointer(1);
+                    let num_args = u8::from_be_bytes([ins[i + 1]]) as usize;
+                    self.update_frame_pointer(2);
 
                     self.execute_call(num_args)?;
                 }
@@ -256,33 +267,32 @@ impl<'a> Vm<'a> {
                     let frame = self.pop_frame().expect("frame doesnt exist");
                     self.sp = frame.base_pointer - 1;
 
-                    self.push(return_value)?
+                    self.push(return_value)?;
                 }
                 Opcode::OpReturn => {
                     let frame = self.pop_frame().expect("frame doesnt exist");
                     self.sp = frame.base_pointer - 1;
 
-                    self.push(Object::Null(Box::new(Null {})))?
+                    self.push(Object::Null(Box::new(Null {})))?;
                 }
                 Opcode::OpSetLocal => {
-                    let local_index = u8::from_be_bytes([ins[(i + 1) as usize]]);
-                    self.update_frame_pointer(1);
+                    let local_index = u8::from_be_bytes([ins[i + 1]]);
+                    self.update_frame_pointer(2);
 
                     let base_pointer = self.current_frame_base_pointer();
                     self.stack[base_pointer + (local_index as usize)] = self.pop();
                 }
                 Opcode::OpGetLocal => {
-                    let local_index = u8::from_be_bytes([ins[(i + 1) as usize]]);
-                    self.update_frame_pointer(1);
+                    let local_index = u8::from_be_bytes([ins[i + 1]]);
+                    self.update_frame_pointer(2);
 
                     let base_pointer = self.current_frame_base_pointer();
-
                     let obj = self.stack[base_pointer + (local_index as usize)].clone();
                     self.push(obj)?
                 }
                 Opcode::OpGetBuiltin => {
-                    let builtin_index = u8::from_be_bytes([ins[(i + 1) as usize]]);
-                    self.update_frame_pointer(1);
+                    let builtin_index = u8::from_be_bytes([ins[i + 1]]);
+                    self.update_frame_pointer(2);
 
                     let Some(builtin_name) = SymbolTable::get_builtin(builtin_index as usize)
                     else {
@@ -297,38 +307,35 @@ impl<'a> Vm<'a> {
                 }
                 Opcode::OpClosure => {
                     let const_index: usize = u16::from_be_bytes(
-                        ins[(i as usize + 1)..(i as usize + 3)]
+                        ins[(i + 1)..(i + 3)]
                             .try_into()
                             .expect("failed to convert instruction to u16"),
                     )
                     .try_into()
                     .unwrap();
-                    let num_free = u8::from_be_bytes([ins[(i + 3) as usize]]);
+                    let num_free = u8::from_be_bytes([ins[i + 3]]);
 
-                    self.update_frame_pointer(3);
+                    self.update_frame_pointer(4);
 
                     self.push_closure(const_index, num_free as usize)?
                 }
                 Opcode::OpGetFree => {
-                    let free_index = u8::from_be_bytes([ins[(i + 1) as usize]]) as usize;
-                    self.update_frame_pointer(1);
+                    let free_index = u8::from_be_bytes([ins[i + 1]]) as usize;
+                    self.update_frame_pointer(2);
 
                     let current_closure = self.current_frame().current_closure();
-
                     self.push(current_closure.free[free_index].clone())?
                 }
                 Opcode::OpCurrentClosure => {
                     let current_closure = self.current_frame().current_closure();
-                    self.push(Object::Closure(Box::new(current_closure)))?
+                    self.push(Object::Closure(Box::new(current_closure)))?;
+                    self.update_frame_pointer(1);
                 }
             }
-
-            i += 1;
         }
 
         Ok(())
     }
-
     pub fn globals(&self) -> Vec<Object> {
         self.globals.clone()
     }
@@ -351,11 +358,11 @@ impl<'a> Vm<'a> {
         self.frames[self.frame_index - 1].base_pointer
     }
 
-    fn update_frame_pointer(&mut self, to_add: i64) {
+    fn update_frame_pointer(&mut self, to_add: usize) {
         self.frames[self.frame_index - 1].ip += to_add
     }
 
-    fn set_frame_pointer(&mut self, offset: i64) {
+    fn set_frame_pointer(&mut self, offset: usize) {
         self.frames[self.frame_index - 1].ip = offset;
     }
 
