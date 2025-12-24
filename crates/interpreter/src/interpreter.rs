@@ -27,7 +27,7 @@ impl Evaluator {
     }
 
     pub fn eval(&mut self, program: &Program) -> Object {
-        let mut result = Object::Null(Box::new(Null {}));
+        let mut result = Object::Null(Null {});
 
         for stmt in &program.body {
             result = self.eval_statement(stmt);
@@ -48,7 +48,7 @@ impl Evaluator {
         match stmt {
             Statement::LetStatement(let_stmt) => {
                 if let_stmt.value.is_none() {
-                    return Object::Null(Box::new(Null {}));
+                    return Object::Null(Null {});
                 }
 
                 let evaluated = self.eval_expression(let_stmt.value.as_ref().unwrap());
@@ -59,11 +59,11 @@ impl Evaluator {
 
                 self.env.borrow_mut().set(&let_stmt.name.value, evaluated);
 
-                Object::Null(Box::new(Null {}))
+                Object::Null(Null {})
             }
             Statement::ReturnStatement(return_statement) => {
                 if return_statement.return_value.is_none() {
-                    return Object::Null(Box::new(Null {}));
+                    return Object::Null(Null {});
                 }
 
                 let value = self.eval_expression(return_statement.return_value.as_ref().unwrap());
@@ -78,11 +78,11 @@ impl Evaluator {
                 if let Some(expr) = &expression_statement.expression {
                     self.eval_expression(expr)
                 } else {
-                    Object::Null(Box::new(Null {}))
+                    Object::Null(Null {})
                 }
             }
             Statement::BlockStatement(block_stmt) => {
-                let mut result = Object::Null(Box::new(Null {}));
+                let mut result = Object::Null(Null {});
 
                 for stmt in &block_stmt.statements {
                     result = self.eval_statement(stmt);
@@ -100,7 +100,7 @@ impl Evaluator {
             }
             Statement::ForStatement(for_statement) => {
                 let _init = self.eval_statement(&for_statement.init);
-                let mut result = Object::Null(Box::new(Null {}));
+                let mut result = Object::Null(Null {});
 
                 loop {
                     let test = self.eval_expression(&for_statement.test);
@@ -124,7 +124,7 @@ impl Evaluator {
     }
 
     fn eval_block_statement(&mut self, block_stmt: &ast::BlockStatement) -> Object {
-        let mut result = Object::Null(Box::new(Null {}));
+        let mut result = Object::Null(Null {});
 
         for stmt in &block_stmt.statements {
             result = self.eval_statement(stmt);
@@ -146,12 +146,12 @@ impl Evaluator {
             Expression::IntegerLiteral(integer_literal) => Object::Integer(Integer {
                 value: integer_literal.value,
             }),
-            Expression::StringLiteral(str_literal) => Object::String(Box::new(StringObj {
+            Expression::StringLiteral(str_literal) => Object::String(StringObj {
                 value: str_literal.value.to_string(),
-            })),
-            Expression::Boolean(boolean_literal) => Object::Boolean(Box::new(Boolean {
+            }),
+            Expression::Boolean(boolean_literal) => Object::Boolean(Boolean {
                 value: boolean_literal.value,
-            })),
+            }),
             Expression::PrefixExpression(prefix_expr) => {
                 let right = self.eval_expression(&prefix_expr.right);
 
@@ -186,11 +186,11 @@ impl Evaluator {
             }
             Expression::IfExpression(if_expr) => self.eval_if_expression(if_expr),
             Expression::Identifier(ident) => self.eval_identifier(ident),
-            Expression::FunctionLiteral(func) => Object::Function(Box::new(Function {
+            Expression::FunctionLiteral(func) => Object::Function(Function {
                 parameters: func.parameters.clone(),
                 body: func.body.clone(),
                 env: Rc::clone(&self.env),
-            })),
+            }),
             Expression::CallExpression(call_expr) => {
                 let func = self.eval_expression(&call_expr.function);
 
@@ -213,7 +213,7 @@ impl Evaluator {
                     return elements[0].clone();
                 }
 
-                Object::Array(Box::new(Array { elements }))
+                Object::Array(Array { elements })
             }
             Expression::IndexExpression(index_expr) => {
                 let left = self.eval_expression(&index_expr.left);
@@ -250,9 +250,9 @@ impl Evaluator {
         match operator {
             &Kind::Bang => self.eval_bang_operator_expression(right),
             &Kind::Minus => self.eval_minus_prefix_operator_expression(right),
-            _ => Object::InternalError(Box::new(InternalError {
+            _ => Object::InternalError(InternalError {
                 message: BuiltinFnError::UnknownOperator(format!("{operator}{right}")),
-            })),
+            }),
         }
     }
 
@@ -279,37 +279,37 @@ impl Evaluator {
                     };
                     env.set(&left_ident.value, Object::Integer(left_int));
 
-                    return Object::Null(Box::new(Null {}));
+                    return Object::Null(Null {});
                 }
 
-                return Object::InternalError(Box::new(InternalError {
+                return Object::InternalError(InternalError {
                     message: BuiltinFnError::TypeError(format!("{}", left_ident.value,)),
-                }));
+                });
             }
         }
 
-        Object::Null(Box::new(Null {}))
+        Object::Null(Null {})
     }
 
     fn eval_bang_operator_expression(&self, right: Object) -> Object {
         match right {
             Object::Boolean(boolean) => {
                 if boolean.value {
-                    Object::Boolean(Box::new(Boolean { value: false }))
+                    Object::Boolean(Boolean { value: false })
                 } else {
-                    Object::Boolean(Box::new(Boolean { value: true }))
+                    Object::Boolean(Boolean { value: true })
                 }
             }
-            Object::Null(_) => Object::Boolean(Box::new(Boolean { value: true })),
-            _ => Object::Boolean(Box::new(Boolean { value: false })),
+            Object::Null(_) => Object::Boolean(Boolean { value: true }),
+            _ => Object::Boolean(Boolean { value: false }),
         }
     }
 
     fn eval_minus_prefix_operator_expression(&self, right: Object) -> Object {
         let Object::Integer(int_expr) = right else {
-            return Object::InternalError(Box::new(InternalError {
+            return Object::InternalError(InternalError {
                 message: BuiltinFnError::UnknownOperator(format!("-{right}")),
-            }));
+            });
         };
 
         Object::Integer(Integer {
@@ -324,9 +324,9 @@ impl Evaluator {
         right: &mut Object,
     ) -> Object {
         if discriminant(left) != discriminant(right) {
-            return Object::InternalError(Box::new(InternalError {
+            return Object::InternalError(InternalError {
                 message: BuiltinFnError::UnknownOperator(format!("{left} {operator} {right}")),
-            }));
+            });
         }
 
         match (left, right) {
@@ -339,14 +339,14 @@ impl Evaluator {
             (Object::String(left_expr), Object::String(right_expr)) => {
                 return self.eval_string_concatenation(operator, left_expr, right_expr);
             }
-            (left_expr, right_expr) => Object::InternalError(Box::new(InternalError {
+            (left_expr, right_expr) => Object::InternalError(InternalError {
                 message: BuiltinFnError::UnknownOperator(format!(
                     "{left_expr} {operator} {right_expr}"
                 )),
-            })),
+            }),
         };
 
-        Object::Null(Box::new(Null {}))
+        Object::Null(Null {})
     }
 
     fn eval_integer_infix_expression(
@@ -368,40 +368,40 @@ impl Evaluator {
             Kind::Slash => Object::Integer(Integer {
                 value: left.value / right.value,
             }),
-            Kind::Gt => Object::Boolean(Box::new(Boolean {
+            Kind::Gt => Object::Boolean(Boolean {
                 value: left.value > right.value,
-            })),
-            Kind::Lt => Object::Boolean(Box::new(Boolean {
+            }),
+            Kind::Lt => Object::Boolean(Boolean {
                 value: left.value < right.value,
-            })),
-            Kind::Eq => Object::Boolean(Box::new(Boolean {
+            }),
+            Kind::Eq => Object::Boolean(Boolean {
                 value: left.value == right.value,
-            })),
-            Kind::NotEq => Object::Boolean(Box::new(Boolean {
+            }),
+            Kind::NotEq => Object::Boolean(Boolean {
                 value: left.value != right.value,
-            })),
-            _ => Object::InternalError(Box::new(InternalError {
+            }),
+            _ => Object::InternalError(InternalError {
                 message: BuiltinFnError::UnknownOperator(format!("{left} {operator} {right}")),
-            })),
+            }),
         }
     }
 
     fn eval_boolean_infix_expression(
         &self,
         operator: &Kind,
-        left: &mut Box<Boolean>,
-        right: &mut Box<Boolean>,
+        left: &mut Boolean,
+        right: &mut Boolean,
     ) -> Object {
         match operator {
-            Kind::Eq => Object::Boolean(Box::new(Boolean {
+            Kind::Eq => Object::Boolean(Boolean {
                 value: left.value == right.value,
-            })),
-            Kind::NotEq => Object::Boolean(Box::new(Boolean {
+            }),
+            Kind::NotEq => Object::Boolean(Boolean {
                 value: left.value != right.value,
-            })),
-            _ => Object::InternalError(Box::new(InternalError {
+            }),
+            _ => Object::InternalError(InternalError {
                 message: BuiltinFnError::UnknownOperator(format!("{left} {operator} {right}")),
-            })),
+            }),
         }
     }
 
@@ -424,7 +424,7 @@ impl Evaluator {
             return self.eval_statement(&alternative_as_stmt);
         }
 
-        Object::Null(Box::new(Null {}))
+        Object::Null(Null {})
     }
 
     fn eval_identifier(&self, ident: &Identifier) -> Object {
@@ -436,9 +436,9 @@ impl Evaluator {
             return builtin_func;
         }
 
-        Object::InternalError(Box::new(InternalError {
+        Object::InternalError(InternalError {
             message: BuiltinFnError::UnknownIdentifier(ident.value.to_string()),
-        }))
+        })
     }
 
     fn is_truthy(&self, obj: &Object) -> bool {
@@ -483,13 +483,13 @@ impl Evaluator {
                 evaluated
             }
             Object::Builtin(builtin) => (builtin.func)(args),
-            _ => Object::InternalError(Box::new(InternalError {
+            _ => Object::InternalError(InternalError {
                 message: BuiltinFnError::TypeError(format!("{func}")),
-            })),
+            }),
         }
     }
 
-    fn extend_function_env(&self, func_obj: &Box<Function>, args: &Vec<Object>) -> Environment {
+    fn extend_function_env(&self, func_obj: &Function, args: &Vec<Object>) -> Environment {
         let mut new_env = Environment::new_enclosed(Rc::clone(&func_obj.env));
 
         for (idx, param) in func_obj.parameters.iter().enumerate() {
@@ -502,16 +502,16 @@ impl Evaluator {
     fn eval_string_concatenation(
         &self,
         operator: &Kind,
-        left: &mut Box<StringObj>,
-        right: &mut Box<StringObj>,
+        left: &mut StringObj,
+        right: &mut StringObj,
     ) -> Object {
         match operator {
-            &Kind::Plus => Object::String(Box::new(StringObj {
+            &Kind::Plus => Object::String(StringObj {
                 value: format!("{}{}", left.value, right.value),
-            })),
-            _ => Object::InternalError(Box::new(InternalError {
+            }),
+            _ => Object::InternalError(InternalError {
                 message: BuiltinFnError::UnknownOperator(format!("{left} {operator} {right}")),
-            })),
+            }),
         }
     }
 
@@ -522,7 +522,7 @@ impl Evaluator {
             let max = arr.elements.len() as i64 - 1;
 
             if arr_idx.value < 0 || arr_idx.value > max {
-                return Object::Null(Box::new(Null {}));
+                return Object::Null(Null {});
             }
 
             return arr.elements[arr_idx.value as usize].clone();
@@ -530,9 +530,9 @@ impl Evaluator {
 
         if let Object::HashObj(hash_obj) = &left {
             if !self.is_hashable(&index) {
-                return Object::InternalError(Box::new(InternalError {
+                return Object::InternalError(InternalError {
                     message: BuiltinFnError::UnknownHashKey(format!("{index}")),
-                }));
+                });
             }
 
             let hash_key = match &index {
@@ -545,15 +545,15 @@ impl Evaluator {
             let pair = hash_obj.pairs.get(&hash_key);
 
             if pair.is_none() {
-                return Object::Null(Box::new(Null {}));
+                return Object::Null(Null {});
             }
 
             return pair.unwrap().value.clone();
         }
 
-        Object::InternalError(Box::new(InternalError {
+        Object::InternalError(InternalError {
             message: BuiltinFnError::IndexNotSupported(format!("{left}")),
-        }))
+        })
     }
 
     fn eval_hash_literal(&mut self, hash_literal: &HashLiteral) -> Object {
@@ -567,9 +567,9 @@ impl Evaluator {
             }
 
             if !self.is_hashable(&key) {
-                return Object::InternalError(Box::new(InternalError {
+                return Object::InternalError(InternalError {
                     message: BuiltinFnError::UnknownHashKey(format!("{key}")),
-                }));
+                });
             }
 
             let hashed = match &key {
@@ -590,7 +590,7 @@ impl Evaluator {
             );
         }
 
-        Object::HashObj(Box::new(HashObj { pairs }))
+        Object::HashObj(HashObj { pairs })
     }
 
     fn is_hashable(&self, obj: &Object) -> bool {
@@ -613,9 +613,9 @@ impl Evaluator {
 
                 // if identifier doesnt exist
                 if env.get(&ident.value).is_none() {
-                    return Object::InternalError(Box::new(InternalError {
+                    return Object::InternalError(InternalError {
                         message: BuiltinFnError::UnknownIdentifier(ident.value.to_string()),
-                    }));
+                    });
                 }
 
                 env.set(&ident.value, val.clone());
@@ -656,14 +656,14 @@ impl Evaluator {
                     }
                 }
 
-                Object::InternalError(Box::new(InternalError {
+                Object::InternalError(InternalError {
                     message: BuiltinFnError::TypeError("".to_string()),
-                }))
+                })
             }
 
-            _ => Object::InternalError(Box::new(InternalError {
+            _ => Object::InternalError(InternalError {
                 message: BuiltinFnError::TypeError("".to_string()),
-            })),
+            }),
         }
     }
 }

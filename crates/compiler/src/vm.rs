@@ -66,9 +66,9 @@ impl<'a> Vm<'a> {
 
         Self {
             constants: bytecode.constants,
-            stack: vec![Object::Null(Box::new(Null {})); STACK_SIZE],
+            stack: vec![Object::Null(Null {}); STACK_SIZE],
             sp: 0,
-            globals: vec![Object::Null(Box::new(Null {})); GLOBALS_SIZE],
+            globals: vec![Object::Null(Null {}); GLOBALS_SIZE],
             frame_index: 1,
             frames,
         }
@@ -133,7 +133,7 @@ impl<'a> Vm<'a> {
                             let right_value = right_str.value;
                             left_value.push_str(&right_value);
 
-                            let result = Object::String(Box::new(StringObj { value: left_value }));
+                            let result = Object::String(StringObj { value: left_value });
                             self.push(result)?
                         }
                         _ => return Err(VmError::InvalidType),
@@ -146,11 +146,11 @@ impl<'a> Vm<'a> {
                     self.update_frame_pointer(1);
                 }
                 Opcode::OpTrue => {
-                    self.push(Object::Boolean(Box::new(Boolean { value: true })))?;
+                    self.push(Object::Boolean(Boolean { value: true }))?;
                     self.update_frame_pointer(1);
                 }
                 Opcode::OpFalse => {
-                    self.push(Object::Boolean(Box::new(Boolean { value: false })))?;
+                    self.push(Object::Boolean(Boolean { value: false }))?;
                     self.update_frame_pointer(1);
                 }
                 Opcode::OpEqual | Opcode::OpNotEqual | Opcode::OpGreaterThan => {
@@ -189,7 +189,7 @@ impl<'a> Vm<'a> {
                     self.set_frame_pointer(pos as usize);
                 }
                 Opcode::OpNull => {
-                    self.push(Object::Null(Box::new(Null {})))?;
+                    self.push(Object::Null(Null {}))?;
                     self.update_frame_pointer(1);
                 }
                 Opcode::OpSetGlobal => {
@@ -273,7 +273,7 @@ impl<'a> Vm<'a> {
                     let frame = self.pop_frame().expect("frame doesnt exist");
                     self.sp = frame.base_pointer - 1;
 
-                    self.push(Object::Null(Box::new(Null {})))?;
+                    self.push(Object::Null(Null {}))?;
                 }
                 Opcode::OpSetLocal => {
                     let local_index = u8::from_be_bytes([ins[i + 1]]);
@@ -328,7 +328,7 @@ impl<'a> Vm<'a> {
                 }
                 Opcode::OpCurrentClosure => {
                     let current_closure = self.current_frame().current_closure();
-                    self.push(Object::Closure(Box::new(current_closure)))?;
+                    self.push(Object::Closure(current_closure))?;
                     self.update_frame_pointer(1);
                 }
             }
@@ -471,10 +471,10 @@ impl<'a> Vm<'a> {
 
     fn native_bool_to_boolean_obj(&self, val: bool) -> Object {
         if val {
-            return Object::Boolean(Box::new(Boolean { value: true }));
+            return Object::Boolean(Boolean { value: true });
         }
 
-        return Object::Boolean(Box::new(Boolean { value: false }));
+        return Object::Boolean(Boolean { value: false });
     }
 
     fn execute_bang_operator(&mut self) -> Result<(), VmError> {
@@ -483,13 +483,13 @@ impl<'a> Vm<'a> {
         match operand {
             Object::Boolean(bool_obj) => {
                 if bool_obj.value == true {
-                    self.push(Object::Boolean(Box::new(Boolean { value: false })))
+                    self.push(Object::Boolean(Boolean { value: false }))
                 } else {
-                    self.push(Object::Boolean(Box::new(Boolean { value: true })))
+                    self.push(Object::Boolean(Boolean { value: true }))
                 }
             }
-            Object::Null(_) => self.push(Object::Boolean(Box::new(Boolean { value: true }))),
-            _ => self.push(Object::Boolean(Box::new(Boolean { value: false }))),
+            Object::Null(_) => self.push(Object::Boolean(Boolean { value: true })),
+            _ => self.push(Object::Boolean(Boolean { value: false })),
         }
     }
 
@@ -506,14 +506,14 @@ impl<'a> Vm<'a> {
     }
 
     fn build_array(&self, start_idx: usize, end_idx: usize) -> Object {
-        let mut elements = vec![Object::Null(Box::new(Null {})); end_idx - start_idx];
+        let mut elements = vec![Object::Null(Null {}); end_idx - start_idx];
 
         // todo: avoid cloning
         for i in start_idx..end_idx {
             elements[i - start_idx] = self.stack[i].clone();
         }
 
-        Object::Array(Box::new(Array { elements }))
+        Object::Array(Array { elements })
     }
 
     fn build_hash(&self, start_idx: usize, end_idx: usize) -> Result<Object, VmError> {
@@ -535,9 +535,9 @@ impl<'a> Vm<'a> {
             hashed_pairs.insert(hash_key, pair);
         }
 
-        Ok(Object::HashObj(Box::new(HashObj {
+        Ok(Object::HashObj(HashObj {
             pairs: hashed_pairs,
-        })))
+        }))
     }
 
     fn execute_index_expression(&mut self, left: Object, index: Object) -> Result<(), VmError> {
@@ -550,37 +550,29 @@ impl<'a> Vm<'a> {
         }
     }
 
-    fn execute_array_index(
-        &mut self,
-        arr_obj: Box<Array>,
-        int_index: &Integer,
-    ) -> Result<(), VmError> {
+    fn execute_array_index(&mut self, arr_obj: Array, int_index: &Integer) -> Result<(), VmError> {
         let i = int_index.value;
 
         if arr_obj.elements.len() < 1 {
-            return self.push(Object::Null(Box::new(Null {})));
+            return self.push(Object::Null(Null {}));
         }
 
         let max: i64 = (arr_obj.elements.len() - 1).try_into().unwrap();
 
         if i < 0 || i > max {
-            return self.push(Object::Null(Box::new(Null {})));
+            return self.push(Object::Null(Null {}));
         }
 
         self.push(arr_obj.elements[i as usize].clone())
     }
 
-    fn execute_hash_index(
-        &mut self,
-        hash_obj: Box<HashObj>,
-        index: &Object,
-    ) -> Result<(), VmError> {
+    fn execute_hash_index(&mut self, hash_obj: HashObj, index: &Object) -> Result<(), VmError> {
         let Some(index_hash) = index.get_hash() else {
             return Err(VmError::UnusableAsHashKey);
         };
 
         let Some(pair) = hash_obj.pairs.get(&index_hash) else {
-            return self.push(Object::Null(Box::new(Null {})));
+            return self.push(Object::Null(Null {}));
         };
 
         self.push(pair.value.clone())
@@ -594,7 +586,7 @@ impl<'a> Vm<'a> {
 
         match result {
             Object::Null(_) => {
-                return self.push(Object::Null(Box::new(Null {})));
+                return self.push(Object::Null(Null {}));
             }
             result => {
                 return self.push(result);
@@ -602,13 +594,13 @@ impl<'a> Vm<'a> {
         }
     }
 
-    fn call_closure(&mut self, closure_fn: Box<Closure>, num_args: usize) -> Result<(), VmError> {
+    fn call_closure(&mut self, closure_fn: Closure, num_args: usize) -> Result<(), VmError> {
         if closure_fn.func.num_parameters != num_args {
             return Err(VmError::WrongNumberOfArgs);
         }
 
         let num_locals = closure_fn.func.num_locals;
-        let frame = Frame::new(*closure_fn, self.sp - num_args);
+        let frame = Frame::new(closure_fn, self.sp - num_args);
 
         let bp = frame.base_pointer;
         self.push_frame(frame);
@@ -632,10 +624,10 @@ impl<'a> Vm<'a> {
 
         self.sp = self.sp - num_free;
 
-        let closure = Object::Closure(Box::new(Closure {
-            func: *compiled_fn,
+        let closure = Object::Closure(Closure {
+            func: compiled_fn,
             free,
-        }));
+        });
         self.push(closure)
     }
 }

@@ -295,9 +295,9 @@ impl Compiler {
                 Ok(())
             }
             Expression::StringLiteral(str_lit) => {
-                let str_obj = Object::String(Box::new(StringObj {
+                let str_obj = Object::String(StringObj {
                     value: str_lit.value.to_string(),
-                }));
+                });
 
                 let constant = self.add_constant(str_obj);
                 self.emit(Opcode::OpConstant, &[constant]);
@@ -381,11 +381,11 @@ impl Compiler {
                     }
                 }
 
-                let compiled_fn = Object::CompiledFunction(Box::new(CompiledFunction {
+                let compiled_fn = Object::CompiledFunction(CompiledFunction {
                     instructions: instructions.to_vec(),
                     num_locals,
                     num_parameters: func_lit.parameters.len(),
-                }));
+                });
 
                 let constant = self.add_constant(compiled_fn);
                 self.emit(Opcode::OpClosure, &[constant, free_symbols.len()]);

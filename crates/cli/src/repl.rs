@@ -50,7 +50,7 @@ impl MonkeCli {
         let mut compiler = Compiler::new();
 
         // to reuse variables between runs
-        let mut globals = vec![Object::Null(Box::new(Null {})); vm::GLOBALS_SIZE];
+        let mut globals = vec![Object::Null(Null {}); vm::GLOBALS_SIZE];
 
         loop {
             let buf = match self.read_line() {

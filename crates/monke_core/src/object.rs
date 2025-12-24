@@ -21,17 +21,17 @@ pub trait HashableKey {
 #[derive(Debug, Display, VariantNames, Clone)]
 pub enum Object {
     Integer(Integer),
-    Boolean(Box<Boolean>),
-    Null(Box<Null>),
+    Boolean(Boolean),
+    Null(Null),
     Return(Box<Return>),
-    InternalError(Box<InternalError>),
-    Function(Box<Function>),
-    String(Box<StringObj>),
-    Builtin(Box<Builtin>),
-    Array(Box<Array>),
-    HashObj(Box<HashObj>),
-    CompiledFunction(Box<CompiledFunction>),
-    Closure(Box<Closure>),
+    InternalError(InternalError),
+    Function(Function),
+    String(StringObj),
+    Builtin(Builtin),
+    Array(Array),
+    HashObj(HashObj),
+    CompiledFunction(CompiledFunction),
+    Closure(Closure),
 }
 
 impl Inspect for Object {
