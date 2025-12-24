@@ -49,12 +49,12 @@ impl BuiltinFunction for Builtin {
         }
 
         match &args[0] {
-            Object::String(str_obj) => Object::Integer(Box::new(Integer {
+            Object::String(str_obj) => Object::Integer(Integer {
                 value: str_obj.value.len() as i64,
-            })),
-            Object::Array(arr) => Object::Integer(Box::new(Integer {
+            }),
+            Object::Array(arr) => Object::Integer(Integer {
                 value: arr.elements.len() as i64,
-            })),
+            }),
             _ => Object::InternalError(Box::new(InternalError {
                 message: BuiltinFnError::WrongNumberOfArgs(format!("Got: {}, want: 0", args[0])),
             })),

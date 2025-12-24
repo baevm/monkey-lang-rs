@@ -143,9 +143,9 @@ impl Evaluator {
 
     fn eval_expression(&mut self, expr: &Expression) -> Object {
         match expr {
-            Expression::IntegerLiteral(integer_literal) => Object::Integer(Box::new(Integer {
+            Expression::IntegerLiteral(integer_literal) => Object::Integer(Integer {
                 value: integer_literal.value,
-            })),
+            }),
             Expression::StringLiteral(str_literal) => Object::String(Box::new(StringObj {
                 value: str_literal.value.to_string(),
             })),
@@ -312,9 +312,9 @@ impl Evaluator {
             }));
         };
 
-        Object::Integer(Box::new(Integer {
+        Object::Integer(Integer {
             value: -int_expr.value,
-        }))
+        })
     }
 
     fn eval_infix_expression(
@@ -352,22 +352,22 @@ impl Evaluator {
     fn eval_integer_infix_expression(
         &self,
         operator: &Kind,
-        left: &mut Box<Integer>,
-        right: &mut Box<Integer>,
+        left: &mut Integer,
+        right: &mut Integer,
     ) -> Object {
         match operator {
-            Kind::Plus => Object::Integer(Box::new(Integer {
+            Kind::Plus => Object::Integer(Integer {
                 value: left.value + right.value,
-            })),
-            Kind::Minus => Object::Integer(Box::new(Integer {
+            }),
+            Kind::Minus => Object::Integer(Integer {
                 value: left.value - right.value,
-            })),
-            Kind::Asterisk => Object::Integer(Box::new(Integer {
+            }),
+            Kind::Asterisk => Object::Integer(Integer {
                 value: left.value * right.value,
-            })),
-            Kind::Slash => Object::Integer(Box::new(Integer {
+            }),
+            Kind::Slash => Object::Integer(Integer {
                 value: left.value / right.value,
-            })),
+            }),
             Kind::Gt => Object::Boolean(Box::new(Boolean {
                 value: left.value > right.value,
             })),

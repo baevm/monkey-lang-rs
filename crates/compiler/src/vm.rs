@@ -126,7 +126,7 @@ impl<'a> Vm<'a> {
                                 _ => unreachable!(),
                             };
 
-                            self.push(Object::Integer(Box::new(Integer { value: result })))?
+                            self.push(Object::Integer(Integer { value: result }))?
                         }
                         (Object::String(left_str), Object::String(right_str)) => {
                             let mut left_value = left_str.value;
@@ -452,8 +452,8 @@ impl<'a> Vm<'a> {
     fn execute_integer_comparison(
         &mut self,
         opcode: &Opcode,
-        left_int: &Box<Integer>,
-        right_int: &Box<Integer>,
+        left_int: &Integer,
+        right_int: &Integer,
     ) -> Result<(), VmError> {
         match opcode {
             Opcode::OpEqual => {
@@ -500,9 +500,9 @@ impl<'a> Vm<'a> {
             return Err(VmError::InvalidType);
         };
 
-        self.push(Object::Integer(Box::new(Integer {
+        self.push(Object::Integer(Integer {
             value: -int_obj.value,
-        })))
+        }))
     }
 
     fn build_array(&self, start_idx: usize, end_idx: usize) -> Object {
@@ -543,7 +543,7 @@ impl<'a> Vm<'a> {
     fn execute_index_expression(&mut self, left: Object, index: Object) -> Result<(), VmError> {
         match (left, &index) {
             (Object::Array(arr_obj), Object::Integer(int_index)) => {
-                self.execute_array_index(arr_obj, int_index.as_ref())
+                self.execute_array_index(arr_obj, int_index)
             }
             (Object::HashObj(hash_obj), _) => self.execute_hash_index(hash_obj, &index),
             _ => Err(VmError::UnsupportedIndexOperator),

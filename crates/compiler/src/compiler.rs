@@ -182,9 +182,9 @@ impl Compiler {
     fn compile_expression(&mut self, expression: &Expression) -> Result<(), CompilerError> {
         match expression {
             Expression::IntegerLiteral(integer_literal) => {
-                let integer = Object::Integer(Box::new(Integer {
+                let integer = Object::Integer(Integer {
                     value: integer_literal.value,
-                }));
+                });
 
                 let index = self.add_constant(integer);
                 self.emit(Opcode::OpConstant, &[index]);

@@ -20,7 +20,7 @@ pub trait HashableKey {
 
 #[derive(Debug, Display, VariantNames, Clone)]
 pub enum Object {
-    Integer(Box<Integer>),
+    Integer(Integer),
     Boolean(Box<Boolean>),
     Null(Box<Null>),
     Return(Box<Return>),
