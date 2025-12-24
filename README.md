@@ -48,9 +48,9 @@ Running in compiler mode.
 
 Not optimized:
 - Compiler mode, fibonacci of 20: 
-    - time: ~30.394 ms
+    - time: ~13.357 ms
 - Interpreter mode, fibonacci of 20: 
-    - time: ~113 ms
+    - time: ~48.13 ms
 
 Optimized:
 - Compiler mode, fibonacci of 20: 
