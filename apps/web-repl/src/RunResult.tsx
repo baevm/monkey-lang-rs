@@ -19,7 +19,8 @@ export const RunResult = () => {
           <div className={styles.resultLabel}>
             <Text c="dimmed">Standard output</Text>
           </div>
-          <div>{result}</div>
+          <div>{result.output}</div>
+          <Text c="gray">Compiled in: {result.time_ms.toFixed(2)} ms</Text>
         </div>
       ) : null}
     </section>

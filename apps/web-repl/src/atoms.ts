@@ -4,9 +4,14 @@ import { CODE_EXAMPLES } from './codeExamples'
 
 export type Mode = 'compiler' | 'interpreter'
 
+interface CompileResult {
+  output: string
+  time_ms: number
+}
+
 export const codeAtom = atom<string | undefined>(CODE_EXAMPLES[0].value, 'codeAtom')
 export const runnerModeAtom = atom<Mode>('compiler', 'runnerModeAtom')
-export const resultAtom = atom<string>('', 'resultAtom')
+export const resultAtom = atom<CompileResult | null>(null, 'resultAtom')
 const workerReadyAtom = atom<boolean>(false, 'workerReadyAtom')
 const isRunningAtom = atom<boolean>(false, 'isRunning')
 
@@ -20,13 +25,13 @@ export const onWorkerReady = action(ctx => {
   workerReadyAtom(ctx, true)
 }, 'onWorkerReady')
 
-export const onResult = action((ctx, result: string) => {
+export const onResult = action((ctx, result: CompileResult) => {
   resultAtom(ctx, result)
   isRunningAtom(ctx, false)
 }, 'onResult')
 
 export const onError = action((ctx, error: string) => {
-  resultAtom(ctx, `Error: ${error}`)
+  resultAtom(ctx, { output: error, time_ms: 0 })
   isRunningAtom(ctx, false)
 }, 'onError')
 
@@ -54,7 +59,7 @@ export const runCode = action(ctx => {
   isRunningAtom(ctx, true)
 
   if (!workerReady) {
-    resultAtom(ctx, 'WASM is still loading...')
+    resultAtom(ctx, { output: 'WASM is still loading...', time_ms: 0 })
     return
   }
 

@@ -19,7 +19,6 @@ export function App() {
       if (type === 'ready') {
         handleWorkerReady()
       } else if (type === 'result') {
-        console.log('here', result)
         handleResult(result)
       } else if (type === 'error') {
         handleError(error)

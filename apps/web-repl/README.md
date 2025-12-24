@@ -3,7 +3,7 @@
 1.
 
 ```
-wasm-pack build --target web --out-dir ../../apps/web-repl/src/wasm_compiler
+wasm-pack build --target web --out-dir ../../apps/web-repl/src/core/wasm_compiler
 ```
 
 2.
