@@ -254,13 +254,13 @@ impl<'a> Vm<'a> {
                 Opcode::OpReturnValue => {
                     let return_value = self.pop();
                     let frame = self.pop_frame().expect("frame doesnt exist");
-                    self.sp = (frame.base_pointer - 1) as usize;
+                    self.sp = frame.base_pointer - 1;
 
                     self.push(return_value)?
                 }
                 Opcode::OpReturn => {
                     let frame = self.pop_frame().expect("frame doesnt exist");
-                    self.sp = (frame.base_pointer - 1) as usize;
+                    self.sp = frame.base_pointer - 1;
 
                     self.push(Object::Null(Box::new(Null {})))?
                 }
@@ -269,7 +269,7 @@ impl<'a> Vm<'a> {
                     self.update_frame_pointer(1);
 
                     let base_pointer = self.current_frame_base_pointer();
-                    self.stack[(base_pointer + (local_index as i64)) as usize] = self.pop();
+                    self.stack[base_pointer + (local_index as usize)] = self.pop();
                 }
                 Opcode::OpGetLocal => {
                     let local_index = u8::from_be_bytes([ins[(i + 1) as usize]]);
@@ -277,7 +277,7 @@ impl<'a> Vm<'a> {
 
                     let base_pointer = self.current_frame_base_pointer();
 
-                    let obj = self.stack[(base_pointer + (local_index as i64)) as usize].clone();
+                    let obj = self.stack[base_pointer + (local_index as usize)].clone();
                     self.push(obj)?
                 }
                 Opcode::OpGetBuiltin => {
@@ -347,7 +347,7 @@ impl<'a> Vm<'a> {
         &self.frames[self.frame_index - 1]
     }
 
-    fn current_frame_base_pointer(&self) -> i64 {
+    fn current_frame_base_pointer(&self) -> usize {
         self.frames[self.frame_index - 1].base_pointer
     }
 
@@ -601,9 +601,9 @@ impl<'a> Vm<'a> {
         }
 
         let num_locals = closure_fn.func.num_locals;
-        let frame = Frame::new(*closure_fn, (self.sp - num_args) as i64);
+        let frame = Frame::new(*closure_fn, self.sp - num_args);
 
-        let bp = frame.base_pointer as usize;
+        let bp = frame.base_pointer;
         self.push_frame(frame);
         self.sp = bp + num_locals;
 

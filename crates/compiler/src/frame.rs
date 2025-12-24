@@ -9,11 +9,11 @@ pub struct Frame {
     /// instruction pointer
     pub ip: i64,
 
-    pub base_pointer: i64,
+    pub base_pointer: usize,
 }
 
 impl Frame {
-    pub fn new(func: Closure, base_pointer: i64) -> Self {
+    pub fn new(func: Closure, base_pointer: usize) -> Self {
         Frame {
             func,
             ip: -1,
