@@ -203,7 +203,9 @@ impl<'a> Vm<'a> {
 
                     self.update_frame_pointer(3);
 
-                    self.globals[global_idx] = self.pop();
+                    let value = self.pop();
+                    self.globals[global_idx] = value.clone();
+                    self.push(value)?;
                 }
                 Opcode::OpGetGlobal => {
                     let global_idx: usize = u16::from_be_bytes(
@@ -914,6 +916,35 @@ mod tests {
             VmTestCase {
                 input: "let one = 1; let two = one + one; one + two".to_string(),
                 expected: Expected::Integer(3),
+            },
+        ];
+
+        run_vm_tests(tests);
+    }
+
+    #[test]
+    fn test_variable_reassignment() {
+        let tests = vec![
+            VmTestCase {
+                input: "let x = 100; x = 200; x;".to_string(),
+                expected: Expected::Integer(200),
+            },
+            VmTestCase {
+                input: "let x = 10; x = x + 5; x;".to_string(),
+                expected: Expected::Integer(15),
+            },
+            VmTestCase {
+                input: "let a = 1; let b = 2; a = b; a;".to_string(),
+                expected: Expected::Integer(2),
+            },
+            VmTestCase {
+                input: "let x = 5; let y = 10; x = y; y = 20; x + y;".to_string(),
+                expected: Expected::Integer(30),
+            },
+            VmTestCase {
+                input: "let counter = 0; counter = counter + 1; counter = counter + 1; counter;"
+                    .to_string(),
+                expected: Expected::Integer(2),
             },
         ];
 

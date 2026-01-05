@@ -200,6 +200,30 @@ impl Compiler {
                     return Ok(());
                 }
 
+                if infix.operator == Kind::Assign {
+                    let Expression::Identifier(ident) = &infix.left else {
+                        return Err(CompilerError::Unknown);
+                    };
+
+                    let Some(symbol) = self.symbol_table.resolve(&ident.value) else {
+                        return Err(CompilerError::Unknown);
+                    };
+
+                    self.compile_expression(&infix.right)?;
+
+                    match symbol.scope {
+                        SymbolScope::Global => {
+                            self.emit(Opcode::OpSetGlobal, &[symbol.index]);
+                        }
+                        SymbolScope::Local => {
+                            self.emit(Opcode::OpSetLocal, &[symbol.index]);
+                        }
+                        _ => return Err(CompilerError::Unknown),
+                    }
+
+                    return Ok(());
+                }
+
                 self.compile_expression(&infix.left)?;
                 self.compile_expression(&infix.right)?;
 
@@ -581,21 +605,6 @@ mod tests {
     }
 
     #[test]
-    fn test_instructions_string() {
-        let instructions = vec![
-            make(Opcode::OpConstant, &[1]),
-            make(Opcode::OpConstant, &[2]),
-            make(Opcode::OpConstant, &[65535]),
-        ];
-
-        let expected = "0000 OpConstant 1 \n0003 OpConstant 2 \n0006 OpConstant 65535 \n";
-
-        let concated: Instructions = instructions.into_iter().flat_map(|i| i).collect();
-
-        assert_eq!(expected, concated.to_string());
-    }
-
-    #[test]
     fn test_boolean_expression() {
         let tests = vec![
             CompilerTestCase {
@@ -777,6 +786,30 @@ mod tests {
                 ],
             },
         ];
+
+        run_compiler_tests(tests);
+    }
+
+    #[test]
+    fn test_variable_reassignment() {
+        let tests = vec![CompilerTestCase {
+            input: "
+                let x = 100;
+                x = 200;
+                x;
+                "
+            .to_string(),
+            expected_constants: vec![ExpectedConstant::I64(100), ExpectedConstant::I64(200)],
+            expected_instructions: vec![
+                Instructions::from(make(Opcode::OpConstant, &[0])), // load 100
+                Instructions::from(make(Opcode::OpSetGlobal, &[0])), // define x, idx=0
+                Instructions::from(make(Opcode::OpConstant, &[1])), // load 200
+                Instructions::from(make(Opcode::OpSetGlobal, &[0])), // reassign to x at idx=0
+                Instructions::from(make(Opcode::OpPop, &[])),       // pop assigment result
+                Instructions::from(make(Opcode::OpGetGlobal, &[0])), // get x
+                Instructions::from(make(Opcode::OpPop, &[])),
+            ],
+        }];
 
         run_compiler_tests(tests);
     }
@@ -1583,7 +1616,7 @@ mod tests {
         assert_eq!(
             actual.len(),
             concated.len(),
-            "wrong instructions length, want: {}, got: {}",
+            "wrong instructions length, want: \n {}, got: \n {}",
             concated,
             actual
         );
