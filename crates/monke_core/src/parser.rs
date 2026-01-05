@@ -229,9 +229,9 @@ impl<'a> Parser<'a> {
             return None;
         }
 
-        let int_literal = Expression::IntegerLiteral(Box::new(IntegerLiteral {
+        let int_literal = Expression::IntegerLiteral(IntegerLiteral {
             value: value.unwrap(),
-        }));
+        });
 
         Some(int_literal)
     }
@@ -276,9 +276,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_identifier(&self) -> Option<Expression> {
-        Some(Expression::Identifier(Box::new(Identifier {
+        Some(Expression::Identifier(Identifier {
             value: self.curr_token.value.clone(),
-        })))
+        }))
     }
 
     fn parse_prefix_expression(&mut self) -> Option<Expression> {
@@ -331,9 +331,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_boolean(&self) -> Option<Expression> {
-        Some(Expression::Boolean(Box::new(Boolean {
+        Some(Expression::Boolean(Boolean {
             value: self.is_curr_token(Kind::True),
-        })))
+        }))
     }
 
     fn parse_grouped_expression(&mut self) -> Option<Expression> {
@@ -401,11 +401,11 @@ impl<'a> Parser<'a> {
 
         let body = self.parse_block_statement();
 
-        let func_literal = Expression::FunctionLiteral(Box::new(FunctionLiteral {
+        let func_literal = Expression::FunctionLiteral(FunctionLiteral {
             parameters,
             body,
             name: "".to_string(),
-        }));
+        });
 
         Some(func_literal)
     }
@@ -471,15 +471,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_string_literal(&self) -> Option<Expression> {
-        Some(Expression::StringLiteral(Box::new(StringLiteral {
+        Some(Expression::StringLiteral(StringLiteral {
             value: self.curr_token.value.clone(),
-        })))
+        }))
     }
 
     fn parse_array_literal(&mut self) -> Option<Expression> {
-        let array_literal = Expression::ArrayLiteral(Box::new(ArrayLiteral {
+        let array_literal = Expression::ArrayLiteral(ArrayLiteral {
             elements: self.parse_expression_list(Kind::Rbracket),
-        }));
+        });
 
         Some(array_literal)
     }
@@ -557,7 +557,7 @@ impl<'a> Parser<'a> {
             return None;
         }
 
-        Some(Expression::HashLiteral(Box::new(hash_literal)))
+        Some(Expression::HashLiteral(hash_literal))
     }
 
     fn expect_peek(&mut self, expected: Kind) -> bool {

@@ -131,18 +131,18 @@ impl std::fmt::Display for ForStatement {
 /* Expressions */
 #[derive(Clone, Debug)]
 pub enum Expression {
-    Identifier(Box<Identifier>),
-    IntegerLiteral(Box<IntegerLiteral>),
+    Identifier(Identifier),
+    IntegerLiteral(IntegerLiteral),
+    Boolean(Boolean),
+    FunctionLiteral(FunctionLiteral),
+    StringLiteral(StringLiteral),
+    ArrayLiteral(ArrayLiteral),
+    HashLiteral(HashLiteral),
     PrefixExpression(Box<PrefixExpression>),
     InfixExpression(Box<InfixExpression>),
-    Boolean(Box<Boolean>),
     IfExpression(Box<IfExpression>),
-    FunctionLiteral(Box<FunctionLiteral>),
     CallExpression(Box<CallExpression>),
-    StringLiteral(Box<StringLiteral>),
-    ArrayLiteral(Box<ArrayLiteral>),
     IndexExpression(Box<IndexExpression>),
-    HashLiteral(Box<HashLiteral>),
 }
 
 impl std::fmt::Display for Expression {
@@ -398,9 +398,9 @@ mod tests {
                 name: Identifier {
                     value: Rc::from("myVar"),
                 },
-                value: Some(Expression::Identifier(Box::new(Identifier {
+                value: Some(Expression::Identifier(Identifier {
                     value: Rc::from("anotherVar"),
-                }))),
+                })),
             })],
         };
 
