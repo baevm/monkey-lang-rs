@@ -413,13 +413,12 @@ impl Evaluator {
         }
 
         if self.is_truthy(&condition) {
-            let consequence_as_stmt =
-                Statement::BlockStatement(Box::new(if_expr.consequence.clone()));
+            let consequence_as_stmt = Statement::BlockStatement(if_expr.consequence.clone());
 
             return self.eval_statement(&consequence_as_stmt);
         } else if if_expr.alternative.is_some() {
             let alternative_as_stmt =
-                Statement::BlockStatement(Box::new(if_expr.alternative.as_ref().unwrap().clone()));
+                Statement::BlockStatement(if_expr.alternative.as_ref().unwrap().clone());
 
             return self.eval_statement(&alternative_as_stmt);
         }
@@ -471,8 +470,8 @@ impl Evaluator {
                 // Temporarily set the current environment to the function's environment
                 self.env = Rc::new(RefCell::new(extended_env));
 
-                let evaluated = self
-                    .eval_statement(&Statement::BlockStatement(Box::new(func_obj.body.clone())));
+                let evaluated =
+                    self.eval_statement(&Statement::BlockStatement(func_obj.body.clone()));
 
                 self.env = current_env;
 

@@ -105,7 +105,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let let_stmt = Statement::LetStatement(Box::new(LetStatement { name, value }));
+        let let_stmt = Statement::LetStatement(LetStatement { name, value });
 
         if self.is_peek_token(&Kind::Semicolon) {
             self.next_token();
@@ -119,7 +119,7 @@ impl<'a> Parser<'a> {
 
         let return_value = self.parse_expression(Precedence::Lowest);
 
-        let return_stmt = Statement::ReturnStatement(Box::new(ReturnStatement { return_value }));
+        let return_stmt = Statement::ReturnStatement(ReturnStatement { return_value });
 
         if self.is_peek_token(&Kind::Semicolon) {
             self.next_token();
@@ -176,9 +176,9 @@ impl<'a> Parser<'a> {
     fn parse_expression_statement(&mut self) -> Option<Statement> {
         let expression = self.parse_expression(Precedence::Lowest)?;
 
-        let expr_stmt = Statement::ExpressionStatement(Box::new(ExpressionStatement {
+        let expr_stmt = Statement::ExpressionStatement(ExpressionStatement {
             expression: Some(expression),
-        }));
+        });
 
         if self.is_peek_token(&Kind::Semicolon) {
             self.next_token();
@@ -1948,7 +1948,7 @@ mod tests {
             panic!("statement is not ExpressionStatement, got: {:?}", stmt);
         };
 
-        *expr_stmt.clone()
+        expr_stmt.clone()
     }
 
     fn test_infix_expression(expr: &Expression, left: i64, operator: &str, right: i64) {

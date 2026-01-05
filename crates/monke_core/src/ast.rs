@@ -9,10 +9,10 @@ pub struct Program {
 /* Statements */
 #[derive(Debug, Clone)]
 pub enum Statement {
-    LetStatement(Box<LetStatement>),
-    ReturnStatement(Box<ReturnStatement>),
-    ExpressionStatement(Box<ExpressionStatement>),
-    BlockStatement(Box<BlockStatement>),
+    LetStatement(LetStatement),
+    ReturnStatement(ReturnStatement),
+    ExpressionStatement(ExpressionStatement),
+    BlockStatement(BlockStatement),
     ForStatement(Box<ForStatement>),
 }
 
@@ -394,14 +394,14 @@ mod tests {
     fn test_string_method() {
         // let myVar = anotherVar;
         let program = Program {
-            body: vec![Statement::LetStatement(Box::new(LetStatement {
+            body: vec![Statement::LetStatement(LetStatement {
                 name: Identifier {
                     value: Rc::from("myVar"),
                 },
                 value: Some(Expression::Identifier(Box::new(Identifier {
                     value: Rc::from("anotherVar"),
                 }))),
-            }))],
+            })],
         };
 
         assert_eq!(
