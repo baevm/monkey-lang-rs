@@ -30,8 +30,14 @@ pub enum Object {
     Builtin(Builtin),
     Array(Array),
     HashObj(HashObj),
-    CompiledFunction(CompiledFunction),
+    CompiledFunction(Rc<CompiledFunction>),
     Closure(Closure),
+}
+
+impl Default for Object {
+    fn default() -> Self {
+        Object::Null(Null {})
+    }
 }
 
 impl Inspect for Object {
@@ -262,7 +268,7 @@ impl std::fmt::Debug for Builtin {
 
 #[derive(Debug, Clone)]
 pub struct Array {
-    pub elements: Vec<Object>,
+    pub elements: Rc<[Object]>,
 }
 
 impl Inspect for Array {
@@ -302,7 +308,7 @@ impl Inspect for HashObj {
 
 #[derive(Debug, Clone)]
 pub struct CompiledFunction {
-    pub instructions: Vec<u8>,
+    pub instructions: Rc<[u8]>,
     pub num_locals: usize,
     pub num_parameters: usize,
 }
@@ -315,8 +321,8 @@ impl Inspect for CompiledFunction {
 
 #[derive(Debug, Clone)]
 pub struct Closure {
-    pub func: CompiledFunction,
-    pub free: Vec<Object>,
+    pub func: Rc<CompiledFunction>,
+    pub free: Rc<[Object]>,
 }
 
 impl Inspect for Closure {

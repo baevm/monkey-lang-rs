@@ -213,7 +213,7 @@ impl Evaluator {
                     return elements[0].clone();
                 }
 
-                Object::Array(Array { elements })
+                Object::Array(Array { elements: elements.into() })
             }
             Expression::IndexExpression(index_expr) => {
                 let left = self.eval_expression(&index_expr.left);
@@ -642,13 +642,14 @@ impl Evaluator {
                 if let Expression::Identifier(array_ident) = &index_expr.left {
                     let mut env = self.env.borrow_mut();
 
-                    if let Some(Object::Array(mut array)) = env.get(&array_ident.value) {
+                    if let Some(Object::Array(array)) = env.get(&array_ident.value) {
                         if let Object::Integer(index_int) = index_obj {
                             let idx = index_int.value as usize;
 
                             if idx < array.elements.len() {
-                                array.elements[idx] = val.clone();
-                                env.set(&array_ident.value, Object::Array(array));
+                                let mut new_elements = array.elements.to_vec();
+                                new_elements[idx] = val.clone();
+                                env.set(&array_ident.value, Object::Array(Array { elements: new_elements.into() }));
                                 return val;
                             }
                         }

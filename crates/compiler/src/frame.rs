@@ -1,10 +1,10 @@
-use monke_core::object::Closure;
+use std::rc::Rc;
 
-use crate::code::Instructions;
+use monke_core::object::Closure;
 
 #[derive(Debug)]
 pub struct Frame {
-    func: Closure,
+    func: Rc<Closure>,
 
     /// instruction pointer
     pub ip: usize,
@@ -13,7 +13,7 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn new(func: Closure, base_pointer: usize) -> Self {
+    pub fn new(func: Rc<Closure>, base_pointer: usize) -> Self {
         Frame {
             func,
             ip: 0,
@@ -21,11 +21,11 @@ impl Frame {
         }
     }
 
-    pub fn instructions(&self) -> Instructions {
-        Instructions::from(self.func.func.instructions.clone())
+    pub fn instructions(&self) -> &[u8] {
+        &self.func.func.instructions
     }
 
-    pub fn current_closure(&self) -> Closure {
-        self.func.clone()
+    pub fn current_closure(&self) -> Rc<Closure> {
+        Rc::clone(&self.func)
     }
 }

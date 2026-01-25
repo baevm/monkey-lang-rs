@@ -101,10 +101,10 @@ impl BuiltinFunction for Builtin {
         }
 
         if let Object::Array(arr) = &args[0] {
-            let mut new_elements = arr.elements.clone();
+            let mut new_elements = arr.elements.to_vec();
             new_elements.push(args[1].clone());
             return Object::Array(Array {
-                elements: new_elements,
+                elements: new_elements.into(),
             });
         }
 

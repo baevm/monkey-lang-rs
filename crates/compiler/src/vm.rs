@@ -1,15 +1,13 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use monke_core::object::{
-    self, Array, Boolean, Builtin, Closure, HashKey, HashObj, HashPair, Integer, Null, Object,
-    StringObj,
+    Array, Boolean, Builtin, Closure, CompiledFunction, HashKey, HashObj, HashPair, Integer, Null,
+    Object, StringObj,
 };
 
 use crate::{
-    builtin::BuiltinFunction,
-    code::{Instructions, Opcode},
-    compiler::Bytecode,
-    frame::Frame,
+    builtin::BuiltinFunction, code::Opcode, compiler::Bytecode, frame::Frame,
     symbol_table::SymbolTable,
 };
 
@@ -50,15 +48,15 @@ pub enum VmError {
 
 impl<'a> Vm<'a> {
     pub fn new(bytecode: &'a Bytecode) -> Self {
-        let main_func = object::CompiledFunction {
-            instructions: bytecode.instructions.to_vec(),
+        let main_func = Rc::new(CompiledFunction {
+            instructions: bytecode.instructions.to_vec().into(),
             num_locals: 0,
             num_parameters: 0,
-        };
-        let main_closure = Closure {
+        });
+        let main_closure = Rc::new(Closure {
             func: main_func,
-            free: vec![],
-        };
+            free: [].into(),
+        });
         let main_frame = Frame::new(main_closure, 0);
 
         let mut frames: Vec<Frame> = Vec::with_capacity(MAX_FRAMES);
@@ -84,7 +82,7 @@ impl<'a> Vm<'a> {
     #[allow(unused_assignments)]
     pub fn run(&mut self) -> Result<(), VmError> {
         let mut i: usize;
-        let mut ins: Instructions;
+        let mut ins: &[u8];
         let mut opcode: Option<Opcode>;
 
         while self.current_frame().ip < self.current_frame().instructions().len() {
@@ -113,7 +111,7 @@ impl<'a> Vm<'a> {
                     let right = self.pop();
                     let left = self.pop();
 
-                    match (left, right) {
+                    match (&left, &right) {
                         (Object::Integer(left_int), Object::Integer(right_int)) => {
                             let left_value = left_int.value;
                             let right_value = right_int.value;
@@ -129,12 +127,12 @@ impl<'a> Vm<'a> {
                             self.push(Object::Integer(Integer { value: result }))?
                         }
                         (Object::String(left_str), Object::String(right_str)) => {
-                            let mut left_value = left_str.value;
-                            let right_value = right_str.value;
-                            left_value.push_str(&right_value);
+                            let mut new_str =
+                                String::with_capacity(left_str.value.len() + right_str.value.len());
+                            new_str.push_str(&left_str.value);
+                            new_str.push_str(&right_str.value);
 
-                            let result = Object::String(StringObj { value: left_value });
-                            self.push(result)?
+                            self.push(Object::String(StringObj { value: new_str }))?
                         }
                         _ => return Err(VmError::InvalidType),
                     }
@@ -330,7 +328,7 @@ impl<'a> Vm<'a> {
                 }
                 Opcode::OpCurrentClosure => {
                     let current_closure = self.current_frame().current_closure();
-                    self.push(Object::Closure(current_closure))?;
+                    self.push(Object::Closure((*current_closure).clone()))?;
                     self.update_frame_pointer(1);
                 }
             }
@@ -403,9 +401,8 @@ impl<'a> Vm<'a> {
     }
 
     fn pop(&mut self) -> Object {
-        let object = &self.stack[self.sp - 1];
         self.sp -= 1;
-        object.clone()
+        self.stack[self.sp].clone()
     }
 
     pub fn get_run_result(&self) -> Option<Object> {
@@ -508,14 +505,15 @@ impl<'a> Vm<'a> {
     }
 
     fn build_array(&self, start_idx: usize, end_idx: usize) -> Object {
-        let mut elements = vec![Object::Null(Null {}); end_idx - start_idx];
+        let mut elements = Vec::with_capacity(end_idx - start_idx);
 
-        // todo: avoid cloning
         for i in start_idx..end_idx {
-            elements[i - start_idx] = self.stack[i].clone();
+            elements.push(self.stack[i].clone());
         }
 
-        Object::Array(Array { elements })
+        Object::Array(Array {
+            elements: elements.into(),
+        })
     }
 
     fn build_hash(&self, start_idx: usize, end_idx: usize) -> Result<Object, VmError> {
@@ -602,7 +600,7 @@ impl<'a> Vm<'a> {
         }
 
         let num_locals = closure_fn.func.num_locals;
-        let frame = Frame::new(closure_fn, self.sp - num_args);
+        let frame = Frame::new(Rc::new(closure_fn), self.sp - num_args);
 
         let bp = frame.base_pointer;
         self.push_frame(frame);
@@ -612,7 +610,7 @@ impl<'a> Vm<'a> {
     }
 
     fn push_closure(&mut self, const_index: usize, num_free: usize) -> Result<(), VmError> {
-        let constant = self.constants[const_index].clone();
+        let constant = &self.constants[const_index];
 
         let Object::CompiledFunction(compiled_fn) = constant else {
             return Err(VmError::InvalidType);
@@ -627,8 +625,8 @@ impl<'a> Vm<'a> {
         self.sp = self.sp - num_free;
 
         let closure = Object::Closure(Closure {
-            func: compiled_fn,
-            free,
+            func: Rc::clone(compiled_fn),
+            free: free.into(),
         });
         self.push(closure)
     }

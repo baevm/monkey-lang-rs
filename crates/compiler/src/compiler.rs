@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use monke_core::{
     ast::{BlockStatement, Expression, Program, Statement},
     object::{CompiledFunction, Integer, Object, StringObj},
@@ -405,11 +407,11 @@ impl Compiler {
                     }
                 }
 
-                let compiled_fn = Object::CompiledFunction(CompiledFunction {
-                    instructions: instructions.to_vec(),
+                let compiled_fn = Object::CompiledFunction(Rc::new(CompiledFunction {
+                    instructions: instructions.to_vec().into(),
                     num_locals,
                     num_parameters: func_lit.parameters.len(),
-                });
+                }));
 
                 let constant = self.add_constant(compiled_fn);
                 self.emit(Opcode::OpClosure, &[constant, free_symbols.len()]);
@@ -1579,7 +1581,7 @@ mod tests {
 
                     test_instructions(
                         items,
-                        &code::Instructions::from(compiled_fn.instructions.clone()),
+                        &code::Instructions::from(compiled_fn.instructions.to_vec()),
                     );
                 }
             }
