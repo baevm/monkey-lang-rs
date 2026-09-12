@@ -11,9 +11,26 @@ const codeStore = useCodeStore()
     </div>
 
     <div v-else-if="codeStore.result !== null" class="resultContainer">
-      <div class="resultLabel">Standard output</div>
-      <div class="resultOutput">{{ codeStore.result.output }}</div>
-      <div class="compileTime">Compiled in: {{ codeStore.result.time_ms.toFixed(2) }} ms</div>
+      <template v-if="codeStore.result.value !== undefined">
+        <div class="resultLabel">Result</div>
+        <div class="resultOutput">{{ codeStore.result.value }}</div>
+      </template>
+
+      <template v-if="codeStore.result.stdout">
+        <div class="resultLabel">Standard output</div>
+        <div class="resultOutput">{{ codeStore.result.stdout }}</div>
+      </template>
+
+      <div v-if="codeStore.result.diagnostics.length > 0">
+        <div
+          v-for="diagnostic in codeStore.result.diagnostics"
+          :key="diagnostic.message"
+          class="text-error">
+          {{ diagnostic.message }}
+        </div>
+      </div>
+
+      <div class="text-muted">Executed in: {{ codeStore.result.durationMs.toFixed(2) }} ms</div>
     </div>
   </section>
 </template>
@@ -61,9 +78,5 @@ const codeStore = useCodeStore()
 .resultOutput {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-.compileTime {
-  color: var(--ui-text-muted);
 }
 </style>

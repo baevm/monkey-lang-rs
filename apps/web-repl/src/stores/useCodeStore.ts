@@ -3,15 +3,25 @@ import { defineStore } from 'pinia'
 
 export type Mode = 'compiler' | 'interpreter'
 
-interface CompileResult {
-  output: string
-  time_ms: number
+interface Diagnostic {
+  severity: 'error' | 'warning'
+  phase: 'parser' | 'compiler' | 'runtime'
+  message: string
+  line: number | undefined
+  column: number | undefined
+}
+
+interface RunResult {
+  stdout: string
+  value: string | undefined
+  diagnostics: Diagnostic[]
+  durationMs: number
 }
 
 interface State {
   code: string | undefined
   runnerMode: Mode
-  result: CompileResult | null
+  result: RunResult | null
   workerReady: boolean
   isRunning: boolean
 }
@@ -36,7 +46,7 @@ export const useCodeStore = defineStore('code', {
       this.workerReady = true
     },
 
-    setResult(result: CompileResult) {
+    setResult(result: RunResult) {
       this.result = result
       this.isRunning = false
     },
@@ -50,19 +60,13 @@ export const useCodeStore = defineStore('code', {
     },
 
     setError(error: string) {
-      this.result = { output: error, time_ms: 0 }
+      this.result = { stdout: error, durationMs: 0, value: undefined, diagnostics: [] }
       this.isRunning = false
     },
 
     runCode() {
       const code = this.code
       const mode = this.runnerMode
-      const workerReady = this.workerReady
-
-      if (!workerReady) {
-        this.result = { output: 'WASM is still loading...', time_ms: 0 }
-        return
-      }
 
       if (code) {
         this.isRunning = true

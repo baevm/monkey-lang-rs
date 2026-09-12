@@ -19,16 +19,17 @@ self.onmessage = event => {
     const startTime = performance.now()
 
     const wasmResult = mode === 'compiler' ? compile_code(code) : interpret_code(code)
-    const endTime = performance.now()
 
     const result = {
-      output: wasmResult,
-      time_ms: endTime - startTime,
+      ...wasmResult,
+      durationMs: performance.now() - startTime,
     }
 
     self.postMessage({ type: 'result', result })
   } catch (error) {
-    console.error('Worker error:', error)
-    self.postMessage({ type: 'error', error: error.message || String(error) })
+    self.postMessage({
+      type: 'error',
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
 }
