@@ -1,17 +1,30 @@
+import { fileURLToPath, URL } from 'node:url'
+
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import wasm from 'vite-plugin-wasm'
-import topLevelAwait from 'vite-plugin-top-level-await'
+import vue from '@vitejs/plugin-vue'
+import vueDevTools from 'vite-plugin-vue-devtools'
+import ui from '@nuxt/ui/vite'
 
+// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), wasm(), topLevelAwait()],
-
-  worker: {
-    format: 'es',
-    plugins: () => [wasm(), topLevelAwait()],
-  },
-
-  server: {
-    port: 3000,
+  plugins: [
+    vue(),
+    vueDevTools(),
+    ui({
+      autoImport: false,
+      components: {},
+      router: false,
+      ui: {
+        colors: {
+          primary: 'sky',
+          neutral: 'neutral',
+        },
+      },
+    }),
+  ],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
   },
 })
