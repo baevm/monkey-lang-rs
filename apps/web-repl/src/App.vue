@@ -6,6 +6,7 @@ import Toolbar from './components/Toolbar.vue'
 import { useCodeStore } from './stores/useCodeStore.ts'
 import { compilerWorker } from './workerInstance.ts'
 import { useHotKeys } from './composables/useHotKeys.tsx'
+import WorkspaceLayout from './components/WorkspaceLayout.vue'
 
 const codeStore = useCodeStore()
 
@@ -34,10 +35,14 @@ useHotKeys(['Control', 'Enter'], codeStore.runCode)
     <div class="app">
       <Toolbar />
 
-      <main class="main">
-        <CodeEditor />
-        <RunResult />
-      </main>
+      <WorkspaceLayout>
+        <template #editor>
+          <CodeEditor />
+        </template>
+        <template #output>
+          <RunResult />
+        </template>
+      </WorkspaceLayout>
     </div>
   </UApp>
 </template>
@@ -48,12 +53,5 @@ useHotKeys(['Control', 'Enter'], codeStore.runCode)
   height: 100vh;
   display: flex;
   flex-direction: column;
-}
-
-.main {
-  display: flex;
-  width: 100%;
-  flex: 1;
-  min-height: 0;
 }
 </style>
