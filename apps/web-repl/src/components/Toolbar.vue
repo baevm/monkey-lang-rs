@@ -32,6 +32,7 @@ const codeExampleItems: DropdownMenuItem[] = CODE_EXAMPLES.map(example => ({
         </UDropdownMenu>
 
         <UButton
+          icon="i-lucide-play"
           @click="codeStore.runCode()"
           :loading="codeStore.isLoading"
           :disabled="!codeStore.code">

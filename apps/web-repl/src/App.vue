@@ -5,6 +5,7 @@ import RunResult from './components/RunResult.vue'
 import Toolbar from './components/Toolbar.vue'
 import { useCodeStore } from './stores/useCodeStore.ts'
 import { compilerWorker } from './workerInstance.ts'
+import { useHotKeys } from './composables/useHotKeys.tsx'
 
 const codeStore = useCodeStore()
 
@@ -23,6 +24,9 @@ onMounted(() => {
 
   compilerWorker.addEventListener('message', handleMessage)
 })
+
+useHotKeys(['Meta', 'Enter'], codeStore.runCode)
+useHotKeys(['Control', 'Enter'], codeStore.runCode)
 </script>
 
 <template>
